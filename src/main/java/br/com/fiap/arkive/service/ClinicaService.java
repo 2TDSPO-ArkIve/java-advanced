@@ -1,0 +1,84 @@
+package br.com.fiap.arkive.service;
+
+import br.com.fiap.arkive.dto.request.ClinicaRequest;
+import br.com.fiap.arkive.dto.response.ClinicaResponse;
+import br.com.fiap.arkive.entity.Clinica;
+import br.com.fiap.arkive.exception.BusinessException;
+import br.com.fiap.arkive.exception.ResourceNotFoundException;
+import br.com.fiap.arkive.repository.ClinicaRepository;
+import org.springframework.context.annotation.Profile;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+@Service
+@Profile("!local-nodb")
+public class ClinicaService {
+
+	private final ClinicaRepository clinicaRepository;
+
+	public ClinicaService(ClinicaRepository clinicaRepository) {
+		this.clinicaRepository = clinicaRepository;
+	}
+
+	@Transactional
+	public ClinicaResponse criar(ClinicaRequest request) {
+		Clinica clinica = new Clinica();
+		aplicarDados(clinica, request, true);
+		return ClinicaResponse.fromEntity(clinicaRepository.save(clinica));
+	}
+
+	@Transactional(readOnly = true)
+	public Page<ClinicaResponse> listar(String nome, String ativo, Pageable pageable) {
+		validarAtivoQuandoInformado(ativo);
+		return clinicaRepository.buscar(vazioParaNulo(nome), vazioParaNulo(ativo), pageable).map(ClinicaResponse::fromEntity);
+	}
+
+	@Transactional(readOnly = true)
+	public ClinicaResponse buscarPorId(Long id) {
+		return ClinicaResponse.fromEntity(buscarEntidade(id));
+	}
+
+	@Transactional
+	public ClinicaResponse atualizar(Long id, ClinicaRequest request) {
+		Clinica clinica = buscarEntidade(id);
+		aplicarDados(clinica, request, false);
+		return ClinicaResponse.fromEntity(clinicaRepository.save(clinica));
+	}
+
+	@Transactional
+	public void excluir(Long id) {
+		Clinica clinica = buscarEntidade(id);
+		clinica.setAtivo("N");
+		clinicaRepository.save(clinica);
+	}
+
+	@Transactional(readOnly = true)
+	public Clinica buscarEntidade(Long id) {
+		return clinicaRepository.findById(id)
+				.orElseThrow(() -> new ResourceNotFoundException("Clinica nao encontrada."));
+	}
+
+	private void aplicarDados(Clinica clinica, ClinicaRequest request, boolean criando) {
+		String ativo = criando && request.ativo() == null ? "S" : request.ativo();
+		validarAtivoQuandoInformado(ativo);
+		clinica.setNome(request.nome());
+		clinica.setCnpj(request.cnpj());
+		clinica.setEndereco(request.endereco());
+		clinica.setTelefone(request.telefone());
+		clinica.setEmail(request.email());
+		clinica.setAtivo(ativo == null ? clinica.getAtivo() : ativo);
+	}
+
+	private void validarAtivoQuandoInformado(String valor) {
+		if (valor != null && !valor.isBlank() && !"S".equals(valor) && !"N".equals(valor)) {
+			throw new BusinessException("Ativo deve ser S ou N.");
+		}
+	}
+
+	private String vazioParaNulo(String valor) {
+		return valor == null || valor.isBlank() ? null : valor;
+	}
+
+}
