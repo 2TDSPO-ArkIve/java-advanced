@@ -165,10 +165,9 @@ src/main/java/br/com/fiap/arkive
 
 ## 8. Diagrama de Entidades
 
-![Diagrama simplificado das entidades](docs/images/arkive-diagrama-entidades.png)
-
-
----
+<p align="center">
+  <img src="images/arkive-diagrama-entidades.png" alt="Diagrama simplificado das entidades" width="900">
+</p>
 
 ## 9. Principais relacionamentos
 
