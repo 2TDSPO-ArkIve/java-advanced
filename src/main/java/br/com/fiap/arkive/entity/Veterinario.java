@@ -11,7 +11,7 @@ import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 
 @Entity
-@Table(name = "TB_VS_VETERINARIO")
+@Table(name = "TB_ARKIVE_VETERINARIO")
 public class Veterinario {
 
 	@Id
@@ -19,13 +19,13 @@ public class Veterinario {
 	@Column(name = "ID_VETERINARIO")
 	private Long id;
 
-	@Column(name = "NM_VETERINARIO", nullable = false, length = 150)
+	@Column(name = "NM_VETERINARIO", nullable = false, length = 50)
 	private String nome;
 
-	@Column(name = "NR_CRMV", nullable = false, length = 20, unique = true)
+	@Column(name = "DC_CRMV", nullable = false, length = 20, unique = true)
 	private String crmv;
 
-	@Column(name = "DS_ESPECIALIDADE", length = 100)
+	@Column(name = "DS_ESPECIALIDADE", length = 50)
 	private String especialidade;
 
 	@Column(name = "DS_EMAIL", length = 200)

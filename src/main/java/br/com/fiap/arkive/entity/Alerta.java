@@ -7,13 +7,14 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
+import jakarta.persistence.Lob;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "TB_VS_ALERTA")
+@Table(name = "TB_ARKIVE_ALERTA")
 public class Alerta {
 
 	@Id
@@ -24,7 +25,8 @@ public class Alerta {
 	@Column(name = "TP_ALERTA", nullable = false, length = 50)
 	private String tipo;
 
-	@Column(name = "DS_MENSAGEM", nullable = false, length = 500)
+	@Lob
+	@Column(name = "DS_MENSAGEM", nullable = false)
 	private String mensagem;
 
 	@Column(name = "DT_ENVIO", nullable = false)
@@ -34,7 +36,7 @@ public class Alerta {
 	private LocalDateTime dataLeitura;
 
 	@Column(name = "ST_STATUS", nullable = false, length = 20)
-	private String status = "Enviado";
+	private String status = "ENVIADO";
 
 	@Column(name = "TP_CANAL", nullable = false, length = 20)
 	private String canal;

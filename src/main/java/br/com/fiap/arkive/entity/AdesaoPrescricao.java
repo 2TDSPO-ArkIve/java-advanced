@@ -13,7 +13,7 @@ import jakarta.persistence.Table;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "TB_VS_ADESAO_PRESCRICAO")
+@Table(name = "TB_ARKIVE_ADESAO_PRESCRICAO")
 public class AdesaoPrescricao {
 
 	@Id

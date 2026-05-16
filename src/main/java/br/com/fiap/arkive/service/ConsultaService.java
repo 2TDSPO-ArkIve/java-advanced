@@ -26,7 +26,7 @@ import java.util.Set;
 @Profile("!local-nodb")
 public class ConsultaService {
 
-	private static final Set<String> MODALIDADES = Set.of("Presencial", "Remota");
+	private static final Set<String> MODALIDADES = Set.of("PRESENCIAL", "REMOTA");
 	private static final Set<String> STATUS = Set.of("AG", "EP", "AP", "FI", "CA");
 
 	private final ConsultaRepository consultaRepository;
@@ -100,10 +100,10 @@ public class ConsultaService {
 		consulta.setDataHora(request.dataHora());
 		consulta.setModalidade(request.modalidade());
 		consulta.setMotivo(request.motivo());
-		consulta.setSintomasRelatados(request.sintomasRelatados());
-		consulta.setObservacoes(request.observacoes());
-		consulta.setPesoNaConsulta(request.pesoNaConsulta());
-		consulta.setTranscricaoRaw(request.transcricaoRaw());
+		consulta.setSintomas(request.sintomas());
+		consulta.setObservacao(request.observacao());
+		consulta.setPeso(request.peso());
+		consulta.setTranscricao(request.transcricao());
 		consulta.setStatus(status == null ? consulta.getStatus() : status);
 		consulta.setAnimal(animal);
 		consulta.setVeterinario(veterinario);
@@ -127,13 +127,13 @@ public class ConsultaService {
 
 	private void validarModalidadeObrigatoria(String modalidade) {
 		if (!MODALIDADES.contains(modalidade)) {
-			throw new BusinessException("Modalidade deve ser Presencial ou Remota.");
+			throw new BusinessException("Modalidade deve ser PRESENCIAL ou REMOTA.");
 		}
 	}
 
 	private void validarModalidadeQuandoInformada(String modalidade) {
 		if (modalidade != null && !modalidade.isBlank() && !MODALIDADES.contains(modalidade)) {
-			throw new BusinessException("Modalidade deve ser Presencial ou Remota.");
+			throw new BusinessException("Modalidade deve ser PRESENCIAL ou REMOTA.");
 		}
 	}
 

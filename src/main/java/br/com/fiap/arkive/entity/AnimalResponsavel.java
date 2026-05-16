@@ -12,7 +12,7 @@ import jakarta.persistence.Table;
 import java.time.LocalDate;
 
 @Entity
-@Table(name = "TB_VS_ANIMAL_RESPONSAVEL")
+@Table(name = "TB_ARKIVE_RESPONSAVEL_ANIMAL")
 public class AnimalResponsavel {
 
 	@EmbeddedId

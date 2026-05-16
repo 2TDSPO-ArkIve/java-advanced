@@ -17,19 +17,18 @@ public record ConsultaRequest(
 		String modalidade,
 
 		@NotBlank
-		@Size(max = 300)
 		String motivo,
 
 		@Size(max = 1000)
-		String sintomasRelatados,
+		String sintomas,
 
 		@Size(max = 2000)
-		String observacoes,
+		String observacao,
 
 		@Positive
-		BigDecimal pesoNaConsulta,
+		BigDecimal peso,
 
-		String transcricaoRaw,
+		String transcricao,
 
 		@Size(max = 2)
 		String status,

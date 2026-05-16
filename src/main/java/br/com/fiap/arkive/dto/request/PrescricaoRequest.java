@@ -8,11 +8,11 @@ import java.time.LocalDate;
 
 public record PrescricaoRequest(
 		@NotBlank
-		@Size(max = 200)
+		@Size(max = 150)
 		String medicamento,
 
 		@NotBlank
-		@Size(max = 100)
+		@Size(max = 50)
 		String dosagem,
 
 		@Size(max = 100)
@@ -26,7 +26,6 @@ public record PrescricaoRequest(
 
 		LocalDate dataFim,
 
-		@Size(max = 500)
 		String instrucoes,
 
 		@NotNull

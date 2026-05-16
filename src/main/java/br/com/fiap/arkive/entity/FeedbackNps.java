@@ -7,13 +7,14 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
+import jakarta.persistence.Lob;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "TB_VS_FEEDBACK_NPS")
+@Table(name = "TB_ARKIVE_FEEDBACK_NPS")
 public class FeedbackNps {
 
 	@Id
@@ -34,17 +35,22 @@ public class FeedbackNps {
 	private Clinica clinica;
 
 	@ManyToOne(fetch = FetchType.LAZY)
+	@JoinColumn(name = "ID_VETERINARIO")
+	private Veterinario veterinario;
+
+	@ManyToOne(fetch = FetchType.LAZY)
 	@JoinColumn(name = "ID_CONSULTA")
 	private Consulta consulta;
 
 	@Column(name = "NR_NOTA", nullable = false)
 	private Integer nota;
 
-	@Column(name = "DS_COMENTARIO", length = 1000)
+	@Lob
+	@Column(name = "DS_COMENTARIO")
 	private String comentario;
 
-	@Column(name = "DT_RESPOSTA", nullable = false)
-	private LocalDateTime dataResposta = LocalDateTime.now();
+	@Column(name = "DT_FEEDBACK", nullable = false)
+	private LocalDateTime dataFeedback = LocalDateTime.now();
 
 	public Long getId() {
 		return id;
@@ -78,6 +84,14 @@ public class FeedbackNps {
 		this.clinica = clinica;
 	}
 
+	public Veterinario getVeterinario() {
+		return veterinario;
+	}
+
+	public void setVeterinario(Veterinario veterinario) {
+		this.veterinario = veterinario;
+	}
+
 	public Consulta getConsulta() {
 		return consulta;
 	}
@@ -102,12 +116,12 @@ public class FeedbackNps {
 		this.comentario = comentario;
 	}
 
-	public LocalDateTime getDataResposta() {
-		return dataResposta;
+	public LocalDateTime getDataFeedback() {
+		return dataFeedback;
 	}
 
-	public void setDataResposta(LocalDateTime dataResposta) {
-		this.dataResposta = dataResposta;
+	public void setDataFeedback(LocalDateTime dataFeedback) {
+		this.dataFeedback = dataFeedback;
 	}
 
 }

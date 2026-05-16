@@ -11,7 +11,7 @@ import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 
 @Entity
-@Table(name = "TB_VS_RACA")
+@Table(name = "TB_ARKIVE_RACA")
 public class Raca {
 
 	@Id
@@ -28,6 +28,9 @@ public class Raca {
 
 	@Column(name = "TP_PORTE", length = 20)
 	private String porte;
+
+	@Column(name = "ST_ATIVO", nullable = false, length = 1)
+	private String ativo = "S";
 
 	public Long getId() {
 		return id;
@@ -59,6 +62,14 @@ public class Raca {
 
 	public void setPorte(String porte) {
 		this.porte = porte;
+	}
+
+	public String getAtivo() {
+		return ativo;
+	}
+
+	public void setAtivo(String ativo) {
+		this.ativo = ativo;
 	}
 
 }

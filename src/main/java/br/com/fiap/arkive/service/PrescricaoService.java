@@ -22,7 +22,7 @@ import java.util.Set;
 @Profile("!local-nodb")
 public class PrescricaoService {
 
-	private static final Set<String> VIAS_ADMINISTRACAO = Set.of("Oral", "Injetavel", "Topico", "Ocular", "Otologico", "Outro");
+	private static final Set<String> VIAS_ADMINISTRACAO = Set.of("ORAL", "INJETAVEL", "TOPICO", "OCULAR", "OTOLOGICO", "OUTRO");
 
 	private final PrescricaoRepository prescricaoRepository;
 	private final ConsultaService consultaService;

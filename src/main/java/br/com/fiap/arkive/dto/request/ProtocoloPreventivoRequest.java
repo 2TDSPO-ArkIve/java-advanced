@@ -8,23 +8,22 @@ import jakarta.validation.constraints.Size;
 
 public record ProtocoloPreventivoRequest(
 		@NotBlank
-		@Size(max = 200)
+		@Size(max = 50)
 		String nome,
 
 		@NotBlank
 		@Size(max = 50)
 		String tipo,
 
-		@Size(max = 500)
 		String descricao,
 
 		@NotNull
 		@Positive
-		Integer intervaloDias,
+		Integer intervalo,
 
 		@NotNull
 		@Min(0)
-		Integer idadeMinMeses,
+		Integer idadeMin,
 
 		Long especieId,
 

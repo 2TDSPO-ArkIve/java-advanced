@@ -10,7 +10,7 @@ import jakarta.persistence.Table;
 import java.time.LocalDate;
 
 @Entity
-@Table(name = "TB_VS_RESPONSAVEL")
+@Table(name = "TB_ARKIVE_RESPONSAVEL")
 public class Responsavel {
 
 	@Id
@@ -18,16 +18,16 @@ public class Responsavel {
 	@Column(name = "ID_RESPONSAVEL")
 	private Long id;
 
-	@Column(name = "NM_RESPONSAVEL", nullable = false, length = 150)
+	@Column(name = "NM_RESPONSAVEL", nullable = false, length = 50)
 	private String nome;
 
-	@Column(name = "NR_DOCUMENTO", length = 20, unique = true)
+	@Column(name = "DC_CPF_RG", length = 20, unique = true)
 	private String documento;
 
 	@Column(name = "DS_EMAIL", length = 200)
 	private String email;
 
-	@Column(name = "NR_TELEFONE", length = 20)
+	@Column(name = "NR_CONTATO", length = 20)
 	private String telefone;
 
 	@Column(name = "TP_RESPONSAVEL", nullable = false, length = 30)

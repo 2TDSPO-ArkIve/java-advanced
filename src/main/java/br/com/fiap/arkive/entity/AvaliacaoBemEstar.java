@@ -7,6 +7,7 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
+import jakarta.persistence.Lob;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 
@@ -14,7 +15,7 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "TB_VS_AVALIACAO_BEM_ESTAR")
+@Table(name = "TB_ARKIVE_AVALIACAO_BEM_ESTAR")
 public class AvaliacaoBemEstar {
 
 	@Id
@@ -41,19 +42,23 @@ public class AvaliacaoBemEstar {
 	@Column(name = "DT_AVALIACAO", nullable = false)
 	private LocalDateTime dataAvaliacao = LocalDateTime.now();
 
-	@Column(name = "NR_PESO_KG", precision = 5, scale = 2)
-	private BigDecimal pesoKg;
+	@Column(name = "KG_PESO", precision = 5, scale = 2)
+	private BigDecimal peso;
 
-	@Column(name = "TP_APETITE", length = 20)
+	@Column(name = "NR_IDADE")
+	private Integer idade;
+
+	@Column(name = "DS_APETITE", length = 20)
 	private String apetite;
 
-	@Column(name = "TP_ATIVIDADE", length = 20)
+	@Column(name = "DS_ATIVIDADE", length = 20)
 	private String atividade;
 
-	@Column(name = "TP_COMPORTAMENTO", length = 30)
+	@Column(name = "DS_COMPORTAMENTO", length = 30)
 	private String comportamento;
 
-	@Column(name = "DS_OBSERVACAO", length = 1000)
+	@Lob
+	@Column(name = "DS_OBSERVACAO")
 	private String observacao;
 
 	public Long getId() {
@@ -104,12 +109,20 @@ public class AvaliacaoBemEstar {
 		this.dataAvaliacao = dataAvaliacao;
 	}
 
-	public BigDecimal getPesoKg() {
-		return pesoKg;
+	public BigDecimal getPeso() {
+		return peso;
 	}
 
-	public void setPesoKg(BigDecimal pesoKg) {
-		this.pesoKg = pesoKg;
+	public void setPeso(BigDecimal peso) {
+		this.peso = peso;
+	}
+
+	public Integer getIdade() {
+		return idade;
+	}
+
+	public void setIdade(Integer idade) {
+		this.idade = idade;
 	}
 
 	public String getApetite() {

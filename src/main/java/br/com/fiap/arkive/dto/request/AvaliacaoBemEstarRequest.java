@@ -20,7 +20,10 @@ public record AvaliacaoBemEstarRequest(
 		LocalDateTime dataAvaliacao,
 
 		@Positive
-		BigDecimal pesoKg,
+		BigDecimal peso,
+
+		@Positive
+		Integer idade,
 
 		@Size(max = 20)
 		String apetite,
@@ -31,7 +34,6 @@ public record AvaliacaoBemEstarRequest(
 		@Size(max = 30)
 		String comportamento,
 
-		@Size(max = 1000)
 		String observacao
 ) {
 }

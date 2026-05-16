@@ -7,7 +7,8 @@ public record RacaResponse(
 		String nome,
 		String porte,
 		Long especieId,
-		String especieNome
+		String especieNome,
+		String ativo
 ) {
 	public static RacaResponse fromEntity(Raca raca) {
 		return new RacaResponse(
@@ -15,7 +16,8 @@ public record RacaResponse(
 				raca.getNome(),
 				raca.getPorte(),
 				raca.getEspecie().getId(),
-				raca.getEspecie().getNome()
+				raca.getEspecie().getNome(),
+				raca.getAtivo()
 		);
 	}
 }

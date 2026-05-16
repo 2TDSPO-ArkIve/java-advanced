@@ -28,9 +28,9 @@ import java.util.Set;
 @Profile("!local-nodb")
 public class AvaliacaoBemEstarService {
 
-	private static final Set<String> APETITES = Set.of("Normal", "Reduzido", "Aumentado", "Sem apetite");
-	private static final Set<String> ATIVIDADES = Set.of("Baixa", "Normal", "Alta");
-	private static final Set<String> COMPORTAMENTOS = Set.of("Normal", "Alterado", "Agressivo", "Apatico", "Ansioso");
+	private static final Set<String> APETITES = Set.of("SEM APETITE", "REDUZIDO", "NORMAL", "AUMENTADO");
+	private static final Set<String> ATIVIDADES = Set.of("BAIXA", "NORMAL", "ALTA");
+	private static final Set<String> COMPORTAMENTOS = Set.of("APATICO", "NORMAL", "ALTERADO", "ANSIOSO", "AGRESSIVO");
 
 	private final AvaliacaoBemEstarRepository avaliacaoRepository;
 	private final AnimalRepository animalRepository;
@@ -130,7 +130,8 @@ public class AvaliacaoBemEstarService {
 		avaliacao.setVeterinario(veterinario);
 		avaliacao.setConsulta(consulta);
 		avaliacao.setDataAvaliacao(dataAvaliacao == null ? avaliacao.getDataAvaliacao() : dataAvaliacao);
-		avaliacao.setPesoKg(request.pesoKg());
+		avaliacao.setPeso(request.peso());
+		avaliacao.setIdade(request.idade());
 		avaliacao.setApetite(request.apetite());
 		avaliacao.setAtividade(request.atividade());
 		avaliacao.setComportamento(request.comportamento());

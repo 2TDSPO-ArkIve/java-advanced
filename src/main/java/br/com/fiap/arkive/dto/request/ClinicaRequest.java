@@ -6,14 +6,14 @@ import jakarta.validation.constraints.Size;
 
 public record ClinicaRequest(
 		@NotBlank
-		@Size(max = 200)
+		@Size(max = 150)
 		String nome,
 
 		@NotBlank
 		@Size(max = 18)
 		String cnpj,
 
-		@Size(max = 300)
+		@Size(max = 255)
 		String endereco,
 
 		@Size(max = 20)

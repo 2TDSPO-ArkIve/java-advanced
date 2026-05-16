@@ -22,7 +22,7 @@ import java.util.Set;
 @Profile("!local-nodb")
 public class ProtocoloPreventivoService {
 
-	private static final Set<String> TIPOS = Set.of("Vacina", "Vermifugo", "Check-up", "Antiparasitario");
+	private static final Set<String> TIPOS = Set.of("VACINA", "VERMIFUGO", "CHECK-UP", "ANTIPARASITARIO");
 
 	private final ProtocoloPreventivoRepository protocoloRepository;
 	private final EspecieRepository especieRepository;
@@ -90,8 +90,8 @@ public class ProtocoloPreventivoService {
 		protocolo.setNome(request.nome());
 		protocolo.setTipo(request.tipo());
 		protocolo.setDescricao(request.descricao());
-		protocolo.setIntervaloDias(request.intervaloDias());
-		protocolo.setIdadeMinMeses(request.idadeMinMeses());
+		protocolo.setIntervalo(request.intervalo());
+		protocolo.setIdadeMin(request.idadeMin());
 		protocolo.setEspecie(especie);
 		protocolo.setRaca(raca);
 		protocolo.setAtivo(ativo == null ? protocolo.getAtivo() : ativo);
