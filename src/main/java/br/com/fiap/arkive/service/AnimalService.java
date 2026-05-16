@@ -23,24 +23,39 @@ public class AnimalService {
 	private final EspecieService especieService;
 	private final RacaService racaService;
 	private final ClinicaService clinicaService;
+	private final EventoJornadaService eventoJornadaService;
 
 	public AnimalService(
 			AnimalRepository animalRepository,
 			EspecieService especieService,
 			RacaService racaService,
-			ClinicaService clinicaService
+			ClinicaService clinicaService,
+			EventoJornadaService eventoJornadaService
 	) {
 		this.animalRepository = animalRepository;
 		this.especieService = especieService;
 		this.racaService = racaService;
 		this.clinicaService = clinicaService;
+		this.eventoJornadaService = eventoJornadaService;
 	}
 
 	@Transactional
 	public AnimalResponse criar(AnimalRequest request) {
 		Animal animal = new Animal();
 		aplicarDados(animal, request, true);
-		return AnimalResponse.fromEntity(animalRepository.save(animal));
+		Animal salvo = animalRepository.save(animal);
+		Long clinicaId = salvo.getClinica() == null ? null : salvo.getClinica().getId();
+		eventoJornadaService.registrarEvento(
+				"ANIMAL_CADASTRADO",
+				"SISTEMA",
+				null,
+				null,
+				salvo.getId(),
+				clinicaId,
+				"Animal cadastrado.",
+				eventoJornadaService.criarPayload("Animal", salvo.getId(), "ANIMAL_CADASTRADO")
+		);
+		return AnimalResponse.fromEntity(salvo);
 	}
 
 	@Transactional(readOnly = true)

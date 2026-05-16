@@ -37,26 +37,42 @@ public class AvaliacaoBemEstarService {
 	private final ResponsavelRepository responsavelRepository;
 	private final VeterinarioRepository veterinarioRepository;
 	private final ConsultaService consultaService;
+	private final EventoJornadaService eventoJornadaService;
 
 	public AvaliacaoBemEstarService(
 			AvaliacaoBemEstarRepository avaliacaoRepository,
 			AnimalRepository animalRepository,
 			ResponsavelRepository responsavelRepository,
 			VeterinarioRepository veterinarioRepository,
-			ConsultaService consultaService
+			ConsultaService consultaService,
+			EventoJornadaService eventoJornadaService
 	) {
 		this.avaliacaoRepository = avaliacaoRepository;
 		this.animalRepository = animalRepository;
 		this.responsavelRepository = responsavelRepository;
 		this.veterinarioRepository = veterinarioRepository;
 		this.consultaService = consultaService;
+		this.eventoJornadaService = eventoJornadaService;
 	}
 
 	@Transactional
 	public AvaliacaoBemEstarResponse criar(AvaliacaoBemEstarRequest request) {
 		AvaliacaoBemEstar avaliacao = new AvaliacaoBemEstar();
 		aplicarDados(avaliacao, request, true);
-		return AvaliacaoBemEstarResponse.fromEntity(avaliacaoRepository.save(avaliacao));
+		AvaliacaoBemEstar salva = avaliacaoRepository.save(avaliacao);
+		Long responsavelId = salva.getResponsavel() == null ? null : salva.getResponsavel().getId();
+		Long veterinarioId = salva.getVeterinario() == null ? null : salva.getVeterinario().getId();
+		eventoJornadaService.registrarEvento(
+				"AVALIACAO_BEM_ESTAR_REGISTRADA",
+				veterinarioId == null ? "RESPONSAVEL" : "VETERINARIO",
+				responsavelId,
+				veterinarioId,
+				salva.getAnimal().getId(),
+				null,
+				"Avaliacao de bem-estar registrada.",
+				eventoJornadaService.criarPayload("AvaliacaoBemEstar", salva.getId(), "AVALIACAO_BEM_ESTAR_REGISTRADA")
+		);
+		return AvaliacaoBemEstarResponse.fromEntity(salva);
 	}
 
 	@Transactional(readOnly = true)

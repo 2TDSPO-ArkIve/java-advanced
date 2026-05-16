@@ -33,24 +33,39 @@ public class ConsultaService {
 	private final AnimalRepository animalRepository;
 	private final VeterinarioRepository veterinarioRepository;
 	private final ClinicaRepository clinicaRepository;
+	private final EventoJornadaService eventoJornadaService;
 
 	public ConsultaService(
 			ConsultaRepository consultaRepository,
 			AnimalRepository animalRepository,
 			VeterinarioRepository veterinarioRepository,
-			ClinicaRepository clinicaRepository
+			ClinicaRepository clinicaRepository,
+			EventoJornadaService eventoJornadaService
 	) {
 		this.consultaRepository = consultaRepository;
 		this.animalRepository = animalRepository;
 		this.veterinarioRepository = veterinarioRepository;
 		this.clinicaRepository = clinicaRepository;
+		this.eventoJornadaService = eventoJornadaService;
 	}
 
 	@Transactional
 	public ConsultaResponse criar(ConsultaRequest request) {
 		Consulta consulta = new Consulta();
 		aplicarDados(consulta, request, true);
-		return ConsultaResponse.fromEntity(consultaRepository.save(consulta));
+		Consulta salva = consultaRepository.save(consulta);
+		Long clinicaId = salva.getClinica() == null ? null : salva.getClinica().getId();
+		eventoJornadaService.registrarEvento(
+				"CONSULTA_CRIADA",
+				"VETERINARIO",
+				null,
+				salva.getVeterinario().getId(),
+				salva.getAnimal().getId(),
+				clinicaId,
+				"Consulta criada.",
+				eventoJornadaService.criarPayload("Consulta", salva.getId(), "CONSULTA_CRIADA")
+		);
+		return ConsultaResponse.fromEntity(salva);
 	}
 
 	@Transactional(readOnly = true)

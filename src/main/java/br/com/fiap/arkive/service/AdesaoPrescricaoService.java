@@ -29,24 +29,39 @@ public class AdesaoPrescricaoService {
 	private final PrescricaoService prescricaoService;
 	private final AnimalRepository animalRepository;
 	private final ResponsavelRepository responsavelRepository;
+	private final EventoJornadaService eventoJornadaService;
 
 	public AdesaoPrescricaoService(
 			AdesaoPrescricaoRepository adesaoPrescricaoRepository,
 			PrescricaoService prescricaoService,
 			AnimalRepository animalRepository,
-			ResponsavelRepository responsavelRepository
+			ResponsavelRepository responsavelRepository,
+			EventoJornadaService eventoJornadaService
 	) {
 		this.adesaoPrescricaoRepository = adesaoPrescricaoRepository;
 		this.prescricaoService = prescricaoService;
 		this.animalRepository = animalRepository;
 		this.responsavelRepository = responsavelRepository;
+		this.eventoJornadaService = eventoJornadaService;
 	}
 
 	@Transactional
 	public AdesaoPrescricaoResponse criar(AdesaoPrescricaoRequest request) {
 		AdesaoPrescricao adesao = new AdesaoPrescricao();
 		aplicarDados(adesao, request, true);
-		return AdesaoPrescricaoResponse.fromEntity(adesaoPrescricaoRepository.save(adesao));
+		AdesaoPrescricao salva = adesaoPrescricaoRepository.save(adesao);
+		Long responsavelId = salva.getResponsavel() == null ? null : salva.getResponsavel().getId();
+		eventoJornadaService.registrarEvento(
+				"ADESAO_REGISTRADA",
+				responsavelId == null ? "SISTEMA" : "RESPONSAVEL",
+				responsavelId,
+				null,
+				salva.getAnimal().getId(),
+				null,
+				"Adesao de prescricao registrada.",
+				eventoJornadaService.criarPayload("AdesaoPrescricao", salva.getId(), "ADESAO_REGISTRADA")
+		);
+		return AdesaoPrescricaoResponse.fromEntity(salva);
 	}
 
 	@Transactional(readOnly = true)

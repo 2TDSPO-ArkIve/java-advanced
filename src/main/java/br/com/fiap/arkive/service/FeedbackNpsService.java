@@ -35,6 +35,7 @@ public class FeedbackNpsService {
 	private final ClinicaRepository clinicaRepository;
 	private final VeterinarioRepository veterinarioRepository;
 	private final ConsultaService consultaService;
+	private final EventoJornadaService eventoJornadaService;
 
 	public FeedbackNpsService(
 			FeedbackNpsRepository feedbackRepository,
@@ -42,7 +43,8 @@ public class FeedbackNpsService {
 			AnimalRepository animalRepository,
 			ClinicaRepository clinicaRepository,
 			VeterinarioRepository veterinarioRepository,
-			ConsultaService consultaService
+			ConsultaService consultaService,
+			EventoJornadaService eventoJornadaService
 	) {
 		this.feedbackRepository = feedbackRepository;
 		this.responsavelRepository = responsavelRepository;
@@ -50,13 +52,29 @@ public class FeedbackNpsService {
 		this.clinicaRepository = clinicaRepository;
 		this.veterinarioRepository = veterinarioRepository;
 		this.consultaService = consultaService;
+		this.eventoJornadaService = eventoJornadaService;
 	}
 
 	@Transactional
 	public FeedbackNpsResponse criar(FeedbackNpsRequest request) {
 		FeedbackNps feedback = new FeedbackNps();
 		aplicarDados(feedback, request, true);
-		return FeedbackNpsResponse.fromEntity(feedbackRepository.save(feedback));
+		FeedbackNps salvo = feedbackRepository.save(feedback);
+		Long responsavelId = salvo.getResponsavel() == null ? null : salvo.getResponsavel().getId();
+		Long animalId = salvo.getAnimal() == null ? null : salvo.getAnimal().getId();
+		Long clinicaId = salvo.getClinica() == null ? null : salvo.getClinica().getId();
+		Long veterinarioId = salvo.getVeterinario() == null ? null : salvo.getVeterinario().getId();
+		eventoJornadaService.registrarEvento(
+				"NPS_RESPONDIDO",
+				definirAtorEvento(responsavelId, veterinarioId, clinicaId),
+				responsavelId,
+				veterinarioId,
+				animalId,
+				clinicaId,
+				"Feedback NPS respondido.",
+				eventoJornadaService.criarPayload("FeedbackNps", salvo.getId(), "NPS_RESPONDIDO")
+		);
+		return FeedbackNpsResponse.fromEntity(salvo);
 	}
 
 	@Transactional(readOnly = true)
@@ -126,6 +144,19 @@ public class FeedbackNpsService {
 
 	private Veterinario buscarVeterinario(Long id) {
 		return veterinarioRepository.findById(id).orElseThrow(() -> new ResourceNotFoundException("Veterinario nao encontrado."));
+	}
+
+	private String definirAtorEvento(Long responsavelId, Long veterinarioId, Long clinicaId) {
+		if (responsavelId != null) {
+			return "RESPONSAVEL";
+		}
+		if (veterinarioId != null) {
+			return "VETERINARIO";
+		}
+		if (clinicaId != null) {
+			return "CLINICA";
+		}
+		return "SISTEMA";
 	}
 
 }
