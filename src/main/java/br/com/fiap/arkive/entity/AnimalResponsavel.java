@@ -34,10 +34,10 @@ public class AnimalResponsavel {
 	@Column(name = "DT_FIM")
 	private LocalDate dataFim;
 
-	@Column(name = "ST_PRINCIPAL", nullable = false, length = 1)
+	@Column(name = "ST_PRINCIPAL", nullable = false, columnDefinition = "CHAR(1)")
 	private String principal = "N";
 
-	@Column(name = "ST_ATIVO", nullable = false, length = 1)
+	@Column(name = "ST_ATIVO", nullable = false, columnDefinition = "CHAR(1)")
 	private String ativo = "S";
 
 	public AnimalResponsavelId getId() {

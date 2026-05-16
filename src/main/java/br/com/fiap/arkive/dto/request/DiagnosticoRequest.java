@@ -10,7 +10,6 @@ import java.math.BigDecimal;
 
 public record DiagnosticoRequest(
 		@NotBlank
-		@Size(max = 1000)
 		String diagnostico,
 
 		@Size(max = 20)
@@ -19,7 +18,6 @@ public record DiagnosticoRequest(
 		@Size(max = 1)
 		String confirmado,
 
-		@Size(max = 1000)
 		String insightIa,
 
 		@DecimalMin("0")

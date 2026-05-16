@@ -36,10 +36,10 @@ public class Responsavel {
 	@Column(name = "DT_CADASTRO", nullable = false)
 	private LocalDate dataCadastro = LocalDate.now();
 
-	@Column(name = "ST_NOTIFICACAO", nullable = false, length = 1)
+	@Column(name = "ST_NOTIFICACAO", nullable = false, columnDefinition = "CHAR(1)")
 	private String notificacao = "S";
 
-	@Column(name = "ST_ATIVO", nullable = false, length = 1)
+	@Column(name = "ST_ATIVO", nullable = false, columnDefinition = "CHAR(1)")
 	private String ativo = "S";
 
 	public Long getId() {

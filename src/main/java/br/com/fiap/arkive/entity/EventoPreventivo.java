@@ -31,7 +31,7 @@ public class EventoPreventivo {
 	@Column(name = "ST_STATUS", nullable = false, length = 20)
 	private String status = "PENDENTE";
 
-	@Column(name = "ST_ALERTA", nullable = false, length = 1)
+	@Column(name = "ST_ALERTA", nullable = false, columnDefinition = "CHAR(1)")
 	private String alerta = "N";
 
 	@Lob

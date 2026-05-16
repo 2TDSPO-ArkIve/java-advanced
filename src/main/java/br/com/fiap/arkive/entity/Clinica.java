@@ -31,7 +31,7 @@ public class Clinica {
 	@Column(name = "DS_EMAIL", length = 200)
 	private String email;
 
-	@Column(name = "ST_ATIVO", nullable = false, length = 1)
+	@Column(name = "ST_ATIVO", nullable = false, columnDefinition = "CHAR(1)")
 	private String ativo = "S";
 
 	public Long getId() {

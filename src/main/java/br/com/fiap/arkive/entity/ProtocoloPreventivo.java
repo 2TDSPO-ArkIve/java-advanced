@@ -44,7 +44,7 @@ public class ProtocoloPreventivo {
 	@JoinColumn(name = "ID_RACA")
 	private Raca raca;
 
-	@Column(name = "ST_ATIVO", nullable = false, length = 1)
+	@Column(name = "ST_ATIVO", nullable = false, columnDefinition = "CHAR(1)")
 	private String ativo = "S";
 
 	public Long getId() {

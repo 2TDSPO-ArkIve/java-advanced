@@ -33,10 +33,12 @@ public class Consulta {
 	@Column(name = "DS_MOTIVO", nullable = false)
 	private String motivo;
 
-	@Column(name = "DS_SINTOMAS", length = 1000)
+	@Lob
+	@Column(name = "DS_SINTOMAS")
 	private String sintomas;
 
-	@Column(name = "DS_OBSERVACAO", length = 2000)
+	@Lob
+	@Column(name = "DS_OBSERVACAO")
 	private String observacao;
 
 	@Column(name = "KG_PESO", precision = 5, scale = 2)
@@ -46,7 +48,7 @@ public class Consulta {
 	@Column(name = "DS_TRANSCRICAO")
 	private String transcricao;
 
-	@Column(name = "ST_STATUS", nullable = false, length = 2)
+	@Column(name = "ST_STATUS", nullable = false, columnDefinition = "CHAR(2)")
 	private String status = "AG";
 
 	@ManyToOne(fetch = FetchType.LAZY, optional = false)
