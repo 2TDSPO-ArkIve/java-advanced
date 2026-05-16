@@ -36,15 +36,18 @@ public class AnimalResponsavelService {
 	private final AnimalResponsavelRepository animalResponsavelRepository;
 	private final AnimalRepository animalRepository;
 	private final ResponsavelRepository responsavelRepository;
+	private final EventoJornadaService eventoJornadaService;
 
 	public AnimalResponsavelService(
 			AnimalResponsavelRepository animalResponsavelRepository,
 			AnimalRepository animalRepository,
-			ResponsavelRepository responsavelRepository
+			ResponsavelRepository responsavelRepository,
+			EventoJornadaService eventoJornadaService
 	) {
 		this.animalResponsavelRepository = animalResponsavelRepository;
 		this.animalRepository = animalRepository;
 		this.responsavelRepository = responsavelRepository;
+		this.eventoJornadaService = eventoJornadaService;
 	}
 
 	@Transactional
@@ -63,7 +66,18 @@ public class AnimalResponsavelService {
 		animalResponsavel.setResponsavel(responsavel);
 		aplicarDados(animalResponsavel, request, dataInicio, true);
 		ajustarOutrosPrincipais(animalResponsavel);
-		return AnimalResponsavelResponse.fromEntity(animalResponsavelRepository.save(animalResponsavel));
+		AnimalResponsavel salvo = animalResponsavelRepository.save(animalResponsavel);
+		eventoJornadaService.registrarEvento(
+				"RESPONSAVEL_VINCULADO",
+				"RESPONSAVEL",
+				responsavel.getId(),
+				null,
+				animal.getId(),
+				null,
+				"Responsavel vinculado ao animal.",
+				eventoJornadaService.criarPayload("AnimalResponsavel", animal.getId(), "RESPONSAVEL_VINCULADO")
+		);
+		return AnimalResponsavelResponse.fromEntity(salvo);
 	}
 
 	@Transactional(readOnly = true)

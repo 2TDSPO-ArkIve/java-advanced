@@ -37,19 +37,22 @@ public class AlertaService {
 	private final ResponsavelRepository responsavelRepository;
 	private final ClinicaRepository clinicaRepository;
 	private final EventoPreventivoService eventoPreventivoService;
+	private final EventoJornadaService eventoJornadaService;
 
 	public AlertaService(
 			AlertaRepository alertaRepository,
 			AnimalRepository animalRepository,
 			ResponsavelRepository responsavelRepository,
 			ClinicaRepository clinicaRepository,
-			EventoPreventivoService eventoPreventivoService
+			EventoPreventivoService eventoPreventivoService,
+			EventoJornadaService eventoJornadaService
 	) {
 		this.alertaRepository = alertaRepository;
 		this.animalRepository = animalRepository;
 		this.responsavelRepository = responsavelRepository;
 		this.clinicaRepository = clinicaRepository;
 		this.eventoPreventivoService = eventoPreventivoService;
+		this.eventoJornadaService = eventoJornadaService;
 	}
 
 	@Transactional
@@ -85,7 +88,20 @@ public class AlertaService {
 		Alerta alerta = buscarEntidade(id);
 		alerta.setStatus("LIDO");
 		alerta.setDataLeitura(LocalDateTime.now());
-		return AlertaResponse.fromEntity(alertaRepository.save(alerta));
+		Alerta salvo = alertaRepository.save(alerta);
+		Long responsavelId = salvo.getResponsavel() == null ? null : salvo.getResponsavel().getId();
+		Long clinicaId = salvo.getClinica() == null ? null : salvo.getClinica().getId();
+		eventoJornadaService.registrarEvento(
+				"ALERTA_LIDO",
+				responsavelId == null ? "CLINICA" : "RESPONSAVEL",
+				responsavelId,
+				null,
+				salvo.getAnimal().getId(),
+				clinicaId,
+				"Alerta marcado como lido.",
+				eventoJornadaService.criarPayload("Alerta", salvo.getId(), "ALERTA_LIDO")
+		);
+		return AlertaResponse.fromEntity(salvo);
 	}
 
 	@Transactional

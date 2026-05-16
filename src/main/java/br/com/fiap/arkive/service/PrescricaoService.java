@@ -26,17 +26,36 @@ public class PrescricaoService {
 
 	private final PrescricaoRepository prescricaoRepository;
 	private final ConsultaService consultaService;
+	private final EventoJornadaService eventoJornadaService;
 
-	public PrescricaoService(PrescricaoRepository prescricaoRepository, ConsultaService consultaService) {
+	public PrescricaoService(
+			PrescricaoRepository prescricaoRepository,
+			ConsultaService consultaService,
+			EventoJornadaService eventoJornadaService
+	) {
 		this.prescricaoRepository = prescricaoRepository;
 		this.consultaService = consultaService;
+		this.eventoJornadaService = eventoJornadaService;
 	}
 
 	@Transactional
 	public PrescricaoResponse criar(PrescricaoRequest request) {
 		Prescricao prescricao = new Prescricao();
 		aplicarDados(prescricao, request);
-		return PrescricaoResponse.fromEntity(prescricaoRepository.save(prescricao));
+		Prescricao salva = prescricaoRepository.save(prescricao);
+		Consulta consulta = salva.getConsulta();
+		Long clinicaId = consulta.getClinica() == null ? null : consulta.getClinica().getId();
+		eventoJornadaService.registrarEvento(
+				"PRESCRICAO_CRIADA",
+				"VETERINARIO",
+				null,
+				consulta.getVeterinario().getId(),
+				consulta.getAnimal().getId(),
+				clinicaId,
+				"Prescricao criada.",
+				eventoJornadaService.criarPayload("Prescricao", salva.getId(), "PRESCRICAO_CRIADA")
+		);
+		return PrescricaoResponse.fromEntity(salva);
 	}
 
 	@Transactional(readOnly = true)

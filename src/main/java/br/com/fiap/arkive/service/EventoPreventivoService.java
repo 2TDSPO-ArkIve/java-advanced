@@ -31,24 +31,40 @@ public class EventoPreventivoService {
 	private final AnimalRepository animalRepository;
 	private final ProtocoloPreventivoService protocoloService;
 	private final ConsultaService consultaService;
+	private final EventoJornadaService eventoJornadaService;
 
 	public EventoPreventivoService(
 			EventoPreventivoRepository eventoRepository,
 			AnimalRepository animalRepository,
 			ProtocoloPreventivoService protocoloService,
-			ConsultaService consultaService
+			ConsultaService consultaService,
+			EventoJornadaService eventoJornadaService
 	) {
 		this.eventoRepository = eventoRepository;
 		this.animalRepository = animalRepository;
 		this.protocoloService = protocoloService;
 		this.consultaService = consultaService;
+		this.eventoJornadaService = eventoJornadaService;
 	}
 
 	@Transactional
 	public EventoPreventivoResponse criar(EventoPreventivoRequest request) {
 		EventoPreventivo evento = new EventoPreventivo();
 		aplicarDados(evento, request, true);
-		return EventoPreventivoResponse.fromEntity(eventoRepository.save(evento));
+		EventoPreventivo salvo = eventoRepository.save(evento);
+		Long veterinarioId = salvo.getConsulta() == null ? null : salvo.getConsulta().getVeterinario().getId();
+		Long clinicaId = salvo.getConsulta() == null || salvo.getConsulta().getClinica() == null ? null : salvo.getConsulta().getClinica().getId();
+		eventoJornadaService.registrarEvento(
+				"EVENTO_PREVENTIVO_CRIADO",
+				veterinarioId == null ? "SISTEMA" : "VETERINARIO",
+				null,
+				veterinarioId,
+				salvo.getAnimal().getId(),
+				clinicaId,
+				"Evento preventivo criado.",
+				eventoJornadaService.criarPayload("EventoPreventivo", salvo.getId(), "EVENTO_PREVENTIVO_CRIADO")
+		);
+		return EventoPreventivoResponse.fromEntity(salvo);
 	}
 
 	@Transactional(readOnly = true)
