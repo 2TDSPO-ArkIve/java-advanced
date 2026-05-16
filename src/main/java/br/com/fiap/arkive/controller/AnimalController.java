@@ -40,11 +40,11 @@ public class AnimalController {
 			@RequestParam(required = false) String nome,
 			@RequestParam(required = false) Long especieId,
 			@RequestParam(required = false) Long racaId,
-			@RequestParam(required = false) Long clinicaCadastroId,
+			@RequestParam(required = false) Long clinicaId,
 			@RequestParam(required = false) String ativo,
 			Pageable pageable
 	) {
-		return animalService.listar(nome, especieId, racaId, clinicaCadastroId, ativo, pageable);
+		return animalService.listar(nome, especieId, racaId, clinicaId, ativo, pageable);
 	}
 
 	@GetMapping("/{id}")

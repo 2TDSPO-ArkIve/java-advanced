@@ -7,12 +7,14 @@ import br.com.fiap.arkive.entity.Clinica;
 import br.com.fiap.arkive.entity.Consulta;
 import br.com.fiap.arkive.entity.FeedbackNps;
 import br.com.fiap.arkive.entity.Responsavel;
+import br.com.fiap.arkive.entity.Veterinario;
 import br.com.fiap.arkive.exception.BusinessException;
 import br.com.fiap.arkive.exception.ResourceNotFoundException;
 import br.com.fiap.arkive.repository.AnimalRepository;
 import br.com.fiap.arkive.repository.ClinicaRepository;
 import br.com.fiap.arkive.repository.FeedbackNpsRepository;
 import br.com.fiap.arkive.repository.ResponsavelRepository;
+import br.com.fiap.arkive.repository.VeterinarioRepository;
 import org.springframework.context.annotation.Profile;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.Page;
@@ -31,6 +33,7 @@ public class FeedbackNpsService {
 	private final ResponsavelRepository responsavelRepository;
 	private final AnimalRepository animalRepository;
 	private final ClinicaRepository clinicaRepository;
+	private final VeterinarioRepository veterinarioRepository;
 	private final ConsultaService consultaService;
 
 	public FeedbackNpsService(
@@ -38,12 +41,14 @@ public class FeedbackNpsService {
 			ResponsavelRepository responsavelRepository,
 			AnimalRepository animalRepository,
 			ClinicaRepository clinicaRepository,
+			VeterinarioRepository veterinarioRepository,
 			ConsultaService consultaService
 	) {
 		this.feedbackRepository = feedbackRepository;
 		this.responsavelRepository = responsavelRepository;
 		this.animalRepository = animalRepository;
 		this.clinicaRepository = clinicaRepository;
+		this.veterinarioRepository = veterinarioRepository;
 		this.consultaService = consultaService;
 	}
 
@@ -55,8 +60,8 @@ public class FeedbackNpsService {
 	}
 
 	@Transactional(readOnly = true)
-	public Page<FeedbackNpsResponse> listar(Long responsavelId, Long animalId, Long clinicaId, Long consultaId, Integer nota, Pageable pageable) {
-		return feedbackRepository.buscar(responsavelId, animalId, clinicaId, consultaId, nota, pageable)
+	public Page<FeedbackNpsResponse> listar(Long responsavelId, Long animalId, Long clinicaId, Long veterinarioId, Long consultaId, Integer nota, Pageable pageable) {
+		return feedbackRepository.buscar(responsavelId, animalId, clinicaId, veterinarioId, consultaId, nota, pageable)
 				.map(FeedbackNpsResponse::fromEntity);
 	}
 
@@ -88,21 +93,23 @@ public class FeedbackNpsService {
 	}
 
 	private void aplicarDados(FeedbackNps feedback, FeedbackNpsRequest request, boolean criando) {
-		if (request.responsavelId() == null && request.animalId() == null && request.clinicaId() == null && request.consultaId() == null) {
+		if (request.responsavelId() == null && request.animalId() == null && request.clinicaId() == null && request.veterinarioId() == null && request.consultaId() == null) {
 			throw new BusinessException("Informe ao menos um contexto para o feedback NPS.");
 		}
-		LocalDateTime dataResposta = criando && request.dataResposta() == null ? LocalDateTime.now() : request.dataResposta();
+		LocalDateTime dataFeedback = criando && request.dataFeedback() == null ? LocalDateTime.now() : request.dataFeedback();
 		Responsavel responsavel = request.responsavelId() == null ? null : buscarResponsavel(request.responsavelId());
 		Animal animal = request.animalId() == null ? null : buscarAnimal(request.animalId());
 		Clinica clinica = request.clinicaId() == null ? null : buscarClinica(request.clinicaId());
+		Veterinario veterinario = request.veterinarioId() == null ? null : buscarVeterinario(request.veterinarioId());
 		Consulta consulta = request.consultaId() == null ? null : consultaService.buscarEntidade(request.consultaId());
 		feedback.setResponsavel(responsavel);
 		feedback.setAnimal(animal);
 		feedback.setClinica(clinica);
+		feedback.setVeterinario(veterinario);
 		feedback.setConsulta(consulta);
 		feedback.setNota(request.nota());
 		feedback.setComentario(request.comentario());
-		feedback.setDataResposta(dataResposta == null ? feedback.getDataResposta() : dataResposta);
+		feedback.setDataFeedback(dataFeedback == null ? feedback.getDataFeedback() : dataFeedback);
 	}
 
 	private Responsavel buscarResponsavel(Long id) {
@@ -115,6 +122,10 @@ public class FeedbackNpsService {
 
 	private Clinica buscarClinica(Long id) {
 		return clinicaRepository.findById(id).orElseThrow(() -> new ResourceNotFoundException("Clinica nao encontrada."));
+	}
+
+	private Veterinario buscarVeterinario(Long id) {
+		return veterinarioRepository.findById(id).orElseThrow(() -> new ResourceNotFoundException("Veterinario nao encontrado."));
 	}
 
 }

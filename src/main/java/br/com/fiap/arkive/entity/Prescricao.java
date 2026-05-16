@@ -7,13 +7,14 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
+import jakarta.persistence.Lob;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 
 import java.time.LocalDate;
 
 @Entity
-@Table(name = "TB_VS_PRESCRICAO")
+@Table(name = "TB_ARKIVE_PRESCRICAO")
 public class Prescricao {
 
 	@Id
@@ -21,10 +22,10 @@ public class Prescricao {
 	@Column(name = "ID_PRESCRICAO")
 	private Long id;
 
-	@Column(name = "NM_MEDICAMENTO", nullable = false, length = 200)
+	@Column(name = "NM_MEDICAMENTO", nullable = false, length = 150)
 	private String medicamento;
 
-	@Column(name = "DS_DOSAGEM", nullable = false, length = 100)
+	@Column(name = "DS_DOSAGEM", nullable = false, length = 50)
 	private String dosagem;
 
 	@Column(name = "DS_FREQUENCIA", length = 100)
@@ -39,7 +40,8 @@ public class Prescricao {
 	@Column(name = "DT_FIM")
 	private LocalDate dataFim;
 
-	@Column(name = "DS_INSTRUCOES", length = 500)
+	@Lob
+	@Column(name = "DS_INSTRUCOES")
 	private String instrucoes;
 
 	@ManyToOne(fetch = FetchType.LAZY, optional = false)

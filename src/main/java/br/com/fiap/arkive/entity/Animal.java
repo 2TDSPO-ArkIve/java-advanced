@@ -10,11 +10,8 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 
-import java.math.BigDecimal;
-import java.time.LocalDate;
-
 @Entity
-@Table(name = "TB_VS_ANIMAL")
+@Table(name = "TB_ARKIVE_ANIMAL")
 public class Animal {
 
 	@Id
@@ -25,11 +22,11 @@ public class Animal {
 	@Column(name = "NM_ANIMAL", nullable = false, length = 100)
 	private String nome;
 
-	@Column(name = "DT_NASCIMENTO")
-	private LocalDate dataNascimento;
+	@Column(name = "DS_SEXO", length = 1)
+	private String sexo;
 
-	@Column(name = "NR_PESO_KG", precision = 5, scale = 2)
-	private BigDecimal pesoKg;
+	@Column(name = "DS_CASTRADO", nullable = false, length = 1)
+	private String castrado = "N";
 
 	@ManyToOne(fetch = FetchType.LAZY, optional = false)
 	@JoinColumn(name = "ID_ESPECIE", nullable = false)
@@ -40,8 +37,8 @@ public class Animal {
 	private Raca raca;
 
 	@ManyToOne(fetch = FetchType.LAZY)
-	@JoinColumn(name = "ID_CLINICA_CADASTRO")
-	private Clinica clinicaCadastro;
+	@JoinColumn(name = "ID_CLINICA")
+	private Clinica clinica;
 
 	@Column(name = "ST_ATIVO", nullable = false, length = 1)
 	private String ativo = "S";
@@ -62,20 +59,20 @@ public class Animal {
 		this.nome = nome;
 	}
 
-	public LocalDate getDataNascimento() {
-		return dataNascimento;
+	public String getSexo() {
+		return sexo;
 	}
 
-	public void setDataNascimento(LocalDate dataNascimento) {
-		this.dataNascimento = dataNascimento;
+	public void setSexo(String sexo) {
+		this.sexo = sexo;
 	}
 
-	public BigDecimal getPesoKg() {
-		return pesoKg;
+	public String getCastrado() {
+		return castrado;
 	}
 
-	public void setPesoKg(BigDecimal pesoKg) {
-		this.pesoKg = pesoKg;
+	public void setCastrado(String castrado) {
+		this.castrado = castrado;
 	}
 
 	public Especie getEspecie() {
@@ -94,12 +91,12 @@ public class Animal {
 		this.raca = raca;
 	}
 
-	public Clinica getClinicaCadastro() {
-		return clinicaCadastro;
+	public Clinica getClinica() {
+		return clinica;
 	}
 
-	public void setClinicaCadastro(Clinica clinicaCadastro) {
-		this.clinicaCadastro = clinicaCadastro;
+	public void setClinica(Clinica clinica) {
+		this.clinica = clinica;
 	}
 
 	public String getAtivo() {

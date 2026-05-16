@@ -12,10 +12,12 @@ public record FeedbackNpsResponse(
 		String animalNome,
 		Long clinicaId,
 		String clinicaNome,
+		Long veterinarioId,
+		String veterinarioNome,
 		Long consultaId,
 		Integer nota,
 		String comentario,
-		LocalDateTime dataResposta
+		LocalDateTime dataFeedback
 ) {
 	public static FeedbackNpsResponse fromEntity(FeedbackNps feedback) {
 		Long responsavelId = feedback.getResponsavel() == null ? null : feedback.getResponsavel().getId();
@@ -24,6 +26,8 @@ public record FeedbackNpsResponse(
 		String animalNome = feedback.getAnimal() == null ? null : feedback.getAnimal().getNome();
 		Long clinicaId = feedback.getClinica() == null ? null : feedback.getClinica().getId();
 		String clinicaNome = feedback.getClinica() == null ? null : feedback.getClinica().getNome();
+		Long veterinarioId = feedback.getVeterinario() == null ? null : feedback.getVeterinario().getId();
+		String veterinarioNome = feedback.getVeterinario() == null ? null : feedback.getVeterinario().getNome();
 		Long consultaId = feedback.getConsulta() == null ? null : feedback.getConsulta().getId();
 		return new FeedbackNpsResponse(
 				feedback.getId(),
@@ -33,10 +37,12 @@ public record FeedbackNpsResponse(
 				animalNome,
 				clinicaId,
 				clinicaNome,
+				veterinarioId,
+				veterinarioNome,
 				consultaId,
 				feedback.getNota(),
 				feedback.getComentario(),
-				feedback.getDataResposta()
+				feedback.getDataFeedback()
 		);
 	}
 }

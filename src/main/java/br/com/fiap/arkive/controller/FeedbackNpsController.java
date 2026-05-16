@@ -40,11 +40,12 @@ public class FeedbackNpsController {
 			@RequestParam(required = false) Long responsavelId,
 			@RequestParam(required = false) Long animalId,
 			@RequestParam(required = false) Long clinicaId,
+			@RequestParam(required = false) Long veterinarioId,
 			@RequestParam(required = false) Long consultaId,
 			@RequestParam(required = false) Integer nota,
 			Pageable pageable
 	) {
-		return feedbackService.listar(responsavelId, animalId, clinicaId, consultaId, nota, pageable);
+		return feedbackService.listar(responsavelId, animalId, clinicaId, veterinarioId, consultaId, nota, pageable);
 	}
 
 	@GetMapping("/{id}")

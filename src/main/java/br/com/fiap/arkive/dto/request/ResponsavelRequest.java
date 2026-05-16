@@ -8,7 +8,7 @@ import java.time.LocalDate;
 
 public record ResponsavelRequest(
 		@NotBlank
-		@Size(max = 150)
+		@Size(max = 50)
 		String nome,
 
 		@Size(max = 20)

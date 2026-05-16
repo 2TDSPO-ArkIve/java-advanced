@@ -16,6 +16,7 @@ public interface FeedbackNpsRepository extends JpaRepository<FeedbackNps, Long> 
 			where (:responsavelId is null or f.responsavel.id = :responsavelId)
 			and (:animalId is null or f.animal.id = :animalId)
 			and (:clinicaId is null or f.clinica.id = :clinicaId)
+			and (:veterinarioId is null or f.veterinario.id = :veterinarioId)
 			and (:consultaId is null or f.consulta.id = :consultaId)
 			and (:nota is null or f.nota = :nota)
 			""")
@@ -23,6 +24,7 @@ public interface FeedbackNpsRepository extends JpaRepository<FeedbackNps, Long> 
 			@Param("responsavelId") Long responsavelId,
 			@Param("animalId") Long animalId,
 			@Param("clinicaId") Long clinicaId,
+			@Param("veterinarioId") Long veterinarioId,
 			@Param("consultaId") Long consultaId,
 			@Param("nota") Integer nota,
 			Pageable pageable

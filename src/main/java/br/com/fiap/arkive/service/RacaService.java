@@ -8,10 +8,8 @@ import br.com.fiap.arkive.exception.BusinessException;
 import br.com.fiap.arkive.exception.ResourceNotFoundException;
 import br.com.fiap.arkive.repository.RacaRepository;
 import org.springframework.context.annotation.Profile;
-import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
-import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -21,7 +19,7 @@ import java.util.Set;
 @Profile("!local-nodb")
 public class RacaService {
 
-	private static final Set<String> PORTES = Set.of("Pequeno", "Medio", "Grande");
+	private static final Set<String> PORTES = Set.of("PEQUENO", "MEDIO", "GRANDE");
 
 	private final RacaRepository racaRepository;
 	private final EspecieService especieService;
@@ -58,12 +56,8 @@ public class RacaService {
 	@Transactional
 	public void excluir(Long id) {
 		Raca raca = buscarEntidade(id);
-		try {
-			racaRepository.delete(raca);
-			racaRepository.flush();
-		} catch (DataIntegrityViolationException ex) {
-			throw new BusinessException("Raca nao pode ser excluida porque esta em uso.", HttpStatus.CONFLICT);
-		}
+		raca.setAtivo("N");
+		racaRepository.save(raca);
 	}
 
 	@Transactional(readOnly = true)
@@ -82,7 +76,7 @@ public class RacaService {
 
 	private void validarPorte(String porte) {
 		if (porte != null && !porte.isBlank() && !PORTES.contains(porte)) {
-			throw new BusinessException("Porte deve ser Pequeno, Medio ou Grande.");
+			throw new BusinessException("Porte deve ser PEQUENO, MEDIO ou GRANDE.");
 		}
 	}
 

@@ -7,13 +7,14 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
+import jakarta.persistence.Lob;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 
 import java.math.BigDecimal;
 
 @Entity
-@Table(name = "TB_VS_DIAGNOSTICO")
+@Table(name = "TB_ARKIVE_DIAGNOSTICO")
 public class Diagnostico {
 
 	@Id
@@ -21,7 +22,8 @@ public class Diagnostico {
 	@Column(name = "ID_DIAGNOSTICO")
 	private Long id;
 
-	@Column(name = "DS_DIAGNOSTICO", nullable = false, length = 1000)
+	@Lob
+	@Column(name = "DS_DIAGNOSTICO", nullable = false)
 	private String diagnostico;
 
 	@Column(name = "TP_SEVERIDADE", length = 20)
@@ -30,10 +32,11 @@ public class Diagnostico {
 	@Column(name = "ST_CONFIRMADO", nullable = false, length = 1)
 	private String confirmado = "S";
 
-	@Column(name = "DS_INSIGHT_IA", length = 1000)
+	@Lob
+	@Column(name = "DS_INSIGHT_IA")
 	private String insightIa;
 
-	@Column(name = "VL_CONFIANCA", precision = 5, scale = 2)
+	@Column(name = "PC_CONFIANCA", precision = 5, scale = 2)
 	private BigDecimal confianca;
 
 	@Column(name = "ST_VALIDACAO_VET", length = 1)

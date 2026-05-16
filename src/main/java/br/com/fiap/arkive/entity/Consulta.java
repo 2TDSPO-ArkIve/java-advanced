@@ -15,7 +15,7 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "TB_VS_CONSULTA")
+@Table(name = "TB_ARKIVE_CONSULTA")
 public class Consulta {
 
 	@Id
@@ -29,21 +29,22 @@ public class Consulta {
 	@Column(name = "TP_MODALIDADE", nullable = false, length = 20)
 	private String modalidade;
 
-	@Column(name = "DS_MOTIVO", nullable = false, length = 300)
+	@Lob
+	@Column(name = "DS_MOTIVO", nullable = false)
 	private String motivo;
 
-	@Column(name = "DS_SINTOMAS_RELATADOS", length = 1000)
-	private String sintomasRelatados;
+	@Column(name = "DS_SINTOMAS", length = 1000)
+	private String sintomas;
 
-	@Column(name = "DS_OBSERVACOES", length = 2000)
-	private String observacoes;
+	@Column(name = "DS_OBSERVACAO", length = 2000)
+	private String observacao;
 
-	@Column(name = "NR_PESO_NA_CONSULTA", precision = 5, scale = 2)
-	private BigDecimal pesoNaConsulta;
+	@Column(name = "KG_PESO", precision = 5, scale = 2)
+	private BigDecimal peso;
 
 	@Lob
-	@Column(name = "DS_TRANSCRICAO_RAW")
-	private String transcricaoRaw;
+	@Column(name = "DS_TRANSCRICAO")
+	private String transcricao;
 
 	@Column(name = "ST_STATUS", nullable = false, length = 2)
 	private String status = "AG";
@@ -92,36 +93,36 @@ public class Consulta {
 		this.motivo = motivo;
 	}
 
-	public String getSintomasRelatados() {
-		return sintomasRelatados;
+	public String getSintomas() {
+		return sintomas;
 	}
 
-	public void setSintomasRelatados(String sintomasRelatados) {
-		this.sintomasRelatados = sintomasRelatados;
+	public void setSintomas(String sintomas) {
+		this.sintomas = sintomas;
 	}
 
-	public String getObservacoes() {
-		return observacoes;
+	public String getObservacao() {
+		return observacao;
 	}
 
-	public void setObservacoes(String observacoes) {
-		this.observacoes = observacoes;
+	public void setObservacao(String observacao) {
+		this.observacao = observacao;
 	}
 
-	public BigDecimal getPesoNaConsulta() {
-		return pesoNaConsulta;
+	public BigDecimal getPeso() {
+		return peso;
 	}
 
-	public void setPesoNaConsulta(BigDecimal pesoNaConsulta) {
-		this.pesoNaConsulta = pesoNaConsulta;
+	public void setPeso(BigDecimal peso) {
+		this.peso = peso;
 	}
 
-	public String getTranscricaoRaw() {
-		return transcricaoRaw;
+	public String getTranscricao() {
+		return transcricao;
 	}
 
-	public void setTranscricaoRaw(String transcricaoRaw) {
-		this.transcricaoRaw = transcricaoRaw;
+	public void setTranscricao(String transcricao) {
+		this.transcricao = transcricao;
 	}
 
 	public String getStatus() {

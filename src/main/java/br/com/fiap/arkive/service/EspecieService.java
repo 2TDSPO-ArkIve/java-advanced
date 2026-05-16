@@ -3,14 +3,11 @@ package br.com.fiap.arkive.service;
 import br.com.fiap.arkive.dto.request.EspecieRequest;
 import br.com.fiap.arkive.dto.response.EspecieResponse;
 import br.com.fiap.arkive.entity.Especie;
-import br.com.fiap.arkive.exception.BusinessException;
 import br.com.fiap.arkive.exception.ResourceNotFoundException;
 import br.com.fiap.arkive.repository.EspecieRepository;
 import org.springframework.context.annotation.Profile;
-import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
-import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -28,6 +25,7 @@ public class EspecieService {
 	public EspecieResponse criar(EspecieRequest request) {
 		Especie especie = new Especie();
 		especie.setNome(request.nome());
+		especie.setAtivo("S");
 		return EspecieResponse.fromEntity(especieRepository.save(especie));
 	}
 
@@ -54,12 +52,8 @@ public class EspecieService {
 	@Transactional
 	public void excluir(Long id) {
 		Especie especie = buscarEntidade(id);
-		try {
-			especieRepository.delete(especie);
-			especieRepository.flush();
-		} catch (DataIntegrityViolationException ex) {
-			throw new BusinessException("Especie nao pode ser excluida porque esta em uso.", HttpStatus.CONFLICT);
-		}
+		especie.setAtivo("N");
+		especieRepository.save(especie);
 	}
 
 	@Transactional(readOnly = true)

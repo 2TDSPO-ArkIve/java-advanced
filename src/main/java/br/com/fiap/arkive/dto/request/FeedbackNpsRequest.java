@@ -14,6 +14,8 @@ public record FeedbackNpsRequest(
 
 		Long clinicaId,
 
+		Long veterinarioId,
+
 		Long consultaId,
 
 		@NotNull
@@ -21,9 +23,8 @@ public record FeedbackNpsRequest(
 		@Max(10)
 		Integer nota,
 
-		@Size(max = 1000)
 		String comentario,
 
-		LocalDateTime dataResposta
+		LocalDateTime dataFeedback
 ) {
 }

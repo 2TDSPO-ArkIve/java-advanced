@@ -6,14 +6,14 @@ import jakarta.validation.constraints.Size;
 
 public record VeterinarioRequest(
 		@NotBlank
-		@Size(max = 150)
+		@Size(max = 50)
 		String nome,
 
 		@NotBlank
 		@Size(max = 20)
 		String crmv,
 
-		@Size(max = 100)
+		@Size(max = 50)
 		String especialidade,
 
 		@Email

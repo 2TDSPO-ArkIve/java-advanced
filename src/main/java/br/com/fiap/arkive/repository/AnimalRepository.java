@@ -16,14 +16,14 @@ public interface AnimalRepository extends JpaRepository<Animal, Long> {
 			where (:nome is null or lower(a.nome) like lower(concat('%', :nome, '%')))
 			and (:especieId is null or a.especie.id = :especieId)
 			and (:racaId is null or a.raca.id = :racaId)
-			and (:clinicaCadastroId is null or a.clinicaCadastro.id = :clinicaCadastroId)
+			and (:clinicaId is null or a.clinica.id = :clinicaId)
 			and (:ativo is null or a.ativo = :ativo)
 			""")
 	Page<Animal> buscar(
 			@Param("nome") String nome,
 			@Param("especieId") Long especieId,
 			@Param("racaId") Long racaId,
-			@Param("clinicaCadastroId") Long clinicaCadastroId,
+			@Param("clinicaId") Long clinicaId,
 			@Param("ativo") String ativo,
 			Pageable pageable
 	);

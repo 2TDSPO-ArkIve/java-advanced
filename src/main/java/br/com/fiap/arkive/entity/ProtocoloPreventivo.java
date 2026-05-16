@@ -7,11 +7,12 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
+import jakarta.persistence.Lob;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 
 @Entity
-@Table(name = "TB_VS_PROTOCOLO_PREV")
+@Table(name = "TB_ARKIVE_PROTOCOLO_PREVENTIVO")
 public class ProtocoloPreventivo {
 
 	@Id
@@ -19,20 +20,21 @@ public class ProtocoloPreventivo {
 	@Column(name = "ID_PROTOCOLO")
 	private Long id;
 
-	@Column(name = "NM_PROTOCOLO", nullable = false, length = 200)
+	@Column(name = "NM_PROTOCOLO", nullable = false, length = 50)
 	private String nome;
 
 	@Column(name = "TP_PROTOCOLO", nullable = false, length = 50)
 	private String tipo;
 
-	@Column(name = "DS_PROTOCOLO", length = 500)
+	@Lob
+	@Column(name = "DS_PROTOCOLO")
 	private String descricao;
 
-	@Column(name = "NR_INTERVALO_DIAS", nullable = false)
-	private Integer intervaloDias;
+	@Column(name = "NR_INTERVALO", nullable = false)
+	private Integer intervalo;
 
-	@Column(name = "NR_IDADE_MIN_MESES", nullable = false)
-	private Integer idadeMinMeses = 0;
+	@Column(name = "NR_IDADE_MIN", nullable = false)
+	private Integer idadeMin = 0;
 
 	@ManyToOne(fetch = FetchType.LAZY)
 	@JoinColumn(name = "ID_ESPECIE")
@@ -77,20 +79,20 @@ public class ProtocoloPreventivo {
 		this.descricao = descricao;
 	}
 
-	public Integer getIntervaloDias() {
-		return intervaloDias;
+	public Integer getIntervalo() {
+		return intervalo;
 	}
 
-	public void setIntervaloDias(Integer intervaloDias) {
-		this.intervaloDias = intervaloDias;
+	public void setIntervalo(Integer intervalo) {
+		this.intervalo = intervalo;
 	}
 
-	public Integer getIdadeMinMeses() {
-		return idadeMinMeses;
+	public Integer getIdadeMin() {
+		return idadeMin;
 	}
 
-	public void setIdadeMinMeses(Integer idadeMinMeses) {
-		this.idadeMinMeses = idadeMinMeses;
+	public void setIdadeMin(Integer idadeMin) {
+		this.idadeMin = idadeMin;
 	}
 
 	public Especie getEspecie() {

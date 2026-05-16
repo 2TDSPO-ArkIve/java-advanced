@@ -28,9 +28,9 @@ import java.util.Set;
 @Profile("!local-nodb")
 public class AlertaService {
 
-	private static final Set<String> TIPOS = Set.of("Vacina", "Retorno", "Medicamento", "Check-up");
-	private static final Set<String> STATUS = Set.of("Enviado", "Lido", "Ignorado");
-	private static final Set<String> CANAIS = Set.of("App", "WhatsApp", "Email");
+	private static final Set<String> TIPOS = Set.of("VACINA", "RETORNO", "MEDICAMENTO", "CHECK-UP");
+	private static final Set<String> STATUS = Set.of("ENVIADO", "LIDO", "IGNORADO");
+	private static final Set<String> CANAIS = Set.of("APP", "WHATSAPP", "EMAIL");
 
 	private final AlertaRepository alertaRepository;
 	private final AnimalRepository animalRepository;
@@ -83,7 +83,7 @@ public class AlertaService {
 	@Transactional
 	public AlertaResponse marcarComoLido(Long id) {
 		Alerta alerta = buscarEntidade(id);
-		alerta.setStatus("Lido");
+		alerta.setStatus("LIDO");
 		alerta.setDataLeitura(LocalDateTime.now());
 		return AlertaResponse.fromEntity(alertaRepository.save(alerta));
 	}
@@ -107,7 +107,7 @@ public class AlertaService {
 		if (request.responsavelId() == null && request.clinicaId() == null) {
 			throw new BusinessException("Informe responsavel ou clinica como destino do alerta.");
 		}
-		String status = criando && request.status() == null ? "Enviado" : request.status();
+		String status = criando && request.status() == null ? "ENVIADO" : request.status();
 		LocalDateTime dataEnvio = criando && request.dataEnvio() == null ? LocalDateTime.now() : request.dataEnvio();
 		validarTipoObrigatorio(request.tipo());
 		validarStatusQuandoInformado(status);

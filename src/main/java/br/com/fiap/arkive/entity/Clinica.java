@@ -8,7 +8,7 @@ import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 
 @Entity
-@Table(name = "TB_VS_CLINICA")
+@Table(name = "TB_ARKIVE_CLINICA")
 public class Clinica {
 
 	@Id
@@ -16,16 +16,16 @@ public class Clinica {
 	@Column(name = "ID_CLINICA")
 	private Long id;
 
-	@Column(name = "NM_CLINICA", nullable = false, length = 200)
+	@Column(name = "NM_CLINICA", nullable = false, length = 150)
 	private String nome;
 
-	@Column(name = "NR_CNPJ", nullable = false, length = 18, unique = true)
+	@Column(name = "DC_CNPJ", nullable = false, length = 18, unique = true)
 	private String cnpj;
 
-	@Column(name = "DS_ENDERECO", length = 300)
+	@Column(name = "DS_ENDERECO", length = 255)
 	private String endereco;
 
-	@Column(name = "NR_TELEFONE", length = 20)
+	@Column(name = "NR_CONTATO", length = 20)
 	private String telefone;
 
 	@Column(name = "DS_EMAIL", length = 200)

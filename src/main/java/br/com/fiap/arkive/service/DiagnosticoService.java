@@ -24,7 +24,7 @@ import java.util.Set;
 @Profile("!local-nodb")
 public class DiagnosticoService {
 
-	private static final Set<String> SEVERIDADES = Set.of("Leve", "Moderada", "Grave");
+	private static final Set<String> SEVERIDADES = Set.of("LEVE", "MODERADA", "GRAVE");
 
 	private final DiagnosticoRepository diagnosticoRepository;
 	private final ConsultaService consultaService;
@@ -108,7 +108,7 @@ public class DiagnosticoService {
 
 	private void validarSeveridadeQuandoInformada(String severidade) {
 		if (severidade != null && !severidade.isBlank() && !SEVERIDADES.contains(severidade)) {
-			throw new BusinessException("Severidade deve ser Leve, Moderada ou Grave.");
+			throw new BusinessException("Severidade deve ser LEVE, MODERADA ou GRAVE.");
 		}
 	}
 

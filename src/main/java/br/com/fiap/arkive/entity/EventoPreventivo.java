@@ -7,13 +7,14 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
+import jakarta.persistence.Lob;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 
 import java.time.LocalDate;
 
 @Entity
-@Table(name = "TB_VS_EVENTO_PREV")
+@Table(name = "TB_ARKIVE_EVENTO_PREVENTIVO")
 public class EventoPreventivo {
 
 	@Id
@@ -28,12 +29,13 @@ public class EventoPreventivo {
 	private LocalDate dataProximo;
 
 	@Column(name = "ST_STATUS", nullable = false, length = 20)
-	private String status = "Pendente";
+	private String status = "PENDENTE";
 
 	@Column(name = "ST_ALERTA", nullable = false, length = 1)
 	private String alerta = "N";
 
-	@Column(name = "DS_OBSERVACAO", length = 300)
+	@Lob
+	@Column(name = "DS_OBSERVACAO")
 	private String observacao;
 
 	@ManyToOne(fetch = FetchType.LAZY, optional = false)

@@ -25,7 +25,7 @@ import java.util.Set;
 @Profile("!local-nodb")
 public class EventoPreventivoService {
 
-	private static final Set<String> STATUS = Set.of("Realizado", "Pendente", "Atrasado");
+	private static final Set<String> STATUS = Set.of("REALIZADO", "PENDENTE", "ATRASADO");
 
 	private final EventoPreventivoRepository eventoRepository;
 	private final AnimalRepository animalRepository;
@@ -88,7 +88,7 @@ public class EventoPreventivoService {
 	}
 
 	private void aplicarDados(EventoPreventivo evento, EventoPreventivoRequest request, boolean criando) {
-		String status = criando && request.status() == null ? "Pendente" : request.status();
+		String status = criando && request.status() == null ? "PENDENTE" : request.status();
 		String alerta = criando && request.alerta() == null ? "N" : request.alerta();
 		validarStatusObrigatorio(status);
 		validarSNQuandoInformado(alerta, "Alerta");
@@ -107,11 +107,11 @@ public class EventoPreventivoService {
 	}
 
 	private void validarDatas(String status, LocalDate dataAplicacao, LocalDate dataProximo) {
-		if ("Realizado".equals(status) && dataAplicacao == null) {
-			throw new BusinessException("Data aplicacao deve ser informada para status Realizado.");
+		if ("REALIZADO".equals(status) && dataAplicacao == null) {
+			throw new BusinessException("Data aplicacao deve ser informada para status REALIZADO.");
 		}
-		if (("Pendente".equals(status) || "Atrasado".equals(status)) && dataAplicacao != null) {
-			throw new BusinessException("Data aplicacao deve ficar vazia para status Pendente ou Atrasado.");
+		if (("PENDENTE".equals(status) || "ATRASADO".equals(status)) && dataAplicacao != null) {
+			throw new BusinessException("Data aplicacao deve ficar vazia para status PENDENTE ou ATRASADO.");
 		}
 		if (dataAplicacao != null && dataProximo.isBefore(dataAplicacao)) {
 			throw new BusinessException("Data proximo deve ser maior ou igual a data aplicacao.");
