@@ -19,10 +19,8 @@ public record ConsultaRequest(
 		@NotBlank
 		String motivo,
 
-		@Size(max = 1000)
 		String sintomas,
 
-		@Size(max = 2000)
 		String observacao,
 
 		@Positive

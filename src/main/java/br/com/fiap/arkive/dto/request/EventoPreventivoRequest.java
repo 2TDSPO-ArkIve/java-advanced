@@ -17,7 +17,6 @@ public record EventoPreventivoRequest(
 		@Size(max = 1)
 		String alerta,
 
-		@Size(max = 300)
 		String observacao,
 
 		@NotNull

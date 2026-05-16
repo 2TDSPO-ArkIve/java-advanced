@@ -12,7 +12,6 @@ public record AlertaRequest(
 		String tipo,
 
 		@NotBlank
-		@Size(max = 500)
 		String mensagem,
 
 		LocalDateTime dataEnvio,

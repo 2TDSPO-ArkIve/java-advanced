@@ -29,7 +29,7 @@ public class Raca {
 	@Column(name = "TP_PORTE", length = 20)
 	private String porte;
 
-	@Column(name = "ST_ATIVO", nullable = false, length = 1)
+	@Column(name = "ST_ATIVO", nullable = false, columnDefinition = "CHAR(1)")
 	private String ativo = "S";
 
 	public Long getId() {

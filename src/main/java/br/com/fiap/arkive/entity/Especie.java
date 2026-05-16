@@ -19,7 +19,7 @@ public class Especie {
 	@Column(name = "NM_ESPECIE", nullable = false, length = 50, unique = true)
 	private String nome;
 
-	@Column(name = "ST_ATIVO", nullable = false, length = 1)
+	@Column(name = "ST_ATIVO", nullable = false, columnDefinition = "CHAR(1)")
 	private String ativo = "S";
 
 	public Long getId() {

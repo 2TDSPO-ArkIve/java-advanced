@@ -29,7 +29,7 @@ public class Diagnostico {
 	@Column(name = "TP_SEVERIDADE", length = 20)
 	private String severidade;
 
-	@Column(name = "ST_CONFIRMADO", nullable = false, length = 1)
+	@Column(name = "ST_CONFIRMADO", nullable = false, columnDefinition = "CHAR(1)")
 	private String confirmado = "S";
 
 	@Lob
@@ -39,7 +39,7 @@ public class Diagnostico {
 	@Column(name = "PC_CONFIANCA", precision = 5, scale = 2)
 	private BigDecimal confianca;
 
-	@Column(name = "ST_VALIDACAO_VET", length = 1)
+	@Column(name = "ST_VALIDACAO_VET", columnDefinition = "CHAR(1)")
 	private String validacaoVet;
 
 	@ManyToOne(fetch = FetchType.LAZY, optional = false)

@@ -7,6 +7,7 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
+import jakarta.persistence.Lob;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 
@@ -36,10 +37,11 @@ public class AdesaoPrescricao {
 	@Column(name = "DT_REGISTRO", nullable = false)
 	private LocalDateTime dataRegistro = LocalDateTime.now();
 
-	@Column(name = "ST_TOMOU", nullable = false, length = 1)
+	@Column(name = "ST_TOMOU", nullable = false, columnDefinition = "CHAR(1)")
 	private String tomou;
 
-	@Column(name = "DS_OBSERVACAO", length = 500)
+	@Lob
+	@Column(name = "DS_OBSERVACAO")
 	private String observacao;
 
 	public Long getId() {

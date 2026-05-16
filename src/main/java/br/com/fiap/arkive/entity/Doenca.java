@@ -3,6 +3,7 @@ package br.com.fiap.arkive.entity;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
+import jakarta.persistence.Lob;
 import jakarta.persistence.Table;
 
 @Entity
@@ -19,16 +20,18 @@ public class Doenca {
 	@Column(name = "ID_CATEGORIA")
 	private Long categoriaId;
 
-	@Column(name = "DS_DOENCA", length = 1000)
+	@Lob
+	@Column(name = "DS_DOENCA")
 	private String descricao;
 
 	@Column(name = "CD_CID_VET", length = 20)
 	private String cidVet;
 
-	@Column(name = "DS_SINTOMAS", length = 1000)
+	@Lob
+	@Column(name = "DS_SINTOMAS")
 	private String sintomas;
 
-	@Column(name = "ST_ATIVO", nullable = false, length = 1)
+	@Column(name = "ST_ATIVO", nullable = false, columnDefinition = "CHAR(1)")
 	private String ativo = "S";
 
 	public Long getId() {

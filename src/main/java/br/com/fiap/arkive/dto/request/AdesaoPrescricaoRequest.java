@@ -21,7 +21,6 @@ public record AdesaoPrescricaoRequest(
 		@Size(max = 1)
 		String tomou,
 
-		@Size(max = 500)
 		String observacao
 ) {
 }

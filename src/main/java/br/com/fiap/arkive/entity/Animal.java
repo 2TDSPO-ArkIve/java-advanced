@@ -22,10 +22,10 @@ public class Animal {
 	@Column(name = "NM_ANIMAL", nullable = false, length = 100)
 	private String nome;
 
-	@Column(name = "DS_SEXO", length = 1)
+	@Column(name = "DS_SEXO", columnDefinition = "CHAR(1)")
 	private String sexo;
 
-	@Column(name = "DS_CASTRADO", nullable = false, length = 1)
+	@Column(name = "DS_CASTRADO", nullable = false, columnDefinition = "CHAR(1)")
 	private String castrado = "N";
 
 	@ManyToOne(fetch = FetchType.LAZY, optional = false)
@@ -40,7 +40,7 @@ public class Animal {
 	@JoinColumn(name = "ID_CLINICA")
 	private Clinica clinica;
 
-	@Column(name = "ST_ATIVO", nullable = false, length = 1)
+	@Column(name = "ST_ATIVO", nullable = false, columnDefinition = "CHAR(1)")
 	private String ativo = "S";
 
 	public Long getId() {
