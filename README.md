@@ -328,42 +328,9 @@ GET    /api/recurso/{id}
 PUT    /api/recurso/{id}
 DELETE /api/recurso/{id}
 ```
-
-Alguns recursos possuem rotas específicas, como:
-
-```http
-PATCH /api/alertas/{id}/ler
-GET   /api/eventos-jornada/animal/{animalId}/timeline
-```
-
 ---
 
-## Observações sobre o banco de dados
-
-O banco Oracle é tratado como contrato oficial da aplicação.
-
-A aplicação foi ajustada para validar o schema existente, respeitando:
-
-- nomes físicos das tabelas `TB_ARKIVE_*`;
-- nomes das colunas;
-- tipos Oracle, incluindo `CLOB`, `CHAR(1)` e `CHAR(2)`;
-- relacionamentos por chave estrangeira;
-- constraints de valores permitidos.
-
-A aplicação **não** cria ou altera tabelas automaticamente.
-
----
-
-## Observações sobre autenticação
-
-O PRD prevê usuários e perfis de acesso, mas nesta primeira entrega a autenticação completa e o controle avançado de perfis não foram implementados.
-
-Para o MVP acadêmico, o foco está na API principal da jornada do pet e na persistência relacional dos dados.
-
-Perfis como SysAdmin, Tutor/Responsável e Veterinário podem ser evoluídos em futuras sprints.
-
----
-
+##
 ## Status da entrega Java Advanced
 
 A API entrega um núcleo funcional da aplicação Arkive, com:
