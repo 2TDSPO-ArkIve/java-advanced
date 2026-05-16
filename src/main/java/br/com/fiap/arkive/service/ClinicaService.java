@@ -6,6 +6,8 @@ import br.com.fiap.arkive.entity.Clinica;
 import br.com.fiap.arkive.exception.BusinessException;
 import br.com.fiap.arkive.exception.ResourceNotFoundException;
 import br.com.fiap.arkive.repository.ClinicaRepository;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.context.annotation.Profile;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -23,6 +25,7 @@ public class ClinicaService {
 	}
 
 	@Transactional
+	@CacheEvict(value = "clinicas", allEntries = true)
 	public ClinicaResponse criar(ClinicaRequest request) {
 		Clinica clinica = new Clinica();
 		aplicarDados(clinica, request, true);
@@ -30,17 +33,20 @@ public class ClinicaService {
 	}
 
 	@Transactional(readOnly = true)
+	@Cacheable(value = "clinicas", key = "'listar:' + (#nome == null ? '' : #nome) + ':' + (#ativo == null ? '' : #ativo) + ':' + #pageable")
 	public Page<ClinicaResponse> listar(String nome, String ativo, Pageable pageable) {
 		validarAtivoQuandoInformado(ativo);
 		return clinicaRepository.buscar(vazioParaNulo(nome), vazioParaNulo(ativo), pageable).map(ClinicaResponse::fromEntity);
 	}
 
 	@Transactional(readOnly = true)
+	@Cacheable(value = "clinicas", key = "'id:' + #id")
 	public ClinicaResponse buscarPorId(Long id) {
 		return ClinicaResponse.fromEntity(buscarEntidade(id));
 	}
 
 	@Transactional
+	@CacheEvict(value = "clinicas", allEntries = true)
 	public ClinicaResponse atualizar(Long id, ClinicaRequest request) {
 		Clinica clinica = buscarEntidade(id);
 		aplicarDados(clinica, request, false);
@@ -48,6 +54,7 @@ public class ClinicaService {
 	}
 
 	@Transactional
+	@CacheEvict(value = "clinicas", allEntries = true)
 	public void excluir(Long id) {
 		Clinica clinica = buscarEntidade(id);
 		clinica.setAtivo("N");

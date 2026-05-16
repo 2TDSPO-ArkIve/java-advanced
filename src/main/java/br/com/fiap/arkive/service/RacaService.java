@@ -7,6 +7,8 @@ import br.com.fiap.arkive.entity.Raca;
 import br.com.fiap.arkive.exception.BusinessException;
 import br.com.fiap.arkive.exception.ResourceNotFoundException;
 import br.com.fiap.arkive.repository.RacaRepository;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.context.annotation.Profile;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -30,6 +32,7 @@ public class RacaService {
 	}
 
 	@Transactional
+	@CacheEvict(value = "racas", allEntries = true)
 	public RacaResponse criar(RacaRequest request) {
 		Raca raca = new Raca();
 		aplicarDados(raca, request);
@@ -37,16 +40,19 @@ public class RacaService {
 	}
 
 	@Transactional(readOnly = true)
+	@Cacheable(value = "racas", key = "'listar:' + (#nome == null ? '' : #nome) + ':' + (#especieId == null ? '' : #especieId) + ':' + #pageable")
 	public Page<RacaResponse> listar(String nome, Long especieId, Pageable pageable) {
 		return racaRepository.buscar(vazioParaNulo(nome), especieId, pageable).map(RacaResponse::fromEntity);
 	}
 
 	@Transactional(readOnly = true)
+	@Cacheable(value = "racas", key = "'id:' + #id")
 	public RacaResponse buscarPorId(Long id) {
 		return RacaResponse.fromEntity(buscarEntidade(id));
 	}
 
 	@Transactional
+	@CacheEvict(value = "racas", allEntries = true)
 	public RacaResponse atualizar(Long id, RacaRequest request) {
 		Raca raca = buscarEntidade(id);
 		aplicarDados(raca, request);
@@ -54,6 +60,7 @@ public class RacaService {
 	}
 
 	@Transactional
+	@CacheEvict(value = "racas", allEntries = true)
 	public void excluir(Long id) {
 		Raca raca = buscarEntidade(id);
 		raca.setAtivo("N");
