@@ -10,6 +10,8 @@ import br.com.fiap.arkive.exception.ResourceNotFoundException;
 import br.com.fiap.arkive.repository.EspecieRepository;
 import br.com.fiap.arkive.repository.ProtocoloPreventivoRepository;
 import br.com.fiap.arkive.repository.RacaRepository;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.context.annotation.Profile;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -39,6 +41,7 @@ public class ProtocoloPreventivoService {
 	}
 
 	@Transactional
+	@CacheEvict(value = "protocolosPreventivos", allEntries = true)
 	public ProtocoloPreventivoResponse criar(ProtocoloPreventivoRequest request) {
 		ProtocoloPreventivo protocolo = new ProtocoloPreventivo();
 		aplicarDados(protocolo, request, true);
@@ -46,6 +49,7 @@ public class ProtocoloPreventivoService {
 	}
 
 	@Transactional(readOnly = true)
+	@Cacheable(value = "protocolosPreventivos", key = "'listar:' + (#nome == null ? '' : #nome) + ':' + (#tipo == null ? '' : #tipo) + ':' + (#especieId == null ? '' : #especieId) + ':' + (#racaId == null ? '' : #racaId) + ':' + (#ativo == null ? '' : #ativo) + ':' + #pageable")
 	public Page<ProtocoloPreventivoResponse> listar(String nome, String tipo, Long especieId, Long racaId, String ativo, Pageable pageable) {
 		validarTipoQuandoInformado(tipo);
 		validarSNQuandoInformado(ativo, "Ativo");
@@ -54,11 +58,13 @@ public class ProtocoloPreventivoService {
 	}
 
 	@Transactional(readOnly = true)
+	@Cacheable(value = "protocolosPreventivos", key = "'id:' + #id")
 	public ProtocoloPreventivoResponse buscarPorId(Long id) {
 		return ProtocoloPreventivoResponse.fromEntity(buscarEntidade(id));
 	}
 
 	@Transactional
+	@CacheEvict(value = "protocolosPreventivos", allEntries = true)
 	public ProtocoloPreventivoResponse atualizar(Long id, ProtocoloPreventivoRequest request) {
 		ProtocoloPreventivo protocolo = buscarEntidade(id);
 		aplicarDados(protocolo, request, false);
@@ -66,6 +72,7 @@ public class ProtocoloPreventivoService {
 	}
 
 	@Transactional
+	@CacheEvict(value = "protocolosPreventivos", allEntries = true)
 	public void excluir(Long id) {
 		ProtocoloPreventivo protocolo = buscarEntidade(id);
 		protocolo.setAtivo("N");

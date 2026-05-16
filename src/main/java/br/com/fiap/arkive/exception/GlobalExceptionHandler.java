@@ -2,6 +2,7 @@ package br.com.fiap.arkive.exception;
 
 import br.com.fiap.arkive.dto.response.ErrorResponse;
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.validation.ConstraintViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.MethodArgumentNotValidException;
@@ -29,7 +30,15 @@ public class GlobalExceptionHandler {
 		String message = ex.getBindingResult().getFieldErrors().stream()
 				.map(error -> error.getField() + ": " + error.getDefaultMessage())
 				.collect(Collectors.joining("; "));
-		return buildResponse(HttpStatus.BAD_REQUEST, message, request.getRequestURI());
+		return buildResponse(HttpStatus.BAD_REQUEST, message.isBlank() ? "Dados da requisicao invalidos." : message, request.getRequestURI());
+	}
+
+	@ExceptionHandler(ConstraintViolationException.class)
+	public ResponseEntity<ErrorResponse> handleConstraintViolation(ConstraintViolationException ex, HttpServletRequest request) {
+		String message = ex.getConstraintViolations().stream()
+				.map(violation -> violation.getPropertyPath() + ": " + violation.getMessage())
+				.collect(Collectors.joining("; "));
+		return buildResponse(HttpStatus.BAD_REQUEST, message.isBlank() ? "Parametros da requisicao invalidos." : message, request.getRequestURI());
 	}
 
 	@ExceptionHandler(Exception.class)
