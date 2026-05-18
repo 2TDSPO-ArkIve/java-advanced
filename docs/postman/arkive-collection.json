@@ -1,7 +1,7 @@
 {
   "info": {
     "_postman_id": "c9285999-54c2-489e-9cbe-e558220d0475",
-    "name": "Arkive API - Testes Simples Localhost",
+    "name": "Arkive API",
     "description": "Coleção simples para validação da API Arkive. Usa localhost:8080 diretamente, sem variável baseUrl, sem scripts e com exemplos de POST, GET, PUT, PATCH e DELETE. Os IDs são exemplos e devem ser ajustados conforme os registros existentes no Oracle.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
     "_exporter_id": "49158346",
@@ -2163,6 +2163,113 @@
               "path": [
                 "api",
                 "eventos-jornada"
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "06 - Paginação, ordenação e busca",
+      "item": [
+        {
+          "name": "GET Especies com paginação",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "http://localhost:8080/api/especies?page=0&size=5",
+              "protocol": "http",
+              "host": [
+                "localhost"
+              ],
+              "port": "8080",
+              "path": [
+                "api",
+                "especies"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "0"
+                },
+                {
+                  "key": "size",
+                  "value": "5"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "GET Especies com ordenação",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "http://localhost:8080/api/especies?page=0&size=5&sort=nome,asc",
+              "protocol": "http",
+              "host": [
+                "localhost"
+              ],
+              "port": "8080",
+              "path": [
+                "api",
+                "especies"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "0"
+                },
+                {
+                  "key": "size",
+                  "value": "5"
+                },
+                {
+                  "key": "sort",
+                  "value": "nome,asc"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "GET Especies com busca por nome",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "http://localhost:8080/api/especies?nome=Gato&page=0&size=5&sort=nome,asc",
+              "protocol": "http",
+              "host": [
+                "localhost"
+              ],
+              "port": "8080",
+              "path": [
+                "api",
+                "especies"
+              ],
+              "query": [
+                {
+                  "key": "nome",
+                  "value": "Gato"
+                },
+                {
+                  "key": "page",
+                  "value": "0"
+                },
+                {
+                  "key": "size",
+                  "value": "5"
+                },
+                {
+                  "key": "sort",
+                  "value": "nome,asc"
+                }
               ]
             }
           },
