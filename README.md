@@ -67,15 +67,16 @@ src/main/java/br/com/fiap/arkive
 
 ## Documentação Adicional
 
-Na pasta /docs estão incluídos: 
+Na pasta /docs estão incluídos:
 
-```http
+```
 /docs/images/arkive-diagrama-entidades.png
 /docs/postman/arkive-collection.json
 /docs/arquitetura.md
 /docs/cronograma-desenvolvimento.md
 ```
 
+---
 
 ### Camadas principais
 
