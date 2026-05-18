@@ -63,6 +63,20 @@ src/main/java/br/com/fiap/arkive
 └── service
 ```
 
+---
+
+## Documentação da entrega
+
+Os principais documentos da entrega Java Advanced estão disponíveis na pasta `docs/`:
+
+| Documento | Descrição |
+|---|---|
+| [Arquitetura da Solução](docs/arquitetura.md) | Explica a arquitetura da API, camadas, entidades, relacionamentos, validações, cache e Swagger. |
+| [Cronograma de Desenvolvimento](docs/cronograma-desenvolvimento.md) | Apresenta a divisão de responsabilidades da equipe e o cronograma resumido de desenvolvimento. |
+| [Collection Postman](docs/postman/arkive-collection.json) | Collection exportada com requisições para validar os endpoints da API. |
+
+---
+
 ### Camadas principais
 
 | Camada | Função |
