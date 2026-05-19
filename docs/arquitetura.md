@@ -346,47 +346,17 @@ http://localhost:8080/v3/api-docs
 
 ---
 
-## 14. Diagrama DER
+## 14. Diagrama MER
 
-O DER oficial do projeto é produzido na disciplina de **Mastering Relational and Non-Relational Database**, com base no schema Oracle `TB_ARKIVE_*`.
+O MER oficial do projeto é produzido na disciplina de **Mastering Relational and Non-Relational Database**, com base no schema Oracle `TB_ARKIVE_*`.
 
-Quando exportado, o arquivo deve ser salvo em:
-
-```text
-docs/diagramas/der.png
-```
-
-E referenciado neste documento:
-
-```md
-![DER do banco Arkive](diagramas/der.png)
-```
+<p align="center">
+  <img src="images/arkive-mer.png" alt="MER" width="900">
+</p>
 
 ---
 
-## 15. Diagrama de classes de entidade
-
-O diagrama de classes de entidade pode ser gerado a partir das entidades JPA do pacote:
-
-```text
-br.com.fiap.arkive.entity
-```
-
-Arquivo sugerido:
-
-```text
-docs/diagramas/diagrama-classes-entidades.png
-```
-
-Referência sugerida:
-
-```md
-![Diagrama de classes de entidade](diagramas/diagrama-classes-entidades.png)
-```
-
----
-
-## 16. Conclusão
+## 15. Conclusão
 
 A arquitetura do Arkive foi projetada para ser simples, modular e compatível com os requisitos da disciplina de Java Advanced.
 
