@@ -344,8 +344,80 @@ DELETE /api/recurso/{id}
 ```
 ---
 
-##
+## Evidências dos endpoints de animais
+
+<details>
+  <summary><strong>POST /api/animais</strong></summary>
+
+  <p align="center">
+    <img src="docs/images/animais-post.png" alt="Evidência POST animais" width="900">
+  </p>
+</details>
+
+<details>
+  <summary><strong>GET /api/animais</strong></summary>
+
+  <p align="center">
+    <img src="docs/images/animais-get.png" alt="Evidência GET animais" width="900">
+  </p>
+</details>
+
+<details>
+  <summary><strong>PUT /api/animais/{id}</strong></summary>
+
+  <p align="center">
+    <img src="docs/images/animais-put.png" alt="Evidência PUT animais" width="900">
+  </p>
+</details>
+
+<details>
+  <summary><strong>DELETE /api/animais/{id}</strong></summary>
+
+  <p align="center">
+    <img src="docs/images/animais-delete.png" alt="Evidência DELETE animais" width="900">
+  </p>
+</details>
+
+### Evidências dos endpoints de consultas
+
+<details>
+  <summary><strong>POST /api/consultas</strong></summary>
+
+  <p align="center">
+    <img src="docs/images/consulta-post.png" alt="Evidência POST consultas" width="900">
+  </p>
+</details>
+
+<details>
+  <summary><strong>GET /api/consultas</strong></summary>
+
+  <p align="center">
+    <img src="docs/images/consulta-get.png" alt="Evidência GET consultas" width="900">
+  </p>
+</details>
+
+### Evidências dos endpoints de alertas
+
+<details>
+  <summary><strong>GET /api/alertas</strong></summary>
+
+  <p align="center">
+    <img src="docs/images/alerta-get.png" alt="Evidência GET alertas" width="900">
+  </p>
+</details>
+
+<details>
+  <summary><strong>PUT /api/alertas/{id}</strong></summary>
+
+  <p align="center">
+    <img src="docs/images/alerta-put.png" alt="Evidência PUT alertas" width="900">
+  </p>
+</details>
+
+---
+
 ## Status da entrega Java Advanced
+
 
 A API entrega um núcleo funcional da aplicação Arkive, com:
 
