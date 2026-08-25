@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="pt-BR" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/head :: head(${pageTitle})}"></head>
+<body>
+<div class="app-shell">
+	<aside th:replace="~{fragments/sidebar :: sidebar}"></aside>
+	<div class="app-content">
+		<header th:replace="~{fragments/header :: header(${pageTitle})}"></header>
+		<main class="main-content">
+			<section class="intro">
+				<p class="eyebrow">ArkIve administrativo</p>
+				<h2 th:text="${sectionTitle}">Administração Global</h2>
+				<p>Base web para acompanhar a governança da plataforma, preparar gestão de acessos e organizar a operação administrativa.</p>
+			</section>
+
+			<section class="card-grid" aria-label="Áreas administrativas">
+				<article class="info-card">
+					<h3>Administração Global</h3>
+					<p>Área reservada para configurações e supervisão geral do ambiente ArkIve.</p>
+				</article>
+				<article class="info-card">
+					<h3>Gestão de Acessos</h3>
+					<p>Estrutura preparada para a futura administração de contas, perfis e status.</p>
+				</article>
+				<article class="info-card">
+					<h3>Clínicas</h3>
+					<p>Espaço reservado para a futura gestão administrativa das clínicas participantes.</p>
+				</article>
+				<article class="info-card">
+					<h3>Operação ArkIve</h3>
+					<p>Visão de base para evoluir painéis operacionais sem apresentar métricas fictícias.</p>
+				</article>
+			</section>
+		</main>
+	</div>
+</div>
+</body>
+</html>

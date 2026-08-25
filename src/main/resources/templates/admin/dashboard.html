@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="pt-BR" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/head :: head(${pageTitle})}"></head>
+<body>
+<div class="app-shell">
+	<aside th:replace="~{fragments/sidebar :: sidebar}"></aside>
+	<div class="app-content">
+		<header th:replace="~{fragments/header :: header(${pageTitle})}"></header>
+		<main class="main-content">
+			<section class="intro">
+				<p class="eyebrow">Administrador da Clínica</p>
+				<h2 th:text="${sectionTitle}">Administração da Clínica</h2>
+				<p>Painel web para organizar a administração da clínica dentro do ArkIve. Indicadores e dados operacionais serão conectados em fases futuras.</p>
+			</section>
+
+			<section class="card-grid" aria-label="Áreas da clínica">
+				<article class="info-card">
+					<h3>Rotina Administrativa</h3>
+					<p>Base para acompanhar configurações e fluxos administrativos da clínica.</p>
+				</article>
+				<article class="info-card">
+					<h3>Equipe</h3>
+					<p>Espaço reservado para futuras ações de gestão de usuários vinculados à clínica.</p>
+				</article>
+				<article class="info-card">
+					<h3>Operação Clínica</h3>
+					<p>Estrutura inicial para evoluir a visão operacional sem dados simulados.</p>
+				</article>
+			</section>
+		</main>
+	</div>
+</div>
+</body>
+</html>

@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="pt-BR" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/head :: head('Entrar')}"></head>
+<body class="login-page">
+<main class="login-shell">
+	<section class="login-panel" aria-labelledby="login-title">
+		<div class="login-brand">
+			<span class="brand-mark">A</span>
+			<div>
+				<strong>ArkIve</strong>
+				<small>Ambiente administrativo</small>
+			</div>
+		</div>
+
+		<div class="login-copy">
+			<p class="eyebrow">Acesso restrito</p>
+			<h1 id="login-title">Entrar no ArkIve</h1>
+			<p>Use suas credenciais administrativas para acessar o painel web.</p>
+		</div>
+
+		<div class="alert alert-error" th:if="${param.error}">
+			Login ou senha inválidos.
+		</div>
+		<div class="alert alert-success" th:if="${param.logout}">
+			Sessão encerrada com sucesso.
+		</div>
+
+		<form class="form" th:action="@{/login}" method="post">
+			<input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
+			<label for="username">Login</label>
+			<input id="username" name="username" type="text" autocomplete="username" required autofocus>
+
+			<label for="password">Senha</label>
+			<input id="password" name="password" type="password" autocomplete="current-password" required>
+
+			<button class="button button-primary" type="submit">Entrar</button>
+		</form>
+	</section>
+</main>
+</body>
+</html>

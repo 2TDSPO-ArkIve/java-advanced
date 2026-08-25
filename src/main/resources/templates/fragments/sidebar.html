@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html lang="pt-BR" xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+<body>
+<aside class="sidebar" th:fragment="sidebar">
+	<a class="brand" th:href="@{/}">
+		<span class="brand-mark">A</span>
+		<span>
+			<strong>ArkIve</strong>
+			<small>Admin</small>
+		</span>
+	</a>
+
+	<nav class="nav" aria-label="Navegacao administrativa">
+		<a class="nav-link" th:href="@{/sysadmin/dashboard}" sec:authorize="hasRole('SYSADMIN')">Visão Geral</a>
+		<a class="nav-link" th:href="@{/admin/dashboard}" sec:authorize="hasRole('ADMIN_CLINICA')">Visão Geral</a>
+	</nav>
+</aside>
+</body>
+</html>
