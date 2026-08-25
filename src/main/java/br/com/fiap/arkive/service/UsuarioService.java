@@ -16,6 +16,7 @@ import br.com.fiap.arkive.repository.VeterinarioRepository;
 import org.springframework.context.annotation.Profile;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -27,17 +28,38 @@ public class UsuarioService {
 	private final ResponsavelRepository responsavelRepository;
 	private final VeterinarioRepository veterinarioRepository;
 	private final ClinicaRepository clinicaRepository;
+	private final PasswordEncoder passwordEncoder;
 
 	public UsuarioService(
 			UsuarioRepository usuarioRepository,
 			ResponsavelRepository responsavelRepository,
 			VeterinarioRepository veterinarioRepository,
-			ClinicaRepository clinicaRepository
+			ClinicaRepository clinicaRepository,
+			PasswordEncoder passwordEncoder
 	) {
 		this.usuarioRepository = usuarioRepository;
 		this.responsavelRepository = responsavelRepository;
 		this.veterinarioRepository = veterinarioRepository;
 		this.clinicaRepository = clinicaRepository;
+		this.passwordEncoder = passwordEncoder;
+	}
+
+	@Transactional
+	public UsuarioResponse criar(UsuarioRequest request) {
+		validarCamposObrigatorios(request);
+		validarSNQuandoInformado(request.ativo(), "Ativo");
+		validarLoginDisponivel(request.login());
+		AssociacoesUsuario associacoes = validarAssociacoes(request);
+		Usuario usuario = new Usuario();
+		usuario.setNome(request.nome());
+		usuario.setTipo(request.tipo());
+		usuario.setLogin(request.login());
+		usuario.setSenhaHash(passwordEncoder.encode(request.senha()));
+		usuario.setResponsavel(associacoes.responsavel());
+		usuario.setVeterinario(associacoes.veterinario());
+		usuario.setClinica(associacoes.clinica());
+		usuario.setAtivo(request.ativo() == null ? "S" : request.ativo());
+		return UsuarioResponse.fromEntity(usuarioRepository.save(usuario));
 	}
 
 	@Transactional(readOnly = true)
@@ -90,80 +112,90 @@ public class UsuarioService {
 		}
 	}
 
-	private void validarAssociacoes(UsuarioRequest request) {
+	private AssociacoesUsuario validarAssociacoes(UsuarioRequest request) {
 		TipoUsuario tipo = request.tipo();
-		switch (tipo) {
+		return switch (tipo) {
 			case SYSADMIN -> validarSysadmin(request);
 			case ADMIN_CLINICA -> validarAdminClinica(request);
 			case VETERINARIO -> validarVeterinario(request);
 			case RESPONSAVEL -> validarResponsavel(request);
-		}
+		};
 	}
 
-	private void validarSysadmin(UsuarioRequest request) {
+	private AssociacoesUsuario validarSysadmin(UsuarioRequest request) {
 		if (request.responsavelId() != null || request.veterinarioId() != null || request.clinicaId() != null) {
 			throw new BusinessException("Usuario SYSADMIN nao deve ter responsavel, veterinario ou clinica associados.");
 		}
+		return new AssociacoesUsuario(null, null, null);
 	}
 
-	private void validarAdminClinica(UsuarioRequest request) {
+	private AssociacoesUsuario validarAdminClinica(UsuarioRequest request) {
 		if (request.clinicaId() == null) {
 			throw new BusinessException("Usuario ADMIN_CLINICA deve estar associado a uma clinica.");
 		}
 		if (request.responsavelId() != null || request.veterinarioId() != null) {
 			throw new BusinessException("Usuario ADMIN_CLINICA nao deve ter responsavel ou veterinario associados.");
 		}
-		validarClinicaAtiva(request.clinicaId());
+		Clinica clinica = validarClinicaAtiva(request.clinicaId());
+		return new AssociacoesUsuario(null, null, clinica);
 	}
 
-	private void validarVeterinario(UsuarioRequest request) {
+	private AssociacoesUsuario validarVeterinario(UsuarioRequest request) {
 		if (request.veterinarioId() == null) {
 			throw new BusinessException("Usuario VETERINARIO deve estar associado a um veterinario.");
 		}
 		if (request.responsavelId() != null || request.clinicaId() != null) {
 			throw new BusinessException("Usuario VETERINARIO nao deve ter responsavel ou clinica associados.");
 		}
-		validarVeterinarioAtivo(request.veterinarioId());
+		Veterinario veterinario = validarVeterinarioAtivo(request.veterinarioId());
+		return new AssociacoesUsuario(null, veterinario, null);
 	}
 
-	private void validarResponsavel(UsuarioRequest request) {
+	private AssociacoesUsuario validarResponsavel(UsuarioRequest request) {
 		if (request.responsavelId() == null) {
 			throw new BusinessException("Usuario RESPONSAVEL deve estar associado a um responsavel.");
 		}
 		if (request.veterinarioId() != null || request.clinicaId() != null) {
 			throw new BusinessException("Usuario RESPONSAVEL nao deve ter veterinario ou clinica associados.");
 		}
-		validarResponsavelAtivo(request.responsavelId());
+		Responsavel responsavel = validarResponsavelAtivo(request.responsavelId());
+		return new AssociacoesUsuario(responsavel, null, null);
 	}
 
-	private void validarResponsavelAtivo(Long id) {
+	private Responsavel validarResponsavelAtivo(Long id) {
 		Responsavel responsavel = responsavelRepository.findById(id)
 				.orElseThrow(() -> new ResourceNotFoundException("Responsavel nao encontrado."));
 		if (!"S".equals(responsavel.getAtivo())) {
 			throw new BusinessException("Responsavel associado ao usuario deve estar ativo.");
 		}
+		return responsavel;
 	}
 
-	private void validarVeterinarioAtivo(Long id) {
+	private Veterinario validarVeterinarioAtivo(Long id) {
 		Veterinario veterinario = veterinarioRepository.findById(id)
 				.orElseThrow(() -> new ResourceNotFoundException("Veterinario nao encontrado."));
 		if (!"S".equals(veterinario.getAtivo())) {
 			throw new BusinessException("Veterinario associado ao usuario deve estar ativo.");
 		}
+		return veterinario;
 	}
 
-	private void validarClinicaAtiva(Long id) {
+	private Clinica validarClinicaAtiva(Long id) {
 		Clinica clinica = clinicaRepository.findById(id)
 				.orElseThrow(() -> new ResourceNotFoundException("Clinica nao encontrada."));
 		if (!"S".equals(clinica.getAtivo())) {
 			throw new BusinessException("Clinica associada ao usuario deve estar ativa.");
 		}
+		return clinica;
 	}
 
 	private void validarSNQuandoInformado(String valor, String campo) {
-		if (valor != null && !valor.isBlank() && !"S".equals(valor) && !"N".equals(valor)) {
+		if (valor != null && !"S".equals(valor) && !"N".equals(valor)) {
 			throw new BusinessException(campo + " deve ser S ou N.");
 		}
+	}
+
+	private record AssociacoesUsuario(Responsavel responsavel, Veterinario veterinario, Clinica clinica) {
 	}
 
 }
