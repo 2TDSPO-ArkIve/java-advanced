@@ -19,7 +19,7 @@ public class Animal {
 	@Column(name = "ID_ANIMAL")
 	private Long id;
 
-	@Column(name = "NM_ANIMAL", nullable = false, length = 100)
+	@Column(name = "NM_ANIMAL", nullable = false, length = 50)
 	private String nome;
 
 	@Column(name = "DS_SEXO", columnDefinition = "CHAR(1)")

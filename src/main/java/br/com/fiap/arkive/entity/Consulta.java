@@ -41,7 +41,7 @@ public class Consulta {
 	@Column(name = "DS_OBSERVACAO")
 	private String observacao;
 
-	@Column(name = "KG_PESO", precision = 5, scale = 2)
+	@Column(name = "KG_PESO", precision = 6, scale = 2)
 	private BigDecimal peso;
 
 	@Lob
