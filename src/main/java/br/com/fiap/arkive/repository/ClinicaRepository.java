@@ -8,6 +8,8 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.util.List;
+
 @Profile("!local-nodb")
 public interface ClinicaRepository extends JpaRepository<Clinica, Long> {
 
@@ -17,5 +19,7 @@ public interface ClinicaRepository extends JpaRepository<Clinica, Long> {
 			and (:ativo is null or c.ativo = :ativo)
 			""")
 	Page<Clinica> buscar(@Param("nome") String nome, @Param("ativo") String ativo, Pageable pageable);
+
+	List<Clinica> findByAtivoOrderByNomeAsc(String ativo);
 
 }

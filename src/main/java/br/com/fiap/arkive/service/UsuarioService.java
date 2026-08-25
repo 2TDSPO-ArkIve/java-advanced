@@ -1,6 +1,7 @@
 package br.com.fiap.arkive.service;
 
 import br.com.fiap.arkive.dto.request.UsuarioRequest;
+import br.com.fiap.arkive.dto.response.UsuarioContextOption;
 import br.com.fiap.arkive.dto.response.UsuarioResponse;
 import br.com.fiap.arkive.entity.Clinica;
 import br.com.fiap.arkive.entity.Responsavel;
@@ -19,6 +20,8 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+import java.util.List;
 
 @Service
 @Profile("!local-nodb")
@@ -76,6 +79,53 @@ public class UsuarioService {
 	public UsuarioResponse buscarPorLogin(String login) {
 		return UsuarioResponse.fromEntity(usuarioRepository.findByLogin(login)
 				.orElseThrow(() -> new ResourceNotFoundException("Usuario nao encontrado.")));
+	}
+
+	@Transactional
+	public void desativar(Long id, Long usuarioAtualId) {
+		Usuario usuario = buscarEntidade(id);
+		if (usuarioAtualId != null && usuarioAtualId.equals(usuario.getId())) {
+			throw new BusinessException("Voce nao pode desativar sua propria conta.");
+		}
+		if ("N".equals(usuario.getAtivo())) {
+			throw new BusinessException("Usuario ja esta inativo.");
+		}
+		if (TipoUsuario.SYSADMIN.equals(usuario.getTipo()) && usuarioRepository.countByTipoAndAtivo(TipoUsuario.SYSADMIN, "S") <= 1) {
+			throw new BusinessException("Nao e possivel desativar o ultimo SysAdmin ativo.");
+		}
+		usuario.setAtivo("N");
+		usuarioRepository.save(usuario);
+	}
+
+	@Transactional
+	public void ativar(Long id) {
+		Usuario usuario = buscarEntidade(id);
+		if ("S".equals(usuario.getAtivo())) {
+			throw new BusinessException("Usuario ja esta ativo.");
+		}
+		usuario.setAtivo("S");
+		usuarioRepository.save(usuario);
+	}
+
+	@Transactional(readOnly = true)
+	public List<UsuarioContextOption> listarClinicasAtivas() {
+		return clinicaRepository.findByAtivoOrderByNomeAsc("S").stream()
+				.map(clinica -> new UsuarioContextOption(clinica.getId(), clinica.getNome()))
+				.toList();
+	}
+
+	@Transactional(readOnly = true)
+	public List<UsuarioContextOption> listarVeterinariosAtivos() {
+		return veterinarioRepository.findByAtivoOrderByNomeAsc("S").stream()
+				.map(veterinario -> new UsuarioContextOption(veterinario.getId(), veterinario.getNome()))
+				.toList();
+	}
+
+	@Transactional(readOnly = true)
+	public List<UsuarioContextOption> listarResponsaveisAtivos() {
+		return responsavelRepository.findByAtivoOrderByNomeAsc("S").stream()
+				.map(responsavel -> new UsuarioContextOption(responsavel.getId(), responsavel.getNome()))
+				.toList();
 	}
 
 	@Transactional(readOnly = true)

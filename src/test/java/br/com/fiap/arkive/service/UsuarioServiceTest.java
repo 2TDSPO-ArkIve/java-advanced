@@ -183,6 +183,51 @@ class UsuarioServiceTest {
 	}
 
 	@Test
+	void criarAdminClinicaValido() {
+		Clinica clinica = clinicaAtiva();
+		when(clinicaRepository.findById(1L)).thenReturn(Optional.of(clinica));
+		when(passwordEncoder.encode("senha-segura")).thenReturn("$2a$10$hash");
+		when(usuarioRepository.save(any(Usuario.class))).thenAnswer(invocation -> invocation.getArgument(0));
+		ArgumentCaptor<Usuario> captor = ArgumentCaptor.forClass(Usuario.class);
+
+		usuarioService.criar(request(TipoUsuario.ADMIN_CLINICA, null, null, 1L));
+
+		verify(usuarioRepository).save(captor.capture());
+		Assertions.assertSame(clinica, captor.getValue().getClinica());
+		Assertions.assertEquals("$2a$10$hash", captor.getValue().getSenhaHash());
+	}
+
+	@Test
+	void criarVeterinarioValido() {
+		Veterinario veterinario = veterinarioAtivo();
+		when(veterinarioRepository.findById(1L)).thenReturn(Optional.of(veterinario));
+		when(passwordEncoder.encode("senha-segura")).thenReturn("$2a$10$hash");
+		when(usuarioRepository.save(any(Usuario.class))).thenAnswer(invocation -> invocation.getArgument(0));
+		ArgumentCaptor<Usuario> captor = ArgumentCaptor.forClass(Usuario.class);
+
+		usuarioService.criar(request(TipoUsuario.VETERINARIO, null, 1L, null));
+
+		verify(usuarioRepository).save(captor.capture());
+		Assertions.assertSame(veterinario, captor.getValue().getVeterinario());
+		Assertions.assertEquals("$2a$10$hash", captor.getValue().getSenhaHash());
+	}
+
+	@Test
+	void criarResponsavelValido() {
+		Responsavel responsavel = responsavelAtivo();
+		when(responsavelRepository.findById(1L)).thenReturn(Optional.of(responsavel));
+		when(passwordEncoder.encode("senha-segura")).thenReturn("$2a$10$hash");
+		when(usuarioRepository.save(any(Usuario.class))).thenAnswer(invocation -> invocation.getArgument(0));
+		ArgumentCaptor<Usuario> captor = ArgumentCaptor.forClass(Usuario.class);
+
+		usuarioService.criar(request(TipoUsuario.RESPONSAVEL, 1L, null, null));
+
+		verify(usuarioRepository).save(captor.capture());
+		Assertions.assertSame(responsavel, captor.getValue().getResponsavel());
+		Assertions.assertEquals("$2a$10$hash", captor.getValue().getSenhaHash());
+	}
+
+	@Test
 	void criarNaoPersisteQuandoLoginDuplicado() {
 		when(usuarioRepository.existsByLogin("usuario@arkive.com")).thenReturn(true);
 
@@ -198,6 +243,98 @@ class UsuarioServiceTest {
 		verify(usuarioRepository, never()).save(any());
 	}
 
+	@Test
+	void desativarContaAtivaAlteraParaInativo() {
+		Usuario usuario = usuario(10L, TipoUsuario.RESPONSAVEL, "S");
+		when(usuarioRepository.findById(10L)).thenReturn(Optional.of(usuario));
+
+		usuarioService.desativar(10L, 99L);
+
+		Assertions.assertEquals("N", usuario.getAtivo());
+		verify(usuarioRepository).save(usuario);
+		verify(usuarioRepository, never()).countByTipoAndAtivo(any(), any());
+	}
+
+	@Test
+	void desativarUsuarioInexistenteRejeita() {
+		when(usuarioRepository.findById(10L)).thenReturn(Optional.empty());
+
+		assertThrows(ResourceNotFoundException.class, () -> usuarioService.desativar(10L, 99L));
+		verify(usuarioRepository, never()).save(any());
+	}
+
+	@Test
+	void desativarContaAtualRejeita() {
+		Usuario usuario = usuario(10L, TipoUsuario.SYSADMIN, "S");
+		when(usuarioRepository.findById(10L)).thenReturn(Optional.of(usuario));
+
+		assertThrows(BusinessException.class, () -> usuarioService.desativar(10L, 10L));
+		verify(usuarioRepository, never()).save(any());
+		verify(usuarioRepository, never()).countByTipoAndAtivo(any(), any());
+	}
+
+	@Test
+	void desativarUltimoSysadminAtivoRejeita() {
+		Usuario usuario = usuario(10L, TipoUsuario.SYSADMIN, "S");
+		when(usuarioRepository.findById(10L)).thenReturn(Optional.of(usuario));
+		when(usuarioRepository.countByTipoAndAtivo(TipoUsuario.SYSADMIN, "S")).thenReturn(1L);
+
+		assertThrows(BusinessException.class, () -> usuarioService.desativar(10L, 99L));
+		verify(usuarioRepository, never()).save(any());
+		verify(usuarioRepository).countByTipoAndAtivo(TipoUsuario.SYSADMIN, "S");
+	}
+
+	@Test
+	void desativarSysadminQuandoExisteOutroAtivo() {
+		Usuario usuario = usuario(10L, TipoUsuario.SYSADMIN, "S");
+		when(usuarioRepository.findById(10L)).thenReturn(Optional.of(usuario));
+		when(usuarioRepository.countByTipoAndAtivo(TipoUsuario.SYSADMIN, "S")).thenReturn(2L);
+
+		usuarioService.desativar(10L, 99L);
+
+		Assertions.assertEquals("N", usuario.getAtivo());
+		verify(usuarioRepository).save(usuario);
+		verify(usuarioRepository).countByTipoAndAtivo(TipoUsuario.SYSADMIN, "S");
+	}
+
+	@Test
+	void desativarUsuarioJaInativoRejeita() {
+		Usuario usuario = usuario(10L, TipoUsuario.RESPONSAVEL, "N");
+		when(usuarioRepository.findById(10L)).thenReturn(Optional.of(usuario));
+
+		assertThrows(BusinessException.class, () -> usuarioService.desativar(10L, 99L));
+		verify(usuarioRepository, never()).save(any());
+		verify(usuarioRepository, never()).countByTipoAndAtivo(any(), any());
+	}
+
+	@Test
+	void ativarContaInativaAlteraParaAtivo() {
+		Usuario usuario = usuario(10L, TipoUsuario.RESPONSAVEL, "N");
+		when(usuarioRepository.findById(10L)).thenReturn(Optional.of(usuario));
+
+		usuarioService.ativar(10L);
+
+		Assertions.assertEquals("S", usuario.getAtivo());
+		verify(usuarioRepository).save(usuario);
+	}
+
+	@Test
+	void ativarUsuarioInexistenteRejeita() {
+		when(usuarioRepository.findById(10L)).thenReturn(Optional.empty());
+
+		assertThrows(ResourceNotFoundException.class, () -> usuarioService.ativar(10L));
+		verify(usuarioRepository, never()).save(any());
+	}
+
+	@Test
+	void ativarUsuarioJaAtivoRejeita() {
+		Usuario usuario = usuario(10L, TipoUsuario.RESPONSAVEL, "S");
+		when(usuarioRepository.findById(10L)).thenReturn(Optional.of(usuario));
+
+		assertThrows(BusinessException.class, () -> usuarioService.ativar(10L));
+		verify(usuarioRepository, never()).save(any());
+	}
+
 	private UsuarioRequest request(TipoUsuario tipo, Long responsavelId, Long veterinarioId, Long clinicaId) {
 		return new UsuarioRequest(
 				"Usuario Teste",
@@ -209,6 +346,14 @@ class UsuarioServiceTest {
 				clinicaId,
 				"S"
 		);
+	}
+
+	private Usuario usuario(Long id, TipoUsuario tipo, String ativo) {
+		Usuario usuario = new Usuario();
+		usuario.setId(id);
+		usuario.setTipo(tipo);
+		usuario.setAtivo(ativo);
+		return usuario;
 	}
 
 	private Responsavel responsavelAtivo() {

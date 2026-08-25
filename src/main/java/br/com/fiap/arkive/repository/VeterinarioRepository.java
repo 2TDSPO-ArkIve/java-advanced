@@ -8,6 +8,8 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.util.List;
+
 @Profile("!local-nodb")
 public interface VeterinarioRepository extends JpaRepository<Veterinario, Long> {
 
@@ -25,5 +27,7 @@ public interface VeterinarioRepository extends JpaRepository<Veterinario, Long> 
 			@Param("ativo") String ativo,
 			Pageable pageable
 	);
+
+	List<Veterinario> findByAtivoOrderByNomeAsc(String ativo);
 
 }
