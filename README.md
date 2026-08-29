@@ -133,7 +133,7 @@ O arquivo utilizado para esse perfil é:
 src/main/resources/application-oracle.properties
 ```
 
-Neste projeto acadêmico, as credenciais Oracle foram mantidas no arquivo `application-oracle.properties` para facilitar a validação pelo professor.
+As credenciais e URLs devem ser fornecidas por variaveis de ambiente. Nao commite credenciais reais.
 
 A aplicação utiliza:
 
@@ -189,6 +189,101 @@ A especificação OpenAPI em JSON pode ser acessada em:
 
 ```text
 http://localhost:8080/v3/api-docs
+```
+
+## API
+
+A API REST fica sob `/api/**` e usa autenticação Spring Security com HTTP Basic para clientes REST. O endpoint `/api/health` e a documentação Swagger/OpenAPI ficam públicos; os demais endpoints de API exigem usuário autenticado e aplicam escopo por perfil e recurso quando o fluxo clínico exige.
+
+Principais perfis:
+
+- `SYSADMIN`: leitura administrativa global.
+- `ADMIN_CLINICA`: leitura administrativa da própria clínica.
+- `VETERINARIO`: escrita clínica apenas nas próprias consultas.
+- `RESPONSAVEL`: acesso aos animais vinculados e registro da própria adesão.
+
+Status de consulta:
+
+- `AG`: Agendada.
+- `EP`: Em Progresso.
+- `AP`: Aguardando Parecer.
+- `FI`: Finalizada.
+- `CA`: Cancelada.
+
+## Fluxo de Consulta Assistida
+
+Fluxo principal:
+
+```text
+AG -> EP -> narrativa -> suporte clinico por IA -> AP -> conclusao veterinaria -> FI
+```
+
+Endpoints de comando:
+
+```http
+POST  /api/consultas/{id}/iniciar
+PATCH /api/consultas/{id}/narrativa
+POST  /api/consultas/{id}/suporte-clinico
+GET   /api/consultas/{id}/suporte-clinico
+POST  /api/consultas/{id}/finalizar
+POST  /api/consultas/{id}/cancelar
+```
+
+O suporte clínico por IA é investigativo e provisório. Ele não substitui a conclusão do veterinário, não confirma diagnóstico e não prescreve medicamentos. A finalização da consulta cria a conclusão veterinária confirmada.
+
+## Fluxo de Prescrição e Adesão
+
+Fluxo principal:
+
+```text
+consulta FI -> prescricao veterinaria -> adesao do responsavel -> acompanhamento pelo veterinario
+```
+
+Endpoints principais:
+
+```http
+POST /api/prescricoes
+GET  /api/prescricoes
+GET  /api/prescricoes/{id}
+PUT  /api/prescricoes/{id}
+DELETE /api/prescricoes/{id}
+
+POST /api/adesoes-prescricao
+GET  /api/adesoes-prescricao
+GET  /api/adesoes-prescricao/{id}
+```
+
+Prescrições são criadas exclusivamente pelo veterinário responsável e somente para consultas `FI`. A adesão é registrada pelo responsável vinculado ao animal. Em adesão, o cliente informa apenas `prescricaoId`, `tomou` (`S` ou `N`) e `observacao`; responsável, animal e data do registro são definidos pelo servidor.
+
+## Primeiro Acesso
+
+Contas de clínica e veterinário provisionadas automaticamente usam:
+
+- login inicial: e-mail cadastrado.
+- senha inicial: e-mail cadastrado.
+- primeiro login: troca de senha obrigatória.
+
+As senhas armazenadas são hashes BCrypt. A senha temporária existe apenas para o fluxo inicial de acesso e deve ser substituída no primeiro login.
+
+## Configuração
+
+Variáveis de ambiente esperadas para execução com Oracle:
+
+```properties
+SPRING_PROFILES_ACTIVE=oracle
+ARKIVE_DB_URL=jdbc:oracle:thin:@...
+ARKIVE_DB_USERNAME=...
+ARKIVE_DB_PASSWORD=...
+ARKIVE_CLINICAL_ENGINE_URL=https://...
+```
+
+Bootstrap opcional de SysAdmin:
+
+```properties
+ARKIVE_BOOTSTRAP_SYSADMIN_ENABLED=false
+ARKIVE_BOOTSTRAP_SYSADMIN_NAME=...
+ARKIVE_BOOTSTRAP_SYSADMIN_LOGIN=...
+ARKIVE_BOOTSTRAP_SYSADMIN_PASSWORD=...
 ```
 
 ---
@@ -333,7 +428,7 @@ Para validar o fluxo principal da API, recomenda-se executar as operações nest
 
 ## Exemplos de rotas por recurso
 
-A maioria dos recursos segue o padrão REST abaixo:
+Os cadastros administrativos ainda seguem o padrão REST convencional. Os fluxos clínicos e de prescrição usam comandos de domínio específicos quando há regras de autorização ou transição.
 
 ```http
 POST   /api/recurso

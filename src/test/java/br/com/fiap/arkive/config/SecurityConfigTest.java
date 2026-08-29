@@ -38,6 +38,13 @@ class SecurityConfigTest {
 	}
 
 	@Test
+	void anonimoAcessaSwaggerEOpenApi() throws Exception {
+		mockMvc.perform(get("/swagger-ui/index.html")).andExpect(status().isOk());
+		mockMvc.perform(get("/swagger-ui.html")).andExpect(status().isOk());
+		mockMvc.perform(get("/v3/api-docs")).andExpect(status().isOk());
+	}
+
+	@Test
 	@WithMockUser(roles = "SYSADMIN")
 	void sysadminAcessaSysadminEAdmin() throws Exception {
 		mockMvc.perform(get("/sysadmin/painel")).andExpect(status().isOk());
@@ -85,6 +92,21 @@ class SecurityConfigTest {
 
 		@GetMapping("/api/protegido")
 		String apiProtegida() {
+			return "ok";
+		}
+
+		@GetMapping("/swagger-ui/index.html")
+		String swaggerUiIndex() {
+			return "ok";
+		}
+
+		@GetMapping("/swagger-ui.html")
+		String swaggerUiHtml() {
+			return "ok";
+		}
+
+		@GetMapping("/v3/api-docs")
+		String apiDocs() {
 			return "ok";
 		}
 

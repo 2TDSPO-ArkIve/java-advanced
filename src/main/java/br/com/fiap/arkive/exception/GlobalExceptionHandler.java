@@ -11,6 +11,8 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
 import java.time.LocalDateTime;
+import java.util.LinkedHashMap;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 @RestControllerAdvice
@@ -28,10 +30,12 @@ public class GlobalExceptionHandler {
 
 	@ExceptionHandler(MethodArgumentNotValidException.class)
 	public ResponseEntity<ErrorResponse> handleValidation(MethodArgumentNotValidException ex, HttpServletRequest request) {
-		String message = ex.getBindingResult().getFieldErrors().stream()
-				.map(error -> error.getField() + ": " + error.getDefaultMessage())
+		Map<String, String> fields = new LinkedHashMap<>();
+		ex.getBindingResult().getFieldErrors().forEach(error -> fields.putIfAbsent(error.getField(), error.getDefaultMessage()));
+		String message = fields.entrySet().stream()
+				.map(entry -> entry.getKey() + ": " + entry.getValue())
 				.collect(Collectors.joining("; "));
-		return buildResponse(HttpStatus.BAD_REQUEST, message.isBlank() ? "Dados da requisicao invalidos." : message, request.getRequestURI());
+		return buildResponse(HttpStatus.BAD_REQUEST, message.isBlank() ? "Dados da requisicao invalidos." : message, request.getRequestURI(), fields);
 	}
 
 	@ExceptionHandler(ConstraintViolationException.class)
@@ -53,12 +57,17 @@ public class GlobalExceptionHandler {
 	}
 
 	private ResponseEntity<ErrorResponse> buildResponse(HttpStatus status, String message, String path) {
+		return buildResponse(status, message, path, null);
+	}
+
+	private ResponseEntity<ErrorResponse> buildResponse(HttpStatus status, String message, String path, Map<String, String> fields) {
 		ErrorResponse response = new ErrorResponse(
 				LocalDateTime.now(),
 				status.value(),
 				status.getReasonPhrase(),
 				message,
-				path
+				path,
+				fields
 		);
 		return ResponseEntity.status(status).body(response);
 	}

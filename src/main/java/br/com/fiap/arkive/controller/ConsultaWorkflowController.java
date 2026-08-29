@@ -9,6 +9,7 @@ import br.com.fiap.arkive.security.UsuarioPrincipal;
 import br.com.fiap.arkive.service.ClinicalSupportService;
 import br.com.fiap.arkive.service.ConsultaWorkflowService;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import org.springframework.context.annotation.Profile;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -23,6 +24,7 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequestMapping("/api/consultas")
 @Profile("!local-nodb")
+@Tag(name = "Consultas", description = "Fluxo de consulta: AG agendada, EP em progresso, AP aguardando parecer, FI finalizada e CA cancelada.")
 public class ConsultaWorkflowController {
 
 	private final ConsultaWorkflowService consultaWorkflowService;
@@ -34,13 +36,13 @@ public class ConsultaWorkflowController {
 	}
 
 	@PostMapping("/{id}/iniciar")
-	@Operation(summary = "Inicia uma consulta", description = "Operacao de dominio que altera uma consulta AG para EP.")
+	@Operation(summary = "Inicia uma consulta", description = "Operacao de dominio do veterinario responsavel. Transicao esperada: AG -> EP.")
 	public ConsultaWorkflowResponse iniciar(@PathVariable Long id, @AuthenticationPrincipal UsuarioPrincipal principal) {
 		return consultaWorkflowService.iniciar(id, principal);
 	}
 
 	@PatchMapping("/{id}/narrativa")
-	@Operation(summary = "Atualiza a narrativa clinica", description = "Armazena texto clinico bruto em consultas EP ou AP, sem analise por IA.")
+	@Operation(summary = "Atualiza a narrativa clinica", description = "Armazena texto clinico bruto em consultas EP ou AP, sem analise automatica por IA.")
 	public ConsultaWorkflowResponse atualizarNarrativa(
 			@PathVariable Long id,
 			@Valid @RequestBody AtualizarNarrativaConsultaRequest request,
@@ -50,7 +52,7 @@ public class ConsultaWorkflowController {
 	}
 
 	@PostMapping("/{id}/finalizar")
-	@Operation(summary = "Finaliza uma consulta", description = "Cria diagnostico confirmado pelo veterinario, finaliza a consulta e registra evento em uma unica transacao.")
+	@Operation(summary = "Finaliza uma consulta", description = "Cria a conclusao confirmada pelo veterinario, marca confirmado = S e validacaoVet = S, e faz EP/AP -> FI.")
 	public ConsultaWorkflowResponse finalizar(
 			@PathVariable Long id,
 			@Valid @RequestBody FinalizarConsultaRequest request,
@@ -60,7 +62,7 @@ public class ConsultaWorkflowController {
 	}
 
 	@PostMapping("/{id}/cancelar")
-	@Operation(summary = "Cancela uma consulta", description = "Operacao de dominio que cancela consultas AG, EP ou AP e registra evento de jornada.")
+	@Operation(summary = "Cancela uma consulta", description = "Operacao de dominio que cancela consultas AG, EP ou AP. Transicao esperada: AG/EP/AP -> CA.")
 	public ConsultaWorkflowResponse cancelar(
 			@PathVariable Long id,
 			@Valid @RequestBody CancelarConsultaRequest request,
@@ -70,7 +72,7 @@ public class ConsultaWorkflowController {
 	}
 
 	@PostMapping("/{id}/suporte-clinico")
-	@Operation(summary = "Gera suporte clinico", description = "Operacao de dominio que consulta o motor clinico externo uma unica vez por solicitacao explicita do veterinario e move a consulta EP para AP.")
+	@Operation(summary = "Gera suporte clinico", description = "Solicita suporte investigativo por IA para consulta EP. Em sucesso, persiste diagnostico provisorio nao confirmado e faz EP -> AP. A IA nao prescreve medicamentos.")
 	public ClinicalSupportResponse gerarSuporteClinico(
 			@PathVariable Long id,
 			@AuthenticationPrincipal UsuarioPrincipal principal
@@ -79,7 +81,7 @@ public class ConsultaWorkflowController {
 	}
 
 	@GetMapping("/{id}/suporte-clinico")
-	@Operation(summary = "Consulta suporte clinico persistido", description = "Retorna o suporte clinico previamente gerado sem chamar o motor externo.")
+	@Operation(summary = "Consulta suporte clinico persistido", description = "Retorna o suporte clinico previamente gerado sem chamar o motor externo. O resultado e apoio clinico, nao diagnostico veterinario confirmado.")
 	public ClinicalSupportResponse buscarSuporteClinico(
 			@PathVariable Long id,
 			@AuthenticationPrincipal UsuarioPrincipal principal
