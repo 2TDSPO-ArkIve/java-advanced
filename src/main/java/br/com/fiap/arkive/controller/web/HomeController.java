@@ -9,13 +9,7 @@ public class HomeController {
 
 	@GetMapping("/")
 	public String home(Authentication authentication) {
-		if (WebModelSupport.hasRole(authentication, "ROLE_SYSADMIN")) {
-			return "redirect:/sysadmin/dashboard";
-		}
-		if (WebModelSupport.hasRole(authentication, "ROLE_ADMIN_CLINICA")) {
-			return "redirect:/admin/dashboard";
-		}
-		return "redirect:/acesso-web-restrito";
+		return "redirect:" + WebModelSupport.roleLandingPath(authentication);
 	}
 
 }

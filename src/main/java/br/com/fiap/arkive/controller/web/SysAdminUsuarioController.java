@@ -1,11 +1,16 @@
 package br.com.fiap.arkive.controller.web;
 
-import br.com.fiap.arkive.dto.request.UsuarioRequest;
+import br.com.fiap.arkive.dto.request.UsuarioEditRequest;
+import br.com.fiap.arkive.dto.request.UsuarioProvisioningRequest;
+import br.com.fiap.arkive.dto.response.PasswordResetResult;
+import br.com.fiap.arkive.dto.response.UsuarioResponse;
 import br.com.fiap.arkive.entity.TipoUsuario;
 import br.com.fiap.arkive.exception.BusinessException;
 import br.com.fiap.arkive.exception.ResourceNotFoundException;
 import br.com.fiap.arkive.security.UsuarioPrincipal;
+import br.com.fiap.arkive.service.AccountProvisioningService;
 import br.com.fiap.arkive.service.UsuarioService;
+import br.com.fiap.arkive.service.PasswordLifecycleService;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.data.domain.PageRequest;
@@ -41,9 +46,17 @@ public class SysAdminUsuarioController {
 	);
 
 	private final ObjectProvider<UsuarioService> usuarioService;
+	private final ObjectProvider<PasswordLifecycleService> passwordLifecycleService;
+	private final ObjectProvider<AccountProvisioningService> accountProvisioningService;
 
-	public SysAdminUsuarioController(ObjectProvider<UsuarioService> usuarioService) {
+	public SysAdminUsuarioController(
+			ObjectProvider<UsuarioService> usuarioService,
+			ObjectProvider<PasswordLifecycleService> passwordLifecycleService,
+			ObjectProvider<AccountProvisioningService> accountProvisioningService
+	) {
 		this.usuarioService = usuarioService;
+		this.passwordLifecycleService = passwordLifecycleService;
+		this.accountProvisioningService = accountProvisioningService;
 	}
 
 	@GetMapping("/sysadmin/usuarios")
@@ -76,13 +89,34 @@ public class SysAdminUsuarioController {
 		WebModelSupport.addUserAttributes(model, authentication);
 		model.addAttribute("pageTitle", "Novo usuário");
 		model.addAttribute("usuario", novoRequest());
-		adicionarOpcoesFormulario(model);
+		adicionarOpcoesFormularioCriacao(model);
 		return "sysadmin/usuarios/formulario";
+	}
+
+	@GetMapping("/sysadmin/usuarios/{id}/editar")
+	public String editar(
+			@PathVariable Long id,
+			Model model,
+			Authentication authentication,
+			RedirectAttributes redirectAttributes
+	) {
+		WebModelSupport.addUserAttributes(model, authentication);
+		try {
+			UsuarioResponse usuario = usuarioService().buscarPorId(id);
+			model.addAttribute("pageTitle", "Editar usuário");
+			model.addAttribute("usuario", editarRequest(usuario));
+			model.addAttribute("usuarioId", id);
+			adicionarOpcoesFormularioEdicao(model, id);
+			return "sysadmin/usuarios/editar";
+		} catch (BusinessException | ResourceNotFoundException ex) {
+			redirectAttributes.addFlashAttribute("erro", ex.getMessage());
+			return "redirect:/sysadmin/usuarios";
+		}
 	}
 
 	@PostMapping("/sysadmin/usuarios")
 	public String criar(
-			@Valid @ModelAttribute("usuario") UsuarioRequest request,
+			@Valid @ModelAttribute("usuario") UsuarioProvisioningRequest request,
 			BindingResult bindingResult,
 			Model model,
 			Authentication authentication,
@@ -91,17 +125,45 @@ public class SysAdminUsuarioController {
 		WebModelSupport.addUserAttributes(model, authentication);
 		model.addAttribute("pageTitle", "Novo usuário");
 		if (bindingResult.hasErrors()) {
-			adicionarOpcoesFormulario(model);
+			adicionarOpcoesFormularioCriacao(model);
 			return "sysadmin/usuarios/formulario";
 		}
 		try {
-			usuarioService().criar(request);
+			accountProvisioningService.getObject().provisionar(request);
 		} catch (BusinessException | ResourceNotFoundException ex) {
 			bindingResult.reject("usuario.invalido", ex.getMessage());
-			adicionarOpcoesFormulario(model);
+			adicionarOpcoesFormularioCriacao(model);
 			return "sysadmin/usuarios/formulario";
 		}
-		redirectAttributes.addFlashAttribute("sucesso", "Usuário criado com sucesso.");
+		redirectAttributes.addFlashAttribute("sucesso", "Usuario criado com sucesso. No primeiro acesso, o usuario devera utilizar o e-mail cadastrado como login e senha inicial.");
+		redirectAttributes.addFlashAttribute("loginCriado", request.login() == null ? "" : request.login().trim());
+		return "redirect:/sysadmin/usuarios";
+	}
+
+	@PostMapping("/sysadmin/usuarios/{id}/editar")
+	public String atualizar(
+			@PathVariable Long id,
+			@Valid @ModelAttribute("usuario") UsuarioEditRequest request,
+			BindingResult bindingResult,
+			Model model,
+			Authentication authentication,
+			RedirectAttributes redirectAttributes
+	) {
+		WebModelSupport.addUserAttributes(model, authentication);
+		model.addAttribute("pageTitle", "Editar usuário");
+		model.addAttribute("usuarioId", id);
+		if (bindingResult.hasErrors()) {
+			adicionarOpcoesFormularioEdicao(model, id);
+			return "sysadmin/usuarios/editar";
+		}
+		try {
+			usuarioService().atualizar(id, request, currentUserId(authentication));
+		} catch (BusinessException | ResourceNotFoundException ex) {
+			bindingResult.reject("usuario.invalido", ex.getMessage());
+			adicionarOpcoesFormularioEdicao(model, id);
+			return "sysadmin/usuarios/editar";
+		}
+		redirectAttributes.addFlashAttribute("sucesso", "Usuário atualizado com sucesso.");
 		return "redirect:/sysadmin/usuarios";
 	}
 
@@ -131,15 +193,46 @@ public class SysAdminUsuarioController {
 		return "redirect:/sysadmin/usuarios";
 	}
 
-	private void adicionarOpcoesFormulario(Model model) {
-		model.addAttribute("tipos", TipoUsuario.values());
-		model.addAttribute("clinicas", usuarioService().listarClinicasAtivas());
-		model.addAttribute("veterinarios", usuarioService().listarVeterinariosAtivos());
-		model.addAttribute("responsaveis", usuarioService().listarResponsaveisAtivos());
+	@PostMapping("/sysadmin/usuarios/{id}/resetar-senha")
+	public String resetarSenha(@PathVariable Long id, RedirectAttributes redirectAttributes) {
+		try {
+			PasswordResetResult result = passwordLifecycleService.getObject().resetarSenha(id);
+			redirectAttributes.addFlashAttribute("sucesso", "Senha temporaria gerada. Informe ao usuario e solicite a troca no proximo acesso.");
+			redirectAttributes.addFlashAttribute("senhaTemporaria", result.senhaTemporaria());
+			redirectAttributes.addFlashAttribute("senhaTemporariaUsuarioId", result.usuarioId());
+		} catch (BusinessException | ResourceNotFoundException ex) {
+			redirectAttributes.addFlashAttribute("erro", ex.getMessage());
+		}
+		return "redirect:/sysadmin/usuarios";
 	}
 
-	private UsuarioRequest novoRequest() {
-		return new UsuarioRequest("", null, "", "", null, null, null, "S");
+	private void adicionarOpcoesFormularioCriacao(Model model) {
+		model.addAttribute("tipos", TipoUsuario.values());
+		model.addAttribute("clinicas", usuarioService().listarClinicasAtivas());
+		model.addAttribute("veterinarios", usuarioService().listarVeterinariosDisponiveisParaCriacao());
+		model.addAttribute("responsaveis", usuarioService().listarResponsaveisDisponiveisParaCriacao());
+	}
+
+	private void adicionarOpcoesFormularioEdicao(Model model, Long usuarioId) {
+		model.addAttribute("tipos", TipoUsuario.values());
+		model.addAttribute("clinicas", usuarioService().listarClinicasAtivas());
+		model.addAttribute("veterinarios", usuarioService().listarVeterinariosDisponiveisParaEdicao(usuarioId));
+		model.addAttribute("responsaveis", usuarioService().listarResponsaveisDisponiveisParaEdicao(usuarioId));
+	}
+
+	private UsuarioProvisioningRequest novoRequest() {
+		return new UsuarioProvisioningRequest("", null, "", null, null, null);
+	}
+
+	private UsuarioEditRequest editarRequest(UsuarioResponse usuario) {
+		return new UsuarioEditRequest(
+				usuario.nome(),
+				usuario.tipo(),
+				usuario.login(),
+				usuario.responsavelId(),
+				usuario.veterinarioId(),
+				usuario.clinicaId()
+		);
 	}
 
 	private Long currentUserId(Authentication authentication) {

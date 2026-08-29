@@ -1,12 +1,16 @@
 package br.com.fiap.arkive.controller.web;
 
-import br.com.fiap.arkive.dto.request.UsuarioRequest;
+import br.com.fiap.arkive.dto.request.UsuarioEditRequest;
+import br.com.fiap.arkive.dto.request.UsuarioProvisioningRequest;
+import br.com.fiap.arkive.dto.response.PasswordResetResult;
 import br.com.fiap.arkive.dto.response.UsuarioContextOption;
 import br.com.fiap.arkive.dto.response.UsuarioResponse;
 import br.com.fiap.arkive.entity.TipoUsuario;
 import br.com.fiap.arkive.exception.BusinessException;
 import br.com.fiap.arkive.security.UsuarioPrincipal;
+import br.com.fiap.arkive.service.AccountProvisioningService;
 import br.com.fiap.arkive.service.UsuarioService;
+import br.com.fiap.arkive.service.PasswordLifecycleService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
@@ -57,6 +61,12 @@ class SysAdminUsuarioControllerTest {
 	@MockitoBean
 	private UsuarioService usuarioService;
 
+	@MockitoBean
+	private PasswordLifecycleService passwordLifecycleService;
+
+	@MockitoBean
+	private AccountProvisioningService accountProvisioningService;
+
 	@Autowired
 	SysAdminUsuarioControllerTest(MockMvc mockMvc, RequestMappingHandlerMapping handlerMapping) {
 		this.mockMvc = mockMvc;
@@ -68,8 +78,10 @@ class SysAdminUsuarioControllerTest {
 		when(usuarioService.listar(any(Pageable.class))).thenReturn(new PageImpl<>(List.of()));
 		when(usuarioService.listarPorTipos(anyList(), any(Pageable.class))).thenReturn(new PageImpl<>(List.of()));
 		when(usuarioService.listarClinicasAtivas()).thenReturn(List.of(new UsuarioContextOption(1L, "Clínica Central")));
-		when(usuarioService.listarVeterinariosAtivos()).thenReturn(List.of(new UsuarioContextOption(2L, "Dra. Vera")));
-		when(usuarioService.listarResponsaveisAtivos()).thenReturn(List.of(new UsuarioContextOption(3L, "Rui Responsável")));
+		when(usuarioService.listarVeterinariosDisponiveisParaCriacao()).thenReturn(List.of(new UsuarioContextOption(2L, "Dra. Vera")));
+		when(usuarioService.listarResponsaveisDisponiveisParaCriacao()).thenReturn(List.of(new UsuarioContextOption(3L, "Rui Responsável")));
+		when(usuarioService.listarVeterinariosDisponiveisParaEdicao(10L)).thenReturn(List.of(new UsuarioContextOption(2L, "Dra. Vera")));
+		when(usuarioService.listarResponsaveisDisponiveisParaEdicao(10L)).thenReturn(List.of(new UsuarioContextOption(3L, "Rui Responsável")));
 	}
 
 	@Test
@@ -124,6 +136,8 @@ class SysAdminUsuarioControllerTest {
 				null,
 				null,
 				null,
+				null,
+				false,
 				null
 		);
 		when(usuarioService.listar(any(Pageable.class))).thenReturn(new PageImpl<>(List.of(usuario)));
@@ -199,35 +213,114 @@ class SysAdminUsuarioControllerTest {
 				.andExpect(content().string(containsString("Responsável")))
 				.andExpect(content().string(containsString("Clínica Central")))
 				.andExpect(content().string(containsString("Dra. Vera")))
-				.andExpect(content().string(containsString("Rui Responsável")));
+				.andExpect(content().string(containsString("Rui Responsável")))
+				.andExpect(content().string(containsString("Primeiro acesso")))
+				.andExpect(content().string(containsString("e-mail cadastrado como login e senha inicial")))
+				.andExpect(content().string(not(containsString("name=\"senha\""))));
+	}
+
+	@Test
+	@WithMockUser(roles = "SYSADMIN")
+	void formularioNovoOfereceSomenteVeterinariosEResponsaveisDisponiveis() throws Exception {
+		when(usuarioService.listarVeterinariosDisponiveisParaCriacao()).thenReturn(List.of(new UsuarioContextOption(2L, "Dra. Livre")));
+		when(usuarioService.listarResponsaveisDisponiveisParaCriacao()).thenReturn(List.of(new UsuarioContextOption(3L, "Rui Livre")));
+
+		mockMvc.perform(get("/sysadmin/usuarios/novo"))
+				.andExpect(status().isOk())
+				.andExpect(content().string(containsString("Dra. Livre")))
+				.andExpect(content().string(not(containsString("Dra. Associada"))))
+				.andExpect(content().string(containsString("Rui Livre")))
+				.andExpect(content().string(not(containsString("Rui Associado"))))
+				.andExpect(content().string(containsString("Clínica Central")));
+
+		verify(usuarioService).listarVeterinariosDisponiveisParaCriacao();
+		verify(usuarioService).listarResponsaveisDisponiveisParaCriacao();
+		verify(usuarioService).listarClinicasAtivas();
+	}
+
+	@Test
+	@WithMockUser(roles = "SYSADMIN")
+	void formularioNovoExibeEstadoVazioParaVinculosIndisponiveis() throws Exception {
+		when(usuarioService.listarVeterinariosDisponiveisParaCriacao()).thenReturn(List.of());
+		when(usuarioService.listarResponsaveisDisponiveisParaCriacao()).thenReturn(List.of());
+
+		mockMvc.perform(get("/sysadmin/usuarios/novo"))
+				.andExpect(status().isOk())
+				.andExpect(content().string(containsString("Nenhum veterinário disponível")))
+				.andExpect(content().string(containsString("Nenhum responsável disponível")));
+	}
+
+	@Test
+	@WithMockUser(roles = "SYSADMIN")
+	void formularioEditarRenderizaPerfisSemCampoSenha() throws Exception {
+		when(usuarioService.buscarPorId(10L)).thenReturn(usuarioResponse());
+
+		mockMvc.perform(get("/sysadmin/usuarios/10/editar"))
+				.andExpect(status().isOk())
+				.andExpect(content().string(containsString("Editar usuário")))
+				.andExpect(content().string(containsString("Clínica Central")))
+				.andExpect(content().string(not(containsString("name=\"senha\""))));
+	}
+
+	@Test
+	@WithMockUser(roles = "SYSADMIN")
+	void formularioEditarMantemVeterinarioAtualEExcluiVinculosDeOutrosUsuarios() throws Exception {
+		when(usuarioService.buscarPorId(10L)).thenReturn(usuarioVeterinarioResponse());
+		when(usuarioService.listarVeterinariosDisponiveisParaEdicao(10L)).thenReturn(List.of(
+				new UsuarioContextOption(2L, "Dra. Atual"),
+				new UsuarioContextOption(4L, "Dr. Livre")
+		));
+
+		mockMvc.perform(get("/sysadmin/usuarios/10/editar"))
+				.andExpect(status().isOk())
+				.andExpect(content().string(containsString("Dra. Atual")))
+				.andExpect(content().string(containsString("Dr. Livre")))
+				.andExpect(content().string(not(containsString("Dra. Outro Usuario"))));
+
+		verify(usuarioService).listarVeterinariosDisponiveisParaEdicao(10L);
+	}
+
+	@Test
+	@WithMockUser(roles = "SYSADMIN")
+	void formularioEditarMantemResponsavelAtualEExcluiVinculosDeOutrosUsuarios() throws Exception {
+		when(usuarioService.buscarPorId(10L)).thenReturn(usuarioResponsavelResponse());
+		when(usuarioService.listarResponsaveisDisponiveisParaEdicao(10L)).thenReturn(List.of(
+				new UsuarioContextOption(3L, "Rui Atual"),
+				new UsuarioContextOption(5L, "Mia Livre")
+		));
+
+		mockMvc.perform(get("/sysadmin/usuarios/10/editar"))
+				.andExpect(status().isOk())
+				.andExpect(content().string(containsString("Rui Atual")))
+				.andExpect(content().string(containsString("Mia Livre")))
+				.andExpect(content().string(not(containsString("Rui Outro Usuario"))));
+
+		verify(usuarioService).listarResponsaveisDisponiveisParaEdicao(10L);
 	}
 
 	@Test
 	void criarUsuarioExigeCsrf() throws Exception {
 		mockMvc.perform(post("/sysadmin/usuarios").with(user("Ana Sys").roles("SYSADMIN")))
 				.andExpect(status().isForbidden());
-		verify(usuarioService, never()).criar(any());
+		verify(accountProvisioningService, never()).provisionar(any());
 	}
 
 	@Test
-	void criarUsuarioValidoChamaServiceERedireciona() throws Exception {
-		ArgumentCaptor<UsuarioRequest> captor = ArgumentCaptor.forClass(UsuarioRequest.class);
+	void criarUsuarioValidoChamaProvisionamentoSemCampoSenhaERedireciona() throws Exception {
+		ArgumentCaptor<UsuarioProvisioningRequest> captor = ArgumentCaptor.forClass(UsuarioProvisioningRequest.class);
 
 		mockMvc.perform(post("/sysadmin/usuarios")
 						.with(user("Ana Sys").roles("SYSADMIN"))
 						.with(csrf())
 						.param("nome", "Novo Admin")
 						.param("login", "novo@arkive.com")
-						.param("senha", "senha-segura")
-						.param("tipo", "SYSADMIN")
-						.param("ativo", "S"))
+						.param("tipo", "SYSADMIN"))
 				.andExpect(status().is3xxRedirection())
 				.andExpect(redirectedUrl("/sysadmin/usuarios"));
 
-		verify(usuarioService).criar(captor.capture());
+		verify(accountProvisioningService).provisionar(captor.capture());
 		assertEquals("Novo Admin", captor.getValue().nome());
 		assertEquals("novo@arkive.com", captor.getValue().login());
-		assertEquals("senha-segura", captor.getValue().senha());
 		assertEquals(TipoUsuario.SYSADMIN, captor.getValue().tipo());
 	}
 
@@ -238,31 +331,69 @@ class SysAdminUsuarioControllerTest {
 						.with(csrf())
 						.param("nome", "")
 						.param("login", "")
-						.param("senha", "curta")
-						.param("tipo", "")
-						.param("ativo", "S"))
+						.param("tipo", ""))
 				.andExpect(status().isOk())
 				.andExpect(content().string(containsString("Novo usuário")));
 
-		verify(usuarioService, never()).criar(any());
+		verify(accountProvisioningService, never()).provisionar(any());
+	}
+
+	@Test
+	void criarUsuarioExigeLoginComFormatoDeEmail() throws Exception {
+		mockMvc.perform(post("/sysadmin/usuarios")
+						.with(user("Ana Sys").roles("SYSADMIN"))
+						.with(csrf())
+						.param("nome", "Novo Admin")
+						.param("login", "login-invalido")
+						.param("tipo", "SYSADMIN"))
+				.andExpect(status().isOk())
+				.andExpect(content().string(containsString("Novo usuário")));
+
+		verify(accountProvisioningService, never()).provisionar(any());
 	}
 
 	@Test
 	void criarUsuarioComErroDeNegocioRenderizaFormularioSemSenha() throws Exception {
-		doThrow(new BusinessException("Login de usuario ja cadastrado.")).when(usuarioService).criar(any());
+		doThrow(new BusinessException("Login de usuario ja cadastrado.")).when(accountProvisioningService).provisionar(any());
 
 		mockMvc.perform(post("/sysadmin/usuarios")
 						.with(user("Ana Sys").roles("SYSADMIN"))
 						.with(csrf())
 						.param("nome", "Novo Admin")
 						.param("login", "novo@arkive.com")
-						.param("senha", "senha-segura")
-						.param("tipo", "SYSADMIN")
-						.param("ativo", "S"))
+						.param("tipo", "SYSADMIN"))
 				.andExpect(status().isOk())
 				.andExpect(content().string(containsString("Login de usuario ja cadastrado.")))
-				.andExpect(content().string(not(containsString("value=\"senha-segura\""))))
+				.andExpect(content().string(not(containsString("name=\"senha\""))))
 				.andExpect(content().string(not(containsString("senhaHash"))));
+	}
+
+	@Test
+	void atualizarUsuarioExigeCsrf() throws Exception {
+		mockMvc.perform(post("/sysadmin/usuarios/10/editar").with(user("Ana Sys").roles("SYSADMIN")))
+				.andExpect(status().isForbidden());
+		verify(usuarioService, never()).atualizar(any(), any(), any());
+	}
+
+	@Test
+	void atualizarUsuarioValidoChamaServiceComUsuarioAtual() throws Exception {
+		UsuarioPrincipal principal = new UsuarioPrincipal(99L, "Ana Sys", "ana@arkive.com", "$2a$10$hash", TipoUsuario.SYSADMIN, "S");
+		ArgumentCaptor<UsuarioEditRequest> captor = ArgumentCaptor.forClass(UsuarioEditRequest.class);
+
+		mockMvc.perform(post("/sysadmin/usuarios/10/editar")
+						.with(user(principal))
+						.with(csrf())
+						.param("nome", "Admin Editado")
+						.param("login", "admin.editado@arkive.com")
+						.param("tipo", "ADMIN_CLINICA")
+						.param("clinicaId", "1"))
+				.andExpect(status().is3xxRedirection())
+				.andExpect(redirectedUrl("/sysadmin/usuarios"));
+
+		verify(usuarioService).atualizar(eq(10L), captor.capture(), eq(99L));
+		assertEquals("Admin Editado", captor.getValue().nome());
+		assertEquals(TipoUsuario.ADMIN_CLINICA, captor.getValue().tipo());
+		assertEquals(1L, captor.getValue().clinicaId());
 	}
 
 	@Test
@@ -297,12 +428,89 @@ class SysAdminUsuarioControllerTest {
 	}
 
 	@Test
+	void resetarSenhaExigeCsrf() throws Exception {
+		mockMvc.perform(post("/sysadmin/usuarios/10/resetar-senha").with(user("Ana Sys").roles("SYSADMIN")))
+				.andExpect(status().isForbidden());
+		verify(passwordLifecycleService, never()).resetarSenha(any());
+	}
+
+	@Test
+	void resetarSenhaChamaServiceEMantemSenhaForaDaUrl() throws Exception {
+		when(passwordLifecycleService.resetarSenha(10L)).thenReturn(new PasswordResetResult(10L, "TempSenha1"));
+
+		mockMvc.perform(post("/sysadmin/usuarios/10/resetar-senha")
+						.with(user("Ana Sys").roles("SYSADMIN"))
+						.with(csrf()))
+				.andExpect(status().is3xxRedirection())
+				.andExpect(redirectedUrl("/sysadmin/usuarios"));
+
+		verify(passwordLifecycleService).resetarSenha(10L);
+	}
+
+	@Test
 	void naoExisteRotaGetParaMudancaDeEstado() {
 		boolean hasGetStateRoute = handlerMapping.getHandlerMethods().keySet().stream()
 				.map(RequestMappingInfo::toString)
 				.anyMatch(mapping -> mapping.contains("GET") && (mapping.contains("/desativar") || mapping.contains("/ativar")));
 
 		assertTrue(!hasGetStateRoute);
+	}
+
+	private UsuarioResponse usuarioResponse() {
+		return new UsuarioResponse(
+				10L,
+				"Ana Sys",
+				TipoUsuario.SYSADMIN,
+				"ana@arkive.com",
+				"S",
+				LocalDateTime.of(2026, 8, 24, 10, 0),
+				null,
+				null,
+				null,
+				null,
+				null,
+				null,
+				false,
+				null
+		);
+	}
+
+	private UsuarioResponse usuarioVeterinarioResponse() {
+		return new UsuarioResponse(
+				10L,
+				"Dra. Atual",
+				TipoUsuario.VETERINARIO,
+				"vera@arkive.com",
+				"S",
+				LocalDateTime.of(2026, 8, 24, 10, 0),
+				null,
+				null,
+				2L,
+				"Dra. Atual",
+				null,
+				null,
+				false,
+				null
+		);
+	}
+
+	private UsuarioResponse usuarioResponsavelResponse() {
+		return new UsuarioResponse(
+				10L,
+				"Rui Atual",
+				TipoUsuario.RESPONSAVEL,
+				"rui@arkive.com",
+				"S",
+				LocalDateTime.of(2026, 8, 24, 10, 0),
+				3L,
+				"Rui Atual",
+				null,
+				null,
+				null,
+				null,
+				false,
+				null
+		);
 	}
 
 }

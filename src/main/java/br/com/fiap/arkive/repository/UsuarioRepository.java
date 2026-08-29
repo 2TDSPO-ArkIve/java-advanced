@@ -22,6 +22,16 @@ public interface UsuarioRepository extends JpaRepository<Usuario, Long> {
 
 	boolean existsByLogin(String login);
 
+	boolean existsByLoginAndIdNot(String login, Long id);
+
+	boolean existsByVeterinarioId(Long veterinarioId);
+
+	boolean existsByVeterinarioIdAndIdNot(Long veterinarioId, Long id);
+
+	boolean existsByResponsavelId(Long responsavelId);
+
+	boolean existsByResponsavelIdAndIdNot(Long responsavelId, Long id);
+
 	long countByTipoAndAtivo(TipoUsuario tipo, String ativo);
 
 	@Query("""

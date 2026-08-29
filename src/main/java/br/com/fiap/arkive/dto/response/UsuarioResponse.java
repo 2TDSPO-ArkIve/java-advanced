@@ -20,7 +20,9 @@ public record UsuarioResponse(
 		Long veterinarioId,
 		String veterinarioNome,
 		Long clinicaId,
-		String clinicaNome
+		String clinicaNome,
+		boolean trocaSenhaObrigatoria,
+		LocalDateTime dataUltimaTrocaSenha
 ) {
 	public static UsuarioResponse fromEntity(Usuario usuario) {
 		Responsavel responsavel = usuario.getResponsavel();
@@ -38,7 +40,9 @@ public record UsuarioResponse(
 				veterinario == null ? null : veterinario.getId(),
 				veterinario == null ? null : veterinario.getNome(),
 				clinica == null ? null : clinica.getId(),
-				clinica == null ? null : clinica.getNome()
+				clinica == null ? null : clinica.getNome(),
+				"S".equals(usuario.getTrocaSenha()),
+				usuario.getDataUltimaTrocaSenha()
 		);
 	}
 }

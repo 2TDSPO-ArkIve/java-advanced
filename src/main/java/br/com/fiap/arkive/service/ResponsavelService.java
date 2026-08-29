@@ -13,6 +13,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
+import java.util.List;
 import java.util.Set;
 
 @Service
@@ -32,6 +33,10 @@ public class ResponsavelService {
 
 	public ResponsavelService(ResponsavelRepository responsavelRepository) {
 		this.responsavelRepository = responsavelRepository;
+	}
+
+	public List<String> listarTipos() {
+		return TIPOS.stream().sorted().toList();
 	}
 
 	@Transactional

@@ -2,6 +2,7 @@ package br.com.fiap.arkive.service;
 
 import br.com.fiap.arkive.dto.request.ConsultaRequest;
 import br.com.fiap.arkive.dto.response.ConsultaResponse;
+import br.com.fiap.arkive.domain.consulta.StatusConsulta;
 import br.com.fiap.arkive.entity.Animal;
 import br.com.fiap.arkive.entity.Clinica;
 import br.com.fiap.arkive.entity.Consulta;
@@ -12,14 +13,17 @@ import br.com.fiap.arkive.repository.AnimalRepository;
 import br.com.fiap.arkive.repository.ClinicaRepository;
 import br.com.fiap.arkive.repository.ConsultaRepository;
 import br.com.fiap.arkive.repository.VeterinarioRepository;
+import br.com.fiap.arkive.security.UsuarioPrincipal;
 import org.springframework.context.annotation.Profile;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDate;
 import java.util.Set;
 
 @Service
@@ -27,26 +31,28 @@ import java.util.Set;
 public class ConsultaService {
 
 	private static final Set<String> MODALIDADES = Set.of("PRESENCIAL", "REMOTA");
-	private static final Set<String> STATUS = Set.of("AG", "EP", "AP", "FI", "CA");
 
 	private final ConsultaRepository consultaRepository;
 	private final AnimalRepository animalRepository;
 	private final VeterinarioRepository veterinarioRepository;
 	private final ClinicaRepository clinicaRepository;
 	private final EventoJornadaService eventoJornadaService;
+	private final ClinicalAccessService clinicalAccessService;
 
 	public ConsultaService(
 			ConsultaRepository consultaRepository,
 			AnimalRepository animalRepository,
 			VeterinarioRepository veterinarioRepository,
 			ClinicaRepository clinicaRepository,
-			EventoJornadaService eventoJornadaService
+			EventoJornadaService eventoJornadaService,
+			ClinicalAccessService clinicalAccessService
 	) {
 		this.consultaRepository = consultaRepository;
 		this.animalRepository = animalRepository;
 		this.veterinarioRepository = veterinarioRepository;
 		this.clinicaRepository = clinicaRepository;
 		this.eventoJornadaService = eventoJornadaService;
+		this.clinicalAccessService = clinicalAccessService;
 	}
 
 	@Transactional
@@ -77,8 +83,48 @@ public class ConsultaService {
 	}
 
 	@Transactional(readOnly = true)
+	public Page<ConsultaResponse> listarAutorizado(
+			Long animalId,
+			Long veterinarioId,
+			Long clinicaId,
+			String status,
+			String modalidade,
+			Pageable pageable,
+			UsuarioPrincipal principal
+	) {
+		if (principal == null) {
+			throw new AccessDeniedException("Usuario autenticado invalido.");
+		}
+		validarStatusQuandoInformado(status);
+		validarModalidadeQuandoInformada(modalidade);
+		return switch (principal.getTipoUsuario()) {
+			case SYSADMIN -> consultaRepository.buscar(animalId, veterinarioId, clinicaId, vazioParaNulo(status), vazioParaNulo(modalidade), pageable)
+					.map(ConsultaResponse::fromEntity);
+			case VETERINARIO -> listarParaVeterinario(animalId, veterinarioId, clinicaId, status, modalidade, pageable, principal.getVeterinarioId());
+			case RESPONSAVEL -> consultaRepository.buscarParaResponsavel(
+					principal.getResponsavelId(),
+					LocalDate.now(),
+					animalId,
+					veterinarioId,
+					clinicaId,
+					vazioParaNulo(status),
+					vazioParaNulo(modalidade),
+					pageable
+			).map(ConsultaResponse::fromEntity);
+			case ADMIN_CLINICA -> listarParaClinica(animalId, veterinarioId, clinicaId, status, modalidade, pageable, principal.getClinicaId());
+		};
+	}
+
+	@Transactional(readOnly = true)
 	public ConsultaResponse buscarPorId(Long id) {
 		return ConsultaResponse.fromEntity(buscarEntidade(id));
+	}
+
+	@Transactional(readOnly = true)
+	public ConsultaResponse buscarPorIdAutorizado(Long id, UsuarioPrincipal principal) {
+		Consulta consulta = buscarEntidade(id);
+		clinicalAccessService.exigirLeituraConsulta(principal, consulta);
+		return ConsultaResponse.fromEntity(consulta);
 	}
 
 	@Transactional
@@ -105,10 +151,42 @@ public class ConsultaService {
 				.orElseThrow(() -> new ResourceNotFoundException("Consulta nao encontrada."));
 	}
 
+	private Page<ConsultaResponse> listarParaVeterinario(
+			Long animalId,
+			Long veterinarioId,
+			Long clinicaId,
+			String status,
+			String modalidade,
+			Pageable pageable,
+			Long veterinarioAutenticadoId
+	) {
+		if (veterinarioAutenticadoId == null || (veterinarioId != null && !veterinarioId.equals(veterinarioAutenticadoId))) {
+			return Page.empty(pageable);
+		}
+		return consultaRepository.buscar(animalId, veterinarioAutenticadoId, clinicaId, vazioParaNulo(status), vazioParaNulo(modalidade), pageable)
+				.map(ConsultaResponse::fromEntity);
+	}
+
+	private Page<ConsultaResponse> listarParaClinica(
+			Long animalId,
+			Long veterinarioId,
+			Long clinicaId,
+			String status,
+			String modalidade,
+			Pageable pageable,
+			Long clinicaAutenticadaId
+	) {
+		if (clinicaAutenticadaId == null || (clinicaId != null && !clinicaId.equals(clinicaAutenticadaId))) {
+			return Page.empty(pageable);
+		}
+		return consultaRepository.buscar(animalId, veterinarioId, clinicaAutenticadaId, vazioParaNulo(status), vazioParaNulo(modalidade), pageable)
+				.map(ConsultaResponse::fromEntity);
+	}
+
 	private void aplicarDados(Consulta consulta, ConsultaRequest request, boolean criando) {
-		String status = criando && request.status() == null ? "AG" : request.status();
+		String status = criando && request.status() == null ? StatusConsulta.AG.getCodigo() : request.status();
 		validarModalidadeObrigatoria(request.modalidade());
-		validarStatusQuandoInformado(status);
+		validarStatusCriacaoOuAtualizacao(consulta, status, criando);
 		Animal animal = buscarAnimal(request.animalId());
 		Veterinario veterinario = buscarVeterinario(request.veterinarioId());
 		Clinica clinica = request.clinicaId() == null ? null : buscarClinica(request.clinicaId());
@@ -153,8 +231,19 @@ public class ConsultaService {
 	}
 
 	private void validarStatusQuandoInformado(String status) {
-		if (status != null && !status.isBlank() && !STATUS.contains(status)) {
-			throw new BusinessException("Status deve ser AG, EP, AP, FI ou CA.");
+		StatusConsulta.validarQuandoInformado(status);
+	}
+
+	private void validarStatusCriacaoOuAtualizacao(Consulta consulta, String status, boolean criando) {
+		validarStatusQuandoInformado(status);
+		if (criando) {
+			if (status != null && !status.isBlank() && !StatusConsulta.AG.getCodigo().equals(status)) {
+				throw new BusinessException("Novas consultas devem iniciar com status AG.");
+			}
+			return;
+		}
+		if (status != null && !status.isBlank() && !status.equals(consulta.getStatus())) {
+			throw new BusinessException("O status da consulta deve ser alterado pelas operacoes do fluxo clinico.");
 		}
 	}
 

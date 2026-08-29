@@ -1,6 +1,7 @@
 package br.com.fiap.arkive.service;
 
 import br.com.fiap.arkive.dto.request.UsuarioRequest;
+import br.com.fiap.arkive.dto.request.UsuarioEditRequest;
 import br.com.fiap.arkive.dto.response.UsuarioContextOption;
 import br.com.fiap.arkive.dto.response.UsuarioResponse;
 import br.com.fiap.arkive.entity.Clinica;
@@ -49,19 +50,30 @@ public class UsuarioService {
 
 	@Transactional
 	public UsuarioResponse criar(UsuarioRequest request) {
+		return criarInterno(request, false);
+	}
+
+	@Transactional
+	public UsuarioResponse criarProvisionado(UsuarioRequest request) {
+		return criarInterno(request, true);
+	}
+
+	private UsuarioResponse criarInterno(UsuarioRequest request, boolean trocaSenhaObrigatoria) {
 		validarCamposObrigatorios(request);
 		validarSNQuandoInformado(request.ativo(), "Ativo");
-		validarLoginDisponivel(request.login());
-		AssociacoesUsuario associacoes = validarAssociacoes(request);
+		String login = normalizarLogin(request.login());
+		validarLoginDisponivel(login);
+		AssociacoesUsuario associacoes = validarAssociacoes(request, null);
 		Usuario usuario = new Usuario();
 		usuario.setNome(request.nome());
 		usuario.setTipo(request.tipo());
-		usuario.setLogin(request.login());
+		usuario.setLogin(login);
 		usuario.setSenhaHash(passwordEncoder.encode(request.senha()));
 		usuario.setResponsavel(associacoes.responsavel());
 		usuario.setVeterinario(associacoes.veterinario());
 		usuario.setClinica(associacoes.clinica());
 		usuario.setAtivo(request.ativo() == null ? "S" : request.ativo());
+		usuario.setTrocaSenha(trocaSenhaObrigatoria ? "S" : "N");
 		return UsuarioResponse.fromEntity(usuarioRepository.save(usuario));
 	}
 
@@ -115,6 +127,23 @@ public class UsuarioService {
 		usuarioRepository.save(usuario);
 	}
 
+	@Transactional
+	public UsuarioResponse atualizar(Long id, UsuarioEditRequest request, Long usuarioAtualId) {
+		validarCamposObrigatoriosEdicao(request);
+		Usuario usuario = buscarEntidade(id);
+		validarProtecaoAlteracaoPerfil(usuario, request.tipo(), usuarioAtualId);
+		String login = normalizarLogin(request.login());
+		validarLoginDisponivelParaEdicao(login, id);
+		AssociacoesUsuario associacoes = validarAssociacoes(request, id);
+		usuario.setNome(request.nome());
+		usuario.setLogin(login);
+		usuario.setTipo(request.tipo());
+		usuario.setResponsavel(associacoes.responsavel());
+		usuario.setVeterinario(associacoes.veterinario());
+		usuario.setClinica(associacoes.clinica());
+		return UsuarioResponse.fromEntity(usuarioRepository.save(usuario));
+	}
+
 	@Transactional(readOnly = true)
 	public List<UsuarioContextOption> listarClinicasAtivas() {
 		return clinicaRepository.findByAtivoOrderByNomeAsc("S").stream()
@@ -130,8 +159,36 @@ public class UsuarioService {
 	}
 
 	@Transactional(readOnly = true)
+	public List<UsuarioContextOption> listarVeterinariosDisponiveisParaCriacao() {
+		return veterinarioRepository.findAtivosSemUsuarioOrderByNomeAsc().stream()
+				.map(veterinario -> new UsuarioContextOption(veterinario.getId(), veterinario.getNome()))
+				.toList();
+	}
+
+	@Transactional(readOnly = true)
+	public List<UsuarioContextOption> listarVeterinariosDisponiveisParaEdicao(Long usuarioId) {
+		return veterinarioRepository.findDisponiveisParaUsuarioOrderByNomeAsc(usuarioId).stream()
+				.map(veterinario -> new UsuarioContextOption(veterinario.getId(), veterinario.getNome()))
+				.toList();
+	}
+
+	@Transactional(readOnly = true)
 	public List<UsuarioContextOption> listarResponsaveisAtivos() {
 		return responsavelRepository.findByAtivoOrderByNomeAsc("S").stream()
+				.map(responsavel -> new UsuarioContextOption(responsavel.getId(), responsavel.getNome()))
+				.toList();
+	}
+
+	@Transactional(readOnly = true)
+	public List<UsuarioContextOption> listarResponsaveisDisponiveisParaCriacao() {
+		return responsavelRepository.findAtivosSemUsuarioOrderByNomeAsc().stream()
+				.map(responsavel -> new UsuarioContextOption(responsavel.getId(), responsavel.getNome()))
+				.toList();
+	}
+
+	@Transactional(readOnly = true)
+	public List<UsuarioContextOption> listarResponsaveisDisponiveisParaEdicao(Long usuarioId) {
+		return responsavelRepository.findDisponiveisParaUsuarioOrderByNomeAsc(usuarioId).stream()
 				.map(responsavel -> new UsuarioContextOption(responsavel.getId(), responsavel.getNome()))
 				.toList();
 	}
@@ -140,8 +197,21 @@ public class UsuarioService {
 	public void validarCriacao(UsuarioRequest request) {
 		validarCamposObrigatorios(request);
 		validarSNQuandoInformado(request.ativo(), "Ativo");
-		validarLoginDisponivel(request.login());
-		validarAssociacoes(request);
+		validarLoginDisponivel(normalizarLogin(request.login()));
+		validarAssociacoes(request, null);
+	}
+
+	@Transactional(readOnly = true)
+	public void validarEdicao(Long id, UsuarioEditRequest request, Long usuarioAtualId) {
+		validarCamposObrigatoriosEdicao(request);
+		Usuario usuario = buscarEntidade(id);
+		validarProtecaoAlteracaoPerfil(usuario, request.tipo(), usuarioAtualId);
+		validarLoginDisponivelParaEdicao(normalizarLogin(request.login()), id);
+		validarAssociacoes(request, id);
+	}
+
+	private String normalizarLogin(String login) {
+		return login == null ? null : login.trim();
 	}
 
 	private Usuario buscarEntidade(Long id) {
@@ -164,60 +234,118 @@ public class UsuarioService {
 		}
 	}
 
+	private void validarCamposObrigatoriosEdicao(UsuarioEditRequest request) {
+		if (request.tipo() == null) {
+			throw new BusinessException("Tipo de usuario e obrigatorio.");
+		}
+		if (request.nome() == null || request.nome().isBlank()) {
+			throw new BusinessException("Nome do usuario e obrigatorio.");
+		}
+		if (request.login() == null || request.login().isBlank()) {
+			throw new BusinessException("Login do usuario e obrigatorio.");
+		}
+	}
+
 	private void validarLoginDisponivel(String login) {
 		if (usuarioRepository.existsByLogin(login)) {
 			throw new BusinessException("Login de usuario ja cadastrado.");
 		}
 	}
 
-	private AssociacoesUsuario validarAssociacoes(UsuarioRequest request) {
-		TipoUsuario tipo = request.tipo();
+	private void validarLoginDisponivelParaEdicao(String login, Long usuarioId) {
+		if (usuarioRepository.existsByLoginAndIdNot(login, usuarioId)) {
+			throw new BusinessException("Login de usuario ja cadastrado.");
+		}
+	}
+
+	private AssociacoesUsuario validarAssociacoes(UsuarioRequest request, Long usuarioIdIgnorado) {
+		return validarAssociacoes(request.tipo(), request.responsavelId(), request.veterinarioId(), request.clinicaId(), usuarioIdIgnorado);
+	}
+
+	private AssociacoesUsuario validarAssociacoes(UsuarioEditRequest request, Long usuarioIdIgnorado) {
+		return validarAssociacoes(request.tipo(), request.responsavelId(), request.veterinarioId(), request.clinicaId(), usuarioIdIgnorado);
+	}
+
+	private AssociacoesUsuario validarAssociacoes(TipoUsuario tipo, Long responsavelId, Long veterinarioId, Long clinicaId, Long usuarioIdIgnorado) {
 		return switch (tipo) {
-			case SYSADMIN -> validarSysadmin(request);
-			case ADMIN_CLINICA -> validarAdminClinica(request);
-			case VETERINARIO -> validarVeterinario(request);
-			case RESPONSAVEL -> validarResponsavel(request);
+			case SYSADMIN -> validarSysadmin(responsavelId, veterinarioId, clinicaId);
+			case ADMIN_CLINICA -> validarAdminClinica(responsavelId, veterinarioId, clinicaId);
+			case VETERINARIO -> validarVeterinario(responsavelId, veterinarioId, clinicaId, usuarioIdIgnorado);
+			case RESPONSAVEL -> validarResponsavel(responsavelId, veterinarioId, clinicaId, usuarioIdIgnorado);
 		};
 	}
 
-	private AssociacoesUsuario validarSysadmin(UsuarioRequest request) {
-		if (request.responsavelId() != null || request.veterinarioId() != null || request.clinicaId() != null) {
+	private AssociacoesUsuario validarSysadmin(Long responsavelId, Long veterinarioId, Long clinicaId) {
+		if (responsavelId != null || veterinarioId != null || clinicaId != null) {
 			throw new BusinessException("Usuario SYSADMIN nao deve ter responsavel, veterinario ou clinica associados.");
 		}
 		return new AssociacoesUsuario(null, null, null);
 	}
 
-	private AssociacoesUsuario validarAdminClinica(UsuarioRequest request) {
-		if (request.clinicaId() == null) {
+	private AssociacoesUsuario validarAdminClinica(Long responsavelId, Long veterinarioId, Long clinicaId) {
+		if (clinicaId == null) {
 			throw new BusinessException("Usuario ADMIN_CLINICA deve estar associado a uma clinica.");
 		}
-		if (request.responsavelId() != null || request.veterinarioId() != null) {
+		if (responsavelId != null || veterinarioId != null) {
 			throw new BusinessException("Usuario ADMIN_CLINICA nao deve ter responsavel ou veterinario associados.");
 		}
-		Clinica clinica = validarClinicaAtiva(request.clinicaId());
+		Clinica clinica = validarClinicaAtiva(clinicaId);
 		return new AssociacoesUsuario(null, null, clinica);
 	}
 
-	private AssociacoesUsuario validarVeterinario(UsuarioRequest request) {
-		if (request.veterinarioId() == null) {
+	private AssociacoesUsuario validarVeterinario(Long responsavelId, Long veterinarioId, Long clinicaId, Long usuarioIdIgnorado) {
+		if (veterinarioId == null) {
 			throw new BusinessException("Usuario VETERINARIO deve estar associado a um veterinario.");
 		}
-		if (request.responsavelId() != null || request.clinicaId() != null) {
+		if (responsavelId != null || clinicaId != null) {
 			throw new BusinessException("Usuario VETERINARIO nao deve ter responsavel ou clinica associados.");
 		}
-		Veterinario veterinario = validarVeterinarioAtivo(request.veterinarioId());
+		validarVeterinarioDisponivel(veterinarioId, usuarioIdIgnorado);
+		Veterinario veterinario = validarVeterinarioAtivo(veterinarioId);
 		return new AssociacoesUsuario(null, veterinario, null);
 	}
 
-	private AssociacoesUsuario validarResponsavel(UsuarioRequest request) {
-		if (request.responsavelId() == null) {
+	private AssociacoesUsuario validarResponsavel(Long responsavelId, Long veterinarioId, Long clinicaId, Long usuarioIdIgnorado) {
+		if (responsavelId == null) {
 			throw new BusinessException("Usuario RESPONSAVEL deve estar associado a um responsavel.");
 		}
-		if (request.veterinarioId() != null || request.clinicaId() != null) {
+		if (veterinarioId != null || clinicaId != null) {
 			throw new BusinessException("Usuario RESPONSAVEL nao deve ter veterinario ou clinica associados.");
 		}
-		Responsavel responsavel = validarResponsavelAtivo(request.responsavelId());
+		validarResponsavelDisponivel(responsavelId, usuarioIdIgnorado);
+		Responsavel responsavel = validarResponsavelAtivo(responsavelId);
 		return new AssociacoesUsuario(responsavel, null, null);
+	}
+
+	private void validarVeterinarioDisponivel(Long veterinarioId, Long usuarioIdIgnorado) {
+		boolean emUso = usuarioIdIgnorado == null
+				? usuarioRepository.existsByVeterinarioId(veterinarioId)
+				: usuarioRepository.existsByVeterinarioIdAndIdNot(veterinarioId, usuarioIdIgnorado);
+		if (emUso) {
+			throw new BusinessException("Veterinario ja esta associado a outro usuario.");
+		}
+	}
+
+	private void validarResponsavelDisponivel(Long responsavelId, Long usuarioIdIgnorado) {
+		boolean emUso = usuarioIdIgnorado == null
+				? usuarioRepository.existsByResponsavelId(responsavelId)
+				: usuarioRepository.existsByResponsavelIdAndIdNot(responsavelId, usuarioIdIgnorado);
+		if (emUso) {
+			throw new BusinessException("Responsavel ja esta associado a outro usuario.");
+		}
+	}
+
+	private void validarProtecaoAlteracaoPerfil(Usuario usuario, TipoUsuario novoTipo, Long usuarioAtualId) {
+		boolean mudandoSysadmin = TipoUsuario.SYSADMIN.equals(usuario.getTipo()) && !TipoUsuario.SYSADMIN.equals(novoTipo);
+		if (!mudandoSysadmin) {
+			return;
+		}
+		if (usuarioAtualId != null && usuarioAtualId.equals(usuario.getId())) {
+			throw new BusinessException("Voce nao pode alterar seu proprio perfil SYSADMIN.");
+		}
+		if ("S".equals(usuario.getAtivo()) && usuarioRepository.countByTipoAndAtivo(TipoUsuario.SYSADMIN, "S") <= 1) {
+			throw new BusinessException("Nao e possivel alterar o perfil do ultimo SysAdmin ativo.");
+		}
 	}
 
 	private Responsavel validarResponsavelAtivo(Long id) {

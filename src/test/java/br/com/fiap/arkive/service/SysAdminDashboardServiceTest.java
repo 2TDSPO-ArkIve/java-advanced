@@ -8,9 +8,11 @@ import br.com.fiap.arkive.repository.ConsultaRepository;
 import br.com.fiap.arkive.repository.ResponsavelRepository;
 import br.com.fiap.arkive.repository.UsuarioRepository;
 import br.com.fiap.arkive.repository.VeterinarioRepository;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
+import java.lang.reflect.Constructor;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.LocalDateTime;
@@ -18,6 +20,7 @@ import java.time.ZoneId;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
@@ -58,6 +61,20 @@ class SysAdminDashboardServiceTest {
 		when(animalRepository.contarAtivosPorEspecie("S")).thenReturn(List.of());
 		when(usuarioRepository.contarPorPerfil()).thenReturn(List.of());
 		when(consultaRepository.contarPorStatus()).thenReturn(List.of());
+	}
+
+	@Test
+	void construtorDeProducaoEhExplicitoParaInjecaoSpring() throws Exception {
+		Constructor<SysAdminDashboardService> constructor = SysAdminDashboardService.class.getConstructor(
+				ClinicaRepository.class,
+				VeterinarioRepository.class,
+				ResponsavelRepository.class,
+				AnimalRepository.class,
+				ConsultaRepository.class,
+				UsuarioRepository.class
+		);
+
+		assertTrue(constructor.isAnnotationPresent(Autowired.class));
 	}
 
 	@Test

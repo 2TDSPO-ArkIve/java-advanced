@@ -1,5 +1,9 @@
 package br.com.fiap.arkive.controller.web;
 
+import br.com.fiap.arkive.entity.TipoUsuario;
+import br.com.fiap.arkive.entity.Usuario;
+import br.com.fiap.arkive.security.UsuarioPrincipal;
+import br.com.fiap.arkive.service.PasswordLifecycleService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
@@ -7,12 +11,15 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
 import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.not;
+import static org.mockito.Mockito.when;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
+import static org.springframework.security.test.web.servlet.response.SecurityMockMvcResultMatchers.authenticated;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
@@ -26,6 +33,9 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 class WebSecurityMvcTest {
 
 	private final MockMvc mockMvc;
+
+	@MockitoBean
+	private PasswordLifecycleService passwordLifecycleService;
 
 	@Autowired
 	WebSecurityMvcTest(MockMvc mockMvc) {
@@ -118,6 +128,10 @@ class WebSecurityMvcTest {
 				.andExpect(status().isOk())
 				.andExpect(content().string(containsString("Ana Sys")))
 				.andExpect(content().string(containsString("SysAdmin")))
+				.andExpect(content().string(containsString("sidebar-account")))
+				.andExpect(content().string(containsString("sidebar-logout")))
+				.andExpect(content().string(containsString("Sair")))
+				.andExpect(content().string(not(containsString("user-menu"))))
 				.andExpect(content().string(containsString("Administração Global")))
 				.andExpect(content().string(not(containsString("senhaHash"))))
 				.andExpect(content().string(not(containsString("$2a$"))));
@@ -173,6 +187,83 @@ class WebSecurityMvcTest {
 		mockMvc.perform(post("/logout").accept(MediaType.TEXT_HTML).with(user("Ana Sys").roles("SYSADMIN")).with(csrf()))
 				.andExpect(status().is3xxRedirection())
 				.andExpect(redirectedUrl("/login?logout"));
+	}
+
+	@Test
+	void usuarioComTrocaObrigatoriaERedirecionadoParaAlterarSenha() throws Exception {
+		mockMvc.perform(get("/sysadmin/dashboard").with(user(principal(true))))
+				.andExpect(status().is3xxRedirection())
+				.andExpect(redirectedUrl("/alterar-senha"));
+	}
+
+	@Test
+	void usuarioComTrocaObrigatoriaNaoBypassaApi() throws Exception {
+		mockMvc.perform(get("/api/animais").with(user(principal(true))))
+				.andExpect(status().isForbidden())
+				.andExpect(content().string(containsString("Troca de senha obrigatoria")));
+	}
+
+	@Test
+	void paginaAlterarSenhaAcessivelParaTrocaObrigatoria() throws Exception {
+		mockMvc.perform(get("/alterar-senha").with(user(principal(true))))
+				.andExpect(status().isOk())
+				.andExpect(content().string(containsString("Primeiro acesso")))
+				.andExpect(content().string(containsString("Defina uma nova senha")));
+	}
+
+	@Test
+	void trocaObrigatoriaBemSucedidaAtualizaSenhaERedireciona() throws Exception {
+		Usuario usuario = new Usuario();
+		usuario.setId(1L);
+		usuario.setNome("Ana Sys");
+		usuario.setLogin("ana@arkive.com");
+		usuario.setSenhaHash("$2a$10$novoHash");
+		usuario.setTipo(TipoUsuario.SYSADMIN);
+		usuario.setAtivo("S");
+		usuario.setTrocaSenha("N");
+		when(passwordLifecycleService.alterarSenhaObrigatoria(1L, "NovaSenha1", "NovaSenha1")).thenReturn(usuario);
+
+		mockMvc.perform(post("/alterar-senha")
+						.with(user(principal(true)))
+						.with(csrf())
+						.param("novaSenha", "NovaSenha1")
+						.param("confirmarNovaSenha", "NovaSenha1"))
+				.andExpect(status().is3xxRedirection())
+				.andExpect(redirectedUrl("/sysadmin/dashboard"))
+				.andExpect(authenticated().withUsername("ana@arkive.com"));
+	}
+
+	@Test
+	void trocaObrigatoriaBemSucedidaRedirecionaVeterinarioParaLandingRestrita() throws Exception {
+		Usuario usuario = new Usuario();
+		usuario.setId(1L);
+		usuario.setNome("Dra Vera");
+		usuario.setLogin("vera@arkive.com");
+		usuario.setSenhaHash("$2a$10$novoHash");
+		usuario.setTipo(TipoUsuario.VETERINARIO);
+		usuario.setAtivo("S");
+		usuario.setTrocaSenha("N");
+		when(passwordLifecycleService.alterarSenhaObrigatoria(1L, "NovaSenha1", "NovaSenha1")).thenReturn(usuario);
+
+		mockMvc.perform(post("/alterar-senha")
+						.with(user(new UsuarioPrincipal(1L, "Dra Vera", "vera@arkive.com", "$2a$10$hash", TipoUsuario.VETERINARIO, "S", true)))
+						.with(csrf())
+						.param("novaSenha", "NovaSenha1")
+						.param("confirmarNovaSenha", "NovaSenha1"))
+				.andExpect(status().is3xxRedirection())
+				.andExpect(redirectedUrl("/acesso-web-restrito"))
+				.andExpect(authenticated().withUsername("vera@arkive.com"));
+	}
+
+	@Test
+	void usuarioSemTrocaObrigatoriaSegueFluxoNormal() throws Exception {
+		mockMvc.perform(get("/sysadmin/dashboard").with(user(principal(false))))
+				.andExpect(status().isOk())
+				.andExpect(content().string(containsString("Administração Global")));
+	}
+
+	private UsuarioPrincipal principal(boolean trocaSenhaObrigatoria) {
+		return new UsuarioPrincipal(1L, "Ana Sys", "ana@arkive.com", "$2a$10$hash", TipoUsuario.SYSADMIN, "S", trocaSenhaObrigatoria);
 	}
 
 }

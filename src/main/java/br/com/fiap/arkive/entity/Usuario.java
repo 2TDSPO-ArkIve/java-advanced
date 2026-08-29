@@ -55,6 +55,12 @@ public class Usuario {
 	@Column(name = "ST_ATIVO", nullable = false, columnDefinition = "CHAR(1)")
 	private String ativo = "S";
 
+	@Column(name = "ST_TROCA_SENHA", nullable = false, columnDefinition = "CHAR(1)")
+	private String trocaSenha = "N";
+
+	@Column(name = "DT_ULTIMA_TROCA_SENHA")
+	private LocalDateTime dataUltimaTrocaSenha;
+
 	public Long getId() {
 		return id;
 	}
@@ -133,6 +139,22 @@ public class Usuario {
 
 	public void setAtivo(String ativo) {
 		this.ativo = ativo;
+	}
+
+	public String getTrocaSenha() {
+		return trocaSenha;
+	}
+
+	public void setTrocaSenha(String trocaSenha) {
+		this.trocaSenha = trocaSenha;
+	}
+
+	public LocalDateTime getDataUltimaTrocaSenha() {
+		return dataUltimaTrocaSenha;
+	}
+
+	public void setDataUltimaTrocaSenha(LocalDateTime dataUltimaTrocaSenha) {
+		this.dataUltimaTrocaSenha = dataUltimaTrocaSenha;
 	}
 
 }

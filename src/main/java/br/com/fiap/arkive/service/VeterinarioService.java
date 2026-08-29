@@ -1,8 +1,10 @@
 package br.com.fiap.arkive.service;
 
+import br.com.fiap.arkive.dto.request.UsuarioProvisioningRequest;
 import br.com.fiap.arkive.dto.request.VeterinarioRequest;
 import br.com.fiap.arkive.dto.response.VeterinarioResponse;
 import br.com.fiap.arkive.entity.Clinica;
+import br.com.fiap.arkive.entity.TipoUsuario;
 import br.com.fiap.arkive.entity.Veterinario;
 import br.com.fiap.arkive.exception.BusinessException;
 import br.com.fiap.arkive.exception.ResourceNotFoundException;
@@ -19,17 +21,33 @@ public class VeterinarioService {
 
 	private final VeterinarioRepository veterinarioRepository;
 	private final ClinicaService clinicaService;
+	private final AccountProvisioningService accountProvisioningService;
 
-	public VeterinarioService(VeterinarioRepository veterinarioRepository, ClinicaService clinicaService) {
+	public VeterinarioService(
+			VeterinarioRepository veterinarioRepository,
+			ClinicaService clinicaService,
+			AccountProvisioningService accountProvisioningService
+	) {
 		this.veterinarioRepository = veterinarioRepository;
 		this.clinicaService = clinicaService;
+		this.accountProvisioningService = accountProvisioningService;
 	}
 
 	@Transactional
 	public VeterinarioResponse criar(VeterinarioRequest request) {
+		validarEmailObrigatorioParaCriacao(request.email());
 		Veterinario veterinario = new Veterinario();
 		aplicarDados(veterinario, request, true);
-		return VeterinarioResponse.fromEntity(veterinarioRepository.save(veterinario));
+		Veterinario salvo = veterinarioRepository.save(veterinario);
+		accountProvisioningService.provisionar(new UsuarioProvisioningRequest(
+				salvo.getNome(),
+				TipoUsuario.VETERINARIO,
+				salvo.getEmail(),
+				null,
+				salvo.getId(),
+				null
+		));
+		return VeterinarioResponse.fromEntity(salvo);
 	}
 
 	@Transactional(readOnly = true)
@@ -83,6 +101,12 @@ public class VeterinarioService {
 	private void validarAtivoQuandoInformado(String valor) {
 		if (valor != null && !valor.isBlank() && !"S".equals(valor) && !"N".equals(valor)) {
 			throw new BusinessException("Ativo deve ser S ou N.");
+		}
+	}
+
+	private void validarEmailObrigatorioParaCriacao(String email) {
+		if (email == null || email.isBlank()) {
+			throw new BusinessException("E-mail do veterinario e obrigatorio para criar a conta de acesso.");
 		}
 	}
 

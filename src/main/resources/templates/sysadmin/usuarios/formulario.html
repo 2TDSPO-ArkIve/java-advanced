@@ -16,12 +16,12 @@
 
 			<form class="form form-card" th:action="@{/sysadmin/usuarios}" th:object="${usuario}" method="post" novalidate>
 				<input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
-				<input type="hidden" name="ativo" value="S">
 
 				<div class="alert alert-error" th:if="${#fields.hasGlobalErrors()}" th:each="err : ${#fields.globalErrors()}" th:text="${err}">Erro</div>
 
 				<section class="form-section" aria-labelledby="dados-conta-title">
 					<p class="section-label" id="dados-conta-title">Dados da conta</p>
+					<p class="field-helper">Primeiro acesso: o usuário utilizará o e-mail cadastrado como login e senha inicial. No primeiro acesso, será obrigatório definir uma nova senha.</p>
 
 					<div class="field">
 						<label for="nome">Nome</label>
@@ -30,15 +30,9 @@
 					</div>
 
 					<div class="field">
-						<label for="login">Login</label>
-						<input id="login" type="email" th:field="*{login}" th:attr="aria-invalid=${#fields.hasErrors('login')}" autocomplete="username" required>
+						<label for="login">E-mail / Login</label>
+						<input id="login" type="email" th:field="*{login}" th:attr="aria-invalid=${#fields.hasErrors('login')}" autocomplete="username" maxlength="72" required>
 						<span class="field-error" th:if="${#fields.hasErrors('login')}" th:errors="*{login}">Erro</span>
-					</div>
-
-					<div class="field">
-						<label for="senha">Senha</label>
-						<input id="senha" name="senha" type="password" th:attr="aria-invalid=${#fields.hasErrors('senha')}" autocomplete="new-password" minlength="8" maxlength="72" required>
-						<span class="field-error" th:if="${#fields.hasErrors('senha')}" th:errors="*{senha}">Erro</span>
 					</div>
 				</section>
 
@@ -70,7 +64,8 @@
 					<div class="field context-field" data-context="VETERINARIO" th:hidden="${usuario.tipo == null or usuario.tipo.name() != 'VETERINARIO'}">
 						<label for="veterinarioId">Veterinário</label>
 						<select id="veterinarioId" th:field="*{veterinarioId}">
-							<option value="">Selecione...</option>
+							<option th:if="${!#lists.isEmpty(veterinarios)}" value="">Selecione...</option>
+							<option th:if="${#lists.isEmpty(veterinarios)}" value="" disabled>Nenhum veterinário disponível</option>
 							<option th:each="veterinario : ${veterinarios}" th:value="${veterinario.id}" th:text="${veterinario.label}">Veterinário</option>
 						</select>
 					</div>
@@ -78,7 +73,8 @@
 					<div class="field context-field" data-context="RESPONSAVEL" th:hidden="${usuario.tipo == null or usuario.tipo.name() != 'RESPONSAVEL'}">
 						<label for="responsavelId">Responsável</label>
 						<select id="responsavelId" th:field="*{responsavelId}">
-							<option value="">Selecione...</option>
+							<option th:if="${!#lists.isEmpty(responsaveis)}" value="">Selecione...</option>
+							<option th:if="${#lists.isEmpty(responsaveis)}" value="" disabled>Nenhum responsável disponível</option>
 							<option th:each="responsavel : ${responsaveis}" th:value="${responsavel.id}" th:text="${responsavel.label}">Responsável</option>
 						</select>
 					</div>
@@ -113,6 +109,7 @@
 				field.hidden = !visible;
 				if (select) {
 					select.disabled = !visible;
+					select.required = visible;
 					if (!visible) {
 						select.value = "";
 					}

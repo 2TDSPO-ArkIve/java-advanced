@@ -9,6 +9,7 @@ import br.com.fiap.arkive.repository.ConsultaRepository;
 import br.com.fiap.arkive.repository.ResponsavelRepository;
 import br.com.fiap.arkive.repository.UsuarioRepository;
 import br.com.fiap.arkive.repository.VeterinarioRepository;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -52,6 +53,7 @@ public class SysAdminDashboardService {
 	private final UsuarioRepository usuarioRepository;
 	private final Clock clock;
 
+	@Autowired
 	public SysAdminDashboardService(
 			ClinicaRepository clinicaRepository,
 			VeterinarioRepository veterinarioRepository,

@@ -1,5 +1,6 @@
 package br.com.fiap.arkive.dto.response;
 
+import br.com.fiap.arkive.domain.consulta.StatusConsulta;
 import br.com.fiap.arkive.entity.Consulta;
 
 import java.math.BigDecimal;
@@ -15,6 +16,7 @@ public record ConsultaResponse(
 		BigDecimal peso,
 		String transcricao,
 		String status,
+		String statusDescricao,
 		Long animalId,
 		String animalNome,
 		Long veterinarioId,
@@ -25,6 +27,7 @@ public record ConsultaResponse(
 	public static ConsultaResponse fromEntity(Consulta consulta) {
 		Long clinicaId = consulta.getClinica() == null ? null : consulta.getClinica().getId();
 		String clinicaNome = consulta.getClinica() == null ? null : consulta.getClinica().getNome();
+		StatusConsulta statusConsulta = StatusConsulta.fromCodigo(consulta.getStatus());
 		return new ConsultaResponse(
 				consulta.getId(),
 				consulta.getDataHora(),
@@ -35,6 +38,7 @@ public record ConsultaResponse(
 				consulta.getPeso(),
 				consulta.getTranscricao(),
 				consulta.getStatus(),
+				statusConsulta.getDescricao(),
 				consulta.getAnimal().getId(),
 				consulta.getAnimal().getNome(),
 				consulta.getVeterinario().getId(),

@@ -1,6 +1,8 @@
 package br.com.fiap.arkive.config;
 
 import br.com.fiap.arkive.security.ArkiveUserDetailsService;
+import br.com.fiap.arkive.security.MandatoryPasswordChangeFilter;
+import br.com.fiap.arkive.security.PasswordChangeAuthenticationSuccessHandler;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Profile;
@@ -12,6 +14,7 @@ import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.access.intercept.AuthorizationFilter;
 import org.springframework.security.web.authentication.LoginUrlAuthenticationEntryPoint;
 import org.springframework.security.web.util.matcher.AnyRequestMatcher;
 
@@ -39,7 +42,10 @@ public class SecurityConfig {
 	}
 
 	@Bean
-	public SecurityFilterChain securityFilterChain(HttpSecurity http, BasicAuthenticationEntryPoint basicAuthenticationEntryPoint) throws Exception {
+	public SecurityFilterChain securityFilterChain(
+			HttpSecurity http,
+			BasicAuthenticationEntryPoint basicAuthenticationEntryPoint
+	) throws Exception {
 		return http
 				.csrf(csrf -> csrf.ignoringRequestMatchers("/api/**"))
 				.exceptionHandling(exceptionHandling -> exceptionHandling
@@ -65,6 +71,7 @@ public class SecurityConfig {
 				.formLogin(formLogin -> formLogin
 						.loginPage("/login")
 						.loginProcessingUrl("/login")
+						.successHandler(new PasswordChangeAuthenticationSuccessHandler())
 						.failureUrl("/login?error")
 						.permitAll()
 				)
@@ -73,6 +80,7 @@ public class SecurityConfig {
 						.permitAll()
 				)
 				.httpBasic(Customizer.withDefaults())
+				.addFilterAfter(new MandatoryPasswordChangeFilter(), AuthorizationFilter.class)
 				.build();
 	}
 

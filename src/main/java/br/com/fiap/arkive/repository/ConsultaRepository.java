@@ -9,6 +9,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import java.time.LocalDateTime;
+import java.time.LocalDate;
 import java.util.List;
 
 @Profile("!local-nodb")
@@ -30,6 +31,36 @@ public interface ConsultaRepository extends JpaRepository<Consulta, Long> {
 			@Param("modalidade") String modalidade,
 			Pageable pageable
 	);
+
+	@Query("""
+			select distinct c from Consulta c
+			join AnimalResponsavel ar on ar.animal = c.animal
+			where ar.responsavel.id = :responsavelId
+			and ar.ativo = 'S'
+			and (ar.dataFim is null or ar.dataFim >= :dataAtual)
+			and (:animalId is null or c.animal.id = :animalId)
+			and (:veterinarioId is null or c.veterinario.id = :veterinarioId)
+			and (:clinicaId is null or c.clinica.id = :clinicaId)
+			and (:status is null or c.status = :status)
+			and (:modalidade is null or c.modalidade = :modalidade)
+			""")
+	Page<Consulta> buscarParaResponsavel(
+			@Param("responsavelId") Long responsavelId,
+			@Param("dataAtual") LocalDate dataAtual,
+			@Param("animalId") Long animalId,
+			@Param("veterinarioId") Long veterinarioId,
+			@Param("clinicaId") Long clinicaId,
+			@Param("status") String status,
+			@Param("modalidade") String modalidade,
+			Pageable pageable
+	);
+
+	@Query("""
+			select count(c) > 0 from Consulta c
+			where c.animal.id = :animalId
+			and c.veterinario.id = :veterinarioId
+			""")
+	boolean existsConsultaDoVeterinarioParaAnimal(@Param("animalId") Long animalId, @Param("veterinarioId") Long veterinarioId);
 
 	long countByDataHoraBetween(LocalDateTime inicio, LocalDateTime fim);
 

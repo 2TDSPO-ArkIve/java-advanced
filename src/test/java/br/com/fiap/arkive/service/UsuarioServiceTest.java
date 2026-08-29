@@ -1,6 +1,7 @@
 package br.com.fiap.arkive.service;
 
 import br.com.fiap.arkive.dto.request.UsuarioRequest;
+import br.com.fiap.arkive.dto.request.UsuarioEditRequest;
 import br.com.fiap.arkive.dto.response.UsuarioResponse;
 import br.com.fiap.arkive.entity.Clinica;
 import br.com.fiap.arkive.entity.Responsavel;
@@ -17,9 +18,11 @@ import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
 import java.util.Arrays;
+import java.util.List;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
@@ -177,9 +180,71 @@ class UsuarioServiceTest {
 		Assertions.assertEquals("$2a$10$hash", salvo.getSenhaHash());
 		Assertions.assertNotEquals("senha-segura", salvo.getSenhaHash());
 		Assertions.assertEquals("S", salvo.getAtivo());
+		Assertions.assertEquals("N", salvo.getTrocaSenha());
 		Assertions.assertEquals("usuario@arkive.com", response.login());
+		Assertions.assertFalse(response.trocaSenhaObrigatoria());
 		Assertions.assertTrue(Arrays.stream(UsuarioResponse.class.getRecordComponents())
-				.noneMatch(component -> component.getName().toLowerCase().contains("senha")));
+				.noneMatch(component -> component.getName().toLowerCase().contains("hash")));
+	}
+
+	@Test
+	void criarProvisionadoUsaLoginComoCredencialInicialComTrocaObrigatoria() {
+		when(passwordEncoder.encode("novo@arkive.com")).thenReturn("$2a$10$emailHash");
+		when(usuarioRepository.save(any(Usuario.class))).thenAnswer(invocation -> invocation.getArgument(0));
+		ArgumentCaptor<Usuario> captor = ArgumentCaptor.forClass(Usuario.class);
+
+		UsuarioResponse response = usuarioService.criarProvisionado(new UsuarioRequest(
+				"Novo Usuario",
+				TipoUsuario.SYSADMIN,
+				"  novo@arkive.com  ",
+				"novo@arkive.com",
+				null,
+				null,
+				null,
+				"S"
+		));
+
+		verify(passwordEncoder).encode("novo@arkive.com");
+		verify(usuarioRepository).save(captor.capture());
+		Usuario salvo = captor.getValue();
+		Assertions.assertEquals("novo@arkive.com", salvo.getLogin());
+		Assertions.assertEquals("$2a$10$emailHash", salvo.getSenhaHash());
+		Assertions.assertNotEquals("novo@arkive.com", salvo.getSenhaHash());
+		Assertions.assertEquals("S", salvo.getTrocaSenha());
+		Assertions.assertNull(salvo.getDataUltimaTrocaSenha());
+		Assertions.assertTrue(response.trocaSenhaObrigatoria());
+	}
+
+	@Test
+	void criarProvisionadoComBcryptPermitePrimeiraAutenticacaoComEmailComoSenha() {
+		PasswordEncoder encoderReal = new BCryptPasswordEncoder();
+		UsuarioRepository repository = mock(UsuarioRepository.class);
+		UsuarioService service = new UsuarioService(
+				repository,
+				responsavelRepository,
+				veterinarioRepository,
+				clinicaRepository,
+				encoderReal
+		);
+		when(repository.save(any(Usuario.class))).thenAnswer(invocation -> invocation.getArgument(0));
+		ArgumentCaptor<Usuario> captor = ArgumentCaptor.forClass(Usuario.class);
+
+		service.criarProvisionado(new UsuarioRequest(
+				"Novo Usuario",
+				TipoUsuario.SYSADMIN,
+				"novo@arkive.com",
+				"novo@arkive.com",
+				null,
+				null,
+				null,
+				"S"
+		));
+
+		verify(repository).save(captor.capture());
+		Usuario salvo = captor.getValue();
+		Assertions.assertTrue(encoderReal.matches("novo@arkive.com", salvo.getSenhaHash()));
+		Assertions.assertNotEquals("novo@arkive.com", salvo.getSenhaHash());
+		Assertions.assertEquals("S", salvo.getTrocaSenha());
 	}
 
 	@Test
@@ -335,6 +400,196 @@ class UsuarioServiceTest {
 		verify(usuarioRepository, never()).save(any());
 	}
 
+	@Test
+	void editarCorrigeNomeLoginEPerfil() {
+		Usuario usuario = usuario(10L, TipoUsuario.ADMIN_CLINICA, "S");
+		Clinica clinica = clinicaAtiva();
+		usuario.setClinica(clinica);
+		usuario.setSenhaHash("$2a$10$hashOriginal");
+		usuario.setTrocaSenha("N");
+		Veterinario veterinario = veterinarioAtivo();
+		when(usuarioRepository.findById(10L)).thenReturn(Optional.of(usuario));
+		when(usuarioRepository.existsByLoginAndIdNot("vera@arkive.com", 10L)).thenReturn(false);
+		when(usuarioRepository.existsByVeterinarioIdAndIdNot(1L, 10L)).thenReturn(false);
+		when(veterinarioRepository.findById(1L)).thenReturn(Optional.of(veterinario));
+		when(usuarioRepository.save(any(Usuario.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+		UsuarioResponse response = usuarioService.atualizar(10L, new UsuarioEditRequest(
+				"Dra Vera",
+				TipoUsuario.VETERINARIO,
+				"  vera@arkive.com  ",
+				null,
+				1L,
+				null
+		), 99L);
+
+		Assertions.assertEquals("Dra Vera", response.nome());
+		Assertions.assertEquals("vera@arkive.com", usuario.getLogin());
+		Assertions.assertEquals(TipoUsuario.VETERINARIO, usuario.getTipo());
+		Assertions.assertEquals("$2a$10$hashOriginal", usuario.getSenhaHash());
+		Assertions.assertEquals("N", usuario.getTrocaSenha());
+		Assertions.assertNull(usuario.getClinica());
+		Assertions.assertNull(usuario.getResponsavel());
+		Assertions.assertSame(veterinario, usuario.getVeterinario());
+		verify(passwordEncoder, never()).encode(any());
+	}
+
+	@Test
+	void editarRejeitaLoginDuplicado() {
+		Usuario usuario = usuario(10L, TipoUsuario.SYSADMIN, "S");
+		when(usuarioRepository.findById(10L)).thenReturn(Optional.of(usuario));
+		when(usuarioRepository.existsByLoginAndIdNot("duplicado@arkive.com", 10L)).thenReturn(true);
+
+		assertThrows(BusinessException.class, () -> usuarioService.atualizar(10L, new UsuarioEditRequest(
+				"Ana",
+				TipoUsuario.SYSADMIN,
+				"duplicado@arkive.com",
+				null,
+				null,
+				null
+		), 99L));
+		verify(usuarioRepository, never()).save(any());
+	}
+
+	@Test
+	void editarRejeitaVinculosJaUsados() {
+		Usuario usuario = usuario(10L, TipoUsuario.SYSADMIN, "S");
+		when(usuarioRepository.findById(10L)).thenReturn(Optional.of(usuario));
+		when(usuarioRepository.existsByLoginAndIdNot("vera@arkive.com", 10L)).thenReturn(false);
+		when(usuarioRepository.existsByVeterinarioIdAndIdNot(1L, 10L)).thenReturn(true);
+
+		assertThrows(BusinessException.class, () -> usuarioService.atualizar(10L, new UsuarioEditRequest(
+				"Dra Vera",
+				TipoUsuario.VETERINARIO,
+				"vera@arkive.com",
+				null,
+				1L,
+				null
+		), 99L));
+		verify(usuarioRepository, never()).save(any());
+	}
+
+	@Test
+	void criarRejeitaVeterinarioJaAssociado() {
+		when(usuarioRepository.existsByVeterinarioId(1L)).thenReturn(true);
+
+		assertThrows(BusinessException.class, () -> usuarioService.criar(request(TipoUsuario.VETERINARIO, null, 1L, null)));
+		verify(usuarioRepository, never()).save(any());
+	}
+
+	@Test
+	void sysadminAtualNaoPodeDemoverProprioPerfil() {
+		Usuario usuario = usuario(10L, TipoUsuario.SYSADMIN, "S");
+		when(usuarioRepository.findById(10L)).thenReturn(Optional.of(usuario));
+
+		assertThrows(BusinessException.class, () -> usuarioService.atualizar(10L, new UsuarioEditRequest(
+				"Ana",
+				TipoUsuario.ADMIN_CLINICA,
+				"ana@arkive.com",
+				null,
+				null,
+				1L
+		), 10L));
+		verify(usuarioRepository, never()).save(any());
+	}
+
+	@Test
+	void ultimoSysadminAtivoNaoPodeSerDemovido() {
+		Usuario usuario = usuario(10L, TipoUsuario.SYSADMIN, "S");
+		when(usuarioRepository.findById(10L)).thenReturn(Optional.of(usuario));
+		when(usuarioRepository.countByTipoAndAtivo(TipoUsuario.SYSADMIN, "S")).thenReturn(1L);
+
+		assertThrows(BusinessException.class, () -> usuarioService.atualizar(10L, new UsuarioEditRequest(
+				"Ana",
+				TipoUsuario.ADMIN_CLINICA,
+				"ana@arkive.com",
+				null,
+				null,
+				1L
+		), 99L));
+		verify(usuarioRepository, never()).save(any());
+	}
+
+	@Test
+	void outroSysadminPodeSerDemovidoQuandoExisteOutroAtivo() {
+		Usuario usuario = usuario(10L, TipoUsuario.SYSADMIN, "S");
+		Clinica clinica = clinicaAtiva();
+		when(usuarioRepository.findById(10L)).thenReturn(Optional.of(usuario));
+		when(usuarioRepository.countByTipoAndAtivo(TipoUsuario.SYSADMIN, "S")).thenReturn(2L);
+		when(usuarioRepository.existsByLoginAndIdNot("admin@arkive.com", 10L)).thenReturn(false);
+		when(clinicaRepository.findById(1L)).thenReturn(Optional.of(clinica));
+		when(usuarioRepository.save(any(Usuario.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+		usuarioService.atualizar(10L, new UsuarioEditRequest(
+				"Admin Clinica",
+				TipoUsuario.ADMIN_CLINICA,
+				"admin@arkive.com",
+				null,
+				null,
+				1L
+		), 99L);
+
+		Assertions.assertEquals(TipoUsuario.ADMIN_CLINICA, usuario.getTipo());
+		Assertions.assertSame(clinica, usuario.getClinica());
+		verify(usuarioRepository).save(usuario);
+	}
+
+	@Test
+	void listaVeterinariosDisponiveisParaCriacaoAPartirDaConsultaFiltrada() {
+		Veterinario veterinario = veterinarioAtivo();
+		veterinario.setId(1L);
+		veterinario.setNome("Dra Livre");
+		when(veterinarioRepository.findAtivosSemUsuarioOrderByNomeAsc()).thenReturn(List.of(veterinario));
+
+		var opcoes = usuarioService.listarVeterinariosDisponiveisParaCriacao();
+
+		Assertions.assertEquals(1, opcoes.size());
+		Assertions.assertEquals(1L, opcoes.get(0).id());
+		Assertions.assertEquals("Dra Livre", opcoes.get(0).label());
+		verify(veterinarioRepository).findAtivosSemUsuarioOrderByNomeAsc();
+	}
+
+	@Test
+	void listaVeterinariosDisponiveisParaEdicaoIncluindoVinculoAtual() {
+		Veterinario veterinario = veterinarioAtivo();
+		veterinario.setId(1L);
+		veterinario.setNome("Dra Atual");
+		when(veterinarioRepository.findDisponiveisParaUsuarioOrderByNomeAsc(10L)).thenReturn(List.of(veterinario));
+
+		var opcoes = usuarioService.listarVeterinariosDisponiveisParaEdicao(10L);
+
+		Assertions.assertEquals("Dra Atual", opcoes.get(0).label());
+		verify(veterinarioRepository).findDisponiveisParaUsuarioOrderByNomeAsc(10L);
+	}
+
+	@Test
+	void listaResponsaveisDisponiveisParaCriacaoAPartirDaConsultaFiltrada() {
+		Responsavel responsavel = responsavelAtivo();
+		responsavel.setId(2L);
+		responsavel.setNome("Rui Livre");
+		when(responsavelRepository.findAtivosSemUsuarioOrderByNomeAsc()).thenReturn(List.of(responsavel));
+
+		var opcoes = usuarioService.listarResponsaveisDisponiveisParaCriacao();
+
+		Assertions.assertEquals(1, opcoes.size());
+		Assertions.assertEquals(2L, opcoes.get(0).id());
+		Assertions.assertEquals("Rui Livre", opcoes.get(0).label());
+		verify(responsavelRepository).findAtivosSemUsuarioOrderByNomeAsc();
+	}
+
+	@Test
+	void listaResponsaveisDisponiveisParaEdicaoIncluindoVinculoAtual() {
+		Responsavel responsavel = responsavelAtivo();
+		responsavel.setId(2L);
+		responsavel.setNome("Rui Atual");
+		when(responsavelRepository.findDisponiveisParaUsuarioOrderByNomeAsc(10L)).thenReturn(List.of(responsavel));
+
+		var opcoes = usuarioService.listarResponsaveisDisponiveisParaEdicao(10L);
+
+		Assertions.assertEquals("Rui Atual", opcoes.get(0).label());
+		verify(responsavelRepository).findDisponiveisParaUsuarioOrderByNomeAsc(10L);
+	}
+
 	private UsuarioRequest request(TipoUsuario tipo, Long responsavelId, Long veterinarioId, Long clinicaId) {
 		return new UsuarioRequest(
 				"Usuario Teste",
@@ -353,6 +608,8 @@ class UsuarioServiceTest {
 		usuario.setId(id);
 		usuario.setTipo(tipo);
 		usuario.setAtivo(ativo);
+		usuario.setLogin("usuario@arkive.com");
+		usuario.setNome("Usuario");
 		return usuario;
 	}
 

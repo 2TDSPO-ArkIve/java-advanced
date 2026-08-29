@@ -7,6 +7,7 @@ import br.com.fiap.arkive.entity.Prescricao;
 import br.com.fiap.arkive.exception.BusinessException;
 import br.com.fiap.arkive.exception.ResourceNotFoundException;
 import br.com.fiap.arkive.repository.PrescricaoRepository;
+import br.com.fiap.arkive.security.UsuarioPrincipal;
 import org.springframework.context.annotation.Profile;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.Page;
@@ -27,21 +28,45 @@ public class PrescricaoService {
 	private final PrescricaoRepository prescricaoRepository;
 	private final ConsultaService consultaService;
 	private final EventoJornadaService eventoJornadaService;
+	private final ClinicalAccessService clinicalAccessService;
 
 	public PrescricaoService(
 			PrescricaoRepository prescricaoRepository,
 			ConsultaService consultaService,
-			EventoJornadaService eventoJornadaService
+			EventoJornadaService eventoJornadaService,
+			ClinicalAccessService clinicalAccessService
 	) {
 		this.prescricaoRepository = prescricaoRepository;
 		this.consultaService = consultaService;
 		this.eventoJornadaService = eventoJornadaService;
+		this.clinicalAccessService = clinicalAccessService;
 	}
 
 	@Transactional
 	public PrescricaoResponse criar(PrescricaoRequest request) {
 		Prescricao prescricao = new Prescricao();
 		aplicarDados(prescricao, request);
+		Prescricao salva = prescricaoRepository.save(prescricao);
+		Consulta consulta = salva.getConsulta();
+		Long clinicaId = consulta.getClinica() == null ? null : consulta.getClinica().getId();
+		eventoJornadaService.registrarEvento(
+				"PRESCRICAO_CRIADA",
+				"VETERINARIO",
+				null,
+				consulta.getVeterinario().getId(),
+				consulta.getAnimal().getId(),
+				clinicaId,
+				"Prescricao criada.",
+				eventoJornadaService.criarPayload("Prescricao", salva.getId(), "PRESCRICAO_CRIADA")
+		);
+		return PrescricaoResponse.fromEntity(salva);
+	}
+
+	@Transactional
+	public PrescricaoResponse criar(PrescricaoRequest request, UsuarioPrincipal principal) {
+		Prescricao prescricao = new Prescricao();
+		aplicarDados(prescricao, request);
+		clinicalAccessService.exigirEscritaPrescricaoVeterinario(principal, prescricao);
 		Prescricao salva = prescricaoRepository.save(prescricao);
 		Consulta consulta = salva.getConsulta();
 		Long clinicaId = consulta.getClinica() == null ? null : consulta.getClinica().getId();
@@ -77,8 +102,28 @@ public class PrescricaoService {
 	}
 
 	@Transactional
+	public PrescricaoResponse atualizar(Long id, PrescricaoRequest request, UsuarioPrincipal principal) {
+		Prescricao prescricao = buscarEntidade(id);
+		aplicarDados(prescricao, request);
+		clinicalAccessService.exigirEscritaPrescricaoVeterinario(principal, prescricao);
+		return PrescricaoResponse.fromEntity(prescricaoRepository.save(prescricao));
+	}
+
+	@Transactional
 	public void excluir(Long id) {
 		Prescricao prescricao = buscarEntidade(id);
+		try {
+			prescricaoRepository.delete(prescricao);
+			prescricaoRepository.flush();
+		} catch (DataIntegrityViolationException ex) {
+			throw new BusinessException("Prescricao nao pode ser excluida porque esta em uso.", HttpStatus.CONFLICT);
+		}
+	}
+
+	@Transactional
+	public void excluir(Long id, UsuarioPrincipal principal) {
+		Prescricao prescricao = buscarEntidade(id);
+		clinicalAccessService.exigirEscritaPrescricaoVeterinario(principal, prescricao);
 		try {
 			prescricaoRepository.delete(prescricao);
 			prescricaoRepository.flush();

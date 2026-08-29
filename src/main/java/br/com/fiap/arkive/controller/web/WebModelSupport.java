@@ -42,6 +42,16 @@ final class WebModelSupport {
 		return "Usuário ArkIve";
 	}
 
+	static String roleLandingPath(Authentication authentication) {
+		if (hasRole(authentication, "ROLE_SYSADMIN")) {
+			return "/sysadmin/dashboard";
+		}
+		if (hasRole(authentication, "ROLE_ADMIN_CLINICA")) {
+			return "/admin/dashboard";
+		}
+		return "/acesso-web-restrito";
+	}
+
 	static boolean hasRole(Authentication authentication, String authority) {
 		if (authentication == null) {
 			return false;

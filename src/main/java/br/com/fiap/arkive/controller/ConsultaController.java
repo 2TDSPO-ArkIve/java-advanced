@@ -2,6 +2,7 @@ package br.com.fiap.arkive.controller;
 
 import br.com.fiap.arkive.dto.request.ConsultaRequest;
 import br.com.fiap.arkive.dto.response.ConsultaResponse;
+import br.com.fiap.arkive.security.UsuarioPrincipal;
 import br.com.fiap.arkive.service.ConsultaService;
 import jakarta.validation.Valid;
 import org.springframework.context.annotation.Profile;
@@ -9,6 +10,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -42,14 +44,15 @@ public class ConsultaController {
 			@RequestParam(required = false) Long clinicaId,
 			@RequestParam(required = false) String status,
 			@RequestParam(required = false) String modalidade,
-			Pageable pageable
+			Pageable pageable,
+			@AuthenticationPrincipal UsuarioPrincipal principal
 	) {
-		return consultaService.listar(animalId, veterinarioId, clinicaId, status, modalidade, pageable);
+		return consultaService.listarAutorizado(animalId, veterinarioId, clinicaId, status, modalidade, pageable, principal);
 	}
 
 	@GetMapping("/{id}")
-	public ConsultaResponse buscarPorId(@PathVariable Long id) {
-		return consultaService.buscarPorId(id);
+	public ConsultaResponse buscarPorId(@PathVariable Long id, @AuthenticationPrincipal UsuarioPrincipal principal) {
+		return consultaService.buscarPorIdAutorizado(id, principal);
 	}
 
 	@PutMapping("/{id}")

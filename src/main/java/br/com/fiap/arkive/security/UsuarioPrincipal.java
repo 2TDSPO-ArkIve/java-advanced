@@ -17,24 +17,58 @@ public class UsuarioPrincipal implements UserDetails {
 	private final String senhaHash;
 	private final TipoUsuario tipoUsuario;
 	private final String ativo;
+	private final boolean trocaSenhaObrigatoria;
+	private final Long responsavelId;
+	private final Long veterinarioId;
+	private final Long clinicaId;
 
 	public UsuarioPrincipal(Long usuarioId, String nome, String login, String senhaHash, TipoUsuario tipoUsuario, String ativo) {
+		this(usuarioId, nome, login, senhaHash, tipoUsuario, ativo, false);
+	}
+
+	public UsuarioPrincipal(Long usuarioId, String nome, String login, String senhaHash, TipoUsuario tipoUsuario, String ativo, boolean trocaSenhaObrigatoria) {
+		this(usuarioId, nome, login, senhaHash, tipoUsuario, ativo, trocaSenhaObrigatoria, null, null, null);
+	}
+
+	public UsuarioPrincipal(
+			Long usuarioId,
+			String nome,
+			String login,
+			String senhaHash,
+			TipoUsuario tipoUsuario,
+			String ativo,
+			boolean trocaSenhaObrigatoria,
+			Long responsavelId,
+			Long veterinarioId,
+			Long clinicaId
+	) {
 		this.usuarioId = usuarioId;
 		this.nome = nome;
 		this.login = login;
 		this.senhaHash = senhaHash;
 		this.tipoUsuario = tipoUsuario;
 		this.ativo = ativo;
+		this.trocaSenhaObrigatoria = trocaSenhaObrigatoria;
+		this.responsavelId = responsavelId;
+		this.veterinarioId = veterinarioId;
+		this.clinicaId = clinicaId;
 	}
 
 	public static UsuarioPrincipal fromEntity(Usuario usuario) {
+		Long responsavelId = usuario.getResponsavel() == null ? null : usuario.getResponsavel().getId();
+		Long veterinarioId = usuario.getVeterinario() == null ? null : usuario.getVeterinario().getId();
+		Long clinicaId = usuario.getClinica() == null ? null : usuario.getClinica().getId();
 		return new UsuarioPrincipal(
 				usuario.getId(),
 				usuario.getNome(),
 				usuario.getLogin(),
 				usuario.getSenhaHash(),
 				usuario.getTipo(),
-				usuario.getAtivo()
+				usuario.getAtivo(),
+				"S".equals(usuario.getTrocaSenha()),
+				responsavelId,
+				veterinarioId,
+				clinicaId
 		);
 	}
 
@@ -48,6 +82,22 @@ public class UsuarioPrincipal implements UserDetails {
 
 	public TipoUsuario getTipoUsuario() {
 		return tipoUsuario;
+	}
+
+	public boolean isTrocaSenhaObrigatoria() {
+		return trocaSenhaObrigatoria;
+	}
+
+	public Long getResponsavelId() {
+		return responsavelId;
+	}
+
+	public Long getVeterinarioId() {
+		return veterinarioId;
+	}
+
+	public Long getClinicaId() {
+		return clinicaId;
 	}
 
 	@Override

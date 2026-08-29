@@ -5,6 +5,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.ConstraintViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
@@ -39,6 +40,11 @@ public class GlobalExceptionHandler {
 				.map(violation -> violation.getPropertyPath() + ": " + violation.getMessage())
 				.collect(Collectors.joining("; "));
 		return buildResponse(HttpStatus.BAD_REQUEST, message.isBlank() ? "Parametros da requisicao invalidos." : message, request.getRequestURI());
+	}
+
+	@ExceptionHandler(AccessDeniedException.class)
+	public ResponseEntity<ErrorResponse> handleAccessDenied(AccessDeniedException ex, HttpServletRequest request) {
+		return buildResponse(HttpStatus.FORBIDDEN, ex.getMessage(), request.getRequestURI());
 	}
 
 	@ExceptionHandler(Exception.class)

@@ -9,11 +9,15 @@ import br.com.fiap.arkive.entity.Raca;
 import br.com.fiap.arkive.exception.BusinessException;
 import br.com.fiap.arkive.exception.ResourceNotFoundException;
 import br.com.fiap.arkive.repository.AnimalRepository;
+import br.com.fiap.arkive.security.UsuarioPrincipal;
 import org.springframework.context.annotation.Profile;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+import java.time.LocalDate;
 
 @Service
 @Profile("!local-nodb")
@@ -24,19 +28,22 @@ public class AnimalService {
 	private final RacaService racaService;
 	private final ClinicaService clinicaService;
 	private final EventoJornadaService eventoJornadaService;
+	private final ClinicalAccessService clinicalAccessService;
 
 	public AnimalService(
 			AnimalRepository animalRepository,
 			EspecieService especieService,
 			RacaService racaService,
 			ClinicaService clinicaService,
-			EventoJornadaService eventoJornadaService
+			EventoJornadaService eventoJornadaService,
+			ClinicalAccessService clinicalAccessService
 	) {
 		this.animalRepository = animalRepository;
 		this.especieService = especieService;
 		this.racaService = racaService;
 		this.clinicaService = clinicaService;
 		this.eventoJornadaService = eventoJornadaService;
+		this.clinicalAccessService = clinicalAccessService;
 	}
 
 	@Transactional
@@ -79,8 +86,55 @@ public class AnimalService {
 	}
 
 	@Transactional(readOnly = true)
+	public Page<AnimalResponse> listarAutorizado(
+			String nome,
+			Long especieId,
+			Long racaId,
+			Long clinicaId,
+			String ativo,
+			Pageable pageable,
+			UsuarioPrincipal principal
+	) {
+		if (principal == null) {
+			throw new AccessDeniedException("Usuario autenticado invalido.");
+		}
+		validarAtivoQuandoInformado(ativo);
+		return switch (principal.getTipoUsuario()) {
+			case SYSADMIN -> animalRepository.buscar(vazioParaNulo(nome), especieId, racaId, clinicaId, vazioParaNulo(ativo), pageable)
+					.map(AnimalResponse::fromEntity);
+			case RESPONSAVEL -> animalRepository.buscarParaResponsavel(
+					principal.getResponsavelId(),
+					LocalDate.now(),
+					vazioParaNulo(nome),
+					especieId,
+					racaId,
+					clinicaId,
+					vazioParaNulo(ativo),
+					pageable
+			).map(AnimalResponse::fromEntity);
+			case VETERINARIO -> principal.getVeterinarioId() == null ? Page.empty(pageable) : animalRepository.buscarParaVeterinario(
+					principal.getVeterinarioId(),
+					vazioParaNulo(nome),
+					especieId,
+					racaId,
+					clinicaId,
+					vazioParaNulo(ativo),
+					pageable
+			).map(AnimalResponse::fromEntity);
+			case ADMIN_CLINICA -> listarParaClinica(nome, especieId, racaId, clinicaId, ativo, pageable, principal.getClinicaId());
+		};
+	}
+
+	@Transactional(readOnly = true)
 	public AnimalResponse buscarPorId(Long id) {
 		return AnimalResponse.fromEntity(buscarEntidade(id));
+	}
+
+	@Transactional(readOnly = true)
+	public AnimalResponse buscarPorIdAutorizado(Long id, UsuarioPrincipal principal) {
+		Animal animal = buscarEntidade(id);
+		clinicalAccessService.exigirLeituraAnimal(principal, animal);
+		return AnimalResponse.fromEntity(animal);
 	}
 
 	@Transactional
@@ -100,6 +154,22 @@ public class AnimalService {
 	private Animal buscarEntidade(Long id) {
 		return animalRepository.findById(id)
 				.orElseThrow(() -> new ResourceNotFoundException("Animal nao encontrado."));
+	}
+
+	private Page<AnimalResponse> listarParaClinica(
+			String nome,
+			Long especieId,
+			Long racaId,
+			Long clinicaId,
+			String ativo,
+			Pageable pageable,
+			Long clinicaAutenticadaId
+	) {
+		if (clinicaAutenticadaId == null || (clinicaId != null && !clinicaId.equals(clinicaAutenticadaId))) {
+			return Page.empty(pageable);
+		}
+		return animalRepository.buscar(vazioParaNulo(nome), especieId, racaId, clinicaAutenticadaId, vazioParaNulo(ativo), pageable)
+				.map(AnimalResponse::fromEntity);
 	}
 
 	private void aplicarDados(Animal animal, AnimalRequest request, boolean criando) {

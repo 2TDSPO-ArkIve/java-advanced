@@ -32,4 +32,34 @@ public interface VeterinarioRepository extends JpaRepository<Veterinario, Long> 
 
 	List<Veterinario> findByAtivoOrderByNomeAsc(String ativo);
 
+	@Query("""
+			select v from Veterinario v
+			where v.ativo = 'S'
+			and not exists (
+				select u from Usuario u
+				where u.veterinario = v
+			)
+			order by v.nome asc
+			""")
+	List<Veterinario> findAtivosSemUsuarioOrderByNomeAsc();
+
+	@Query("""
+			select v from Veterinario v
+			where (
+				v.ativo = 'S'
+				and not exists (
+					select u from Usuario u
+					where u.veterinario = v
+					and u.id <> :usuarioId
+				)
+			)
+			or exists (
+				select atual from Usuario atual
+				where atual.id = :usuarioId
+				and atual.veterinario = v
+			)
+			order by v.nome asc
+			""")
+	List<Veterinario> findDisponiveisParaUsuarioOrderByNomeAsc(@Param("usuarioId") Long usuarioId);
+
 }

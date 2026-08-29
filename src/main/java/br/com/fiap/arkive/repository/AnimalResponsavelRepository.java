@@ -10,6 +10,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import java.util.List;
+import java.time.LocalDate;
 
 @Profile("!local-nodb")
 public interface AnimalResponsavelRepository extends JpaRepository<AnimalResponsavel, AnimalResponsavelId> {
@@ -22,6 +23,19 @@ public interface AnimalResponsavelRepository extends JpaRepository<AnimalRespons
 
 	@Query("select ar from AnimalResponsavel ar where ar.animal.id = :animalId and ar.ativo = :ativo")
 	List<AnimalResponsavel> listarPorAnimalEAtivo(@Param("animalId") Long animalId, @Param("ativo") String ativo);
+
+	@Query("""
+			select count(ar) > 0 from AnimalResponsavel ar
+			where ar.animal.id = :animalId
+			and ar.responsavel.id = :responsavelId
+			and ar.ativo = 'S'
+			and (ar.dataFim is null or ar.dataFim >= :dataAtual)
+			""")
+	boolean existsVinculoAtivoVigente(
+			@Param("animalId") Long animalId,
+			@Param("responsavelId") Long responsavelId,
+			@Param("dataAtual") LocalDate dataAtual
+	);
 
 	@Query("""
 			select ar from AnimalResponsavel ar

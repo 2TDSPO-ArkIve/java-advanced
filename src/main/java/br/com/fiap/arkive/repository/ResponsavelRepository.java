@@ -32,4 +32,34 @@ public interface ResponsavelRepository extends JpaRepository<Responsavel, Long> 
 
 	List<Responsavel> findByAtivoOrderByNomeAsc(String ativo);
 
+	@Query("""
+			select r from Responsavel r
+			where r.ativo = 'S'
+			and not exists (
+				select u from Usuario u
+				where u.responsavel = r
+			)
+			order by r.nome asc
+			""")
+	List<Responsavel> findAtivosSemUsuarioOrderByNomeAsc();
+
+	@Query("""
+			select r from Responsavel r
+			where (
+				r.ativo = 'S'
+				and not exists (
+					select u from Usuario u
+					where u.responsavel = r
+					and u.id <> :usuarioId
+				)
+			)
+			or exists (
+				select atual from Usuario atual
+				where atual.id = :usuarioId
+				and atual.responsavel = r
+			)
+			order by r.nome asc
+			""")
+	List<Responsavel> findDisponiveisParaUsuarioOrderByNomeAsc(@Param("usuarioId") Long usuarioId);
+
 }
