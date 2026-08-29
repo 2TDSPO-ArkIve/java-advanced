@@ -4,6 +4,7 @@ import br.com.fiap.arkive.dto.request.ConsultaRequest;
 import br.com.fiap.arkive.entity.Animal;
 import br.com.fiap.arkive.entity.Clinica;
 import br.com.fiap.arkive.entity.Consulta;
+import br.com.fiap.arkive.entity.TipoUsuario;
 import br.com.fiap.arkive.entity.Veterinario;
 import br.com.fiap.arkive.exception.BusinessException;
 import br.com.fiap.arkive.repository.AnimalRepository;
@@ -12,6 +13,8 @@ import br.com.fiap.arkive.repository.ConsultaRepository;
 import br.com.fiap.arkive.repository.VeterinarioRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.http.HttpStatus;
+import org.springframework.security.access.AccessDeniedException;
 
 import java.time.LocalDateTime;
 import java.util.Optional;
@@ -24,6 +27,7 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.doThrow;
 
 class ConsultaServiceTest {
 
@@ -60,16 +64,34 @@ class ConsultaServiceTest {
 
 	@Test
 	void criaConsultaSempreAgendadaQuandoStatusOmitidoOuAg() {
-		consultaService.criar(request(null));
-		consultaService.criar(request("AG"));
+		consultaService.criar(request(null), veterinarioPrincipal(20L));
+		consultaService.criar(request("AG"), veterinarioPrincipal(20L));
 
 		verify(consultaRepository, times(2)).save(any(Consulta.class));
 	}
 
 	@Test
 	void rejeitaCriacaoComStatusDiferenteDeAg() {
-		assertThrows(BusinessException.class, () -> consultaService.criar(request("EP")));
-		assertThrows(BusinessException.class, () -> consultaService.criar(request("FI")));
+		assertThrows(BusinessException.class, () -> consultaService.criar(request("EP"), veterinarioPrincipal(20L)));
+		assertThrows(BusinessException.class, () -> consultaService.criar(request("FI"), veterinarioPrincipal(20L)));
+		verify(consultaRepository, never()).save(any());
+	}
+
+	@Test
+	void somenteVeterinarioAutenticadoCriaConsulta() {
+		assertThrows(AccessDeniedException.class, () -> consultaService.criar(request("AG"), principal(TipoUsuario.RESPONSAVEL, 40L, null, null)));
+		assertThrows(AccessDeniedException.class, () -> consultaService.criar(request("AG"), principal(TipoUsuario.ADMIN_CLINICA, null, null, 30L)));
+		assertThrows(AccessDeniedException.class, () -> consultaService.criar(request("AG"), principal(TipoUsuario.SYSADMIN, null, null, null)));
+
+		verify(consultaRepository, never()).save(any());
+	}
+
+	@Test
+	void veterinarioNaoCriaConsultaComoOutroVeterinario() {
+		BusinessException exception = assertThrows(BusinessException.class,
+				() -> consultaService.criar(request("AG"), veterinarioPrincipal(21L)));
+
+		assertEquals(HttpStatus.CONFLICT, exception.getStatus());
 		verify(consultaRepository, never()).save(any());
 	}
 
@@ -78,7 +100,7 @@ class ConsultaServiceTest {
 		Consulta consulta = consulta("EP");
 		when(consultaRepository.findById(1L)).thenReturn(Optional.of(consulta));
 
-		assertThrows(BusinessException.class, () -> consultaService.atualizar(1L, request("FI")));
+		assertThrows(BusinessException.class, () -> consultaService.atualizar(1L, request("FI"), veterinarioPrincipal(20L)));
 
 		assertEquals("EP", consulta.getStatus());
 		verify(consultaRepository, never()).save(any());
@@ -101,13 +123,78 @@ class ConsultaServiceTest {
 				20L,
 				30L
 		);
+		var principal = veterinarioPrincipal(20L);
 
-		consultaService.atualizar(1L, request);
+		consultaService.atualizar(1L, request, principal);
 
 		assertEquals("EP", consulta.getStatus());
 		assertEquals("REMOTA", consulta.getModalidade());
 		assertEquals("Narrativa atualizada", consulta.getTranscricao());
+		verify(clinicalAccessService).exigirEscritaClinicaVeterinario(principal, consulta);
 		verify(consultaRepository).save(consulta);
+	}
+
+	@Test
+	void putExigeVeterinarioDonoDaConsulta() {
+		Consulta consulta = consulta("EP");
+		var principal = veterinarioPrincipal(21L);
+		when(consultaRepository.findById(1L)).thenReturn(Optional.of(consulta));
+		doThrow(new AccessDeniedException("Veterinario nao autorizado para esta consulta."))
+				.when(clinicalAccessService).exigirEscritaClinicaVeterinario(principal, consulta);
+
+		assertThrows(AccessDeniedException.class, () -> consultaService.atualizar(1L, request("EP"), principal));
+
+		verify(consultaRepository, never()).save(any());
+	}
+
+	@Test
+	void putNaoReassociaAnimalVeterinarioOuClinica() {
+		Consulta consulta = consulta("EP");
+		when(consultaRepository.findById(1L)).thenReturn(Optional.of(consulta));
+
+		assertReassociacaoBloqueada(new ConsultaRequest(LocalDateTime.now(), "PRESENCIAL", "Check-up", null, null, null, null, "EP", 11L, 20L, 30L));
+		assertReassociacaoBloqueada(new ConsultaRequest(LocalDateTime.now(), "PRESENCIAL", "Check-up", null, null, null, null, "EP", 10L, 21L, 30L));
+		assertReassociacaoBloqueada(new ConsultaRequest(LocalDateTime.now(), "PRESENCIAL", "Check-up", null, null, null, null, "EP", 10L, 20L, 31L));
+
+		verify(consultaRepository, never()).save(any());
+	}
+
+	@Test
+	void deleteExigeVeterinarioDonoDaConsulta() {
+		Consulta consulta = consulta("AG");
+		var principal = veterinarioPrincipal(21L);
+		when(consultaRepository.findById(1L)).thenReturn(Optional.of(consulta));
+		doThrow(new AccessDeniedException("Veterinario nao autorizado para esta consulta."))
+				.when(clinicalAccessService).exigirEscritaClinicaVeterinario(principal, consulta);
+
+		assertThrows(AccessDeniedException.class, () -> consultaService.excluir(1L, principal));
+
+		verify(consultaRepository, never()).delete(any());
+	}
+
+	@Test
+	void deletePermiteSomenteConsultaAgendadaPropria() {
+		Consulta agendada = consulta("AG");
+		when(consultaRepository.findById(1L)).thenReturn(Optional.of(agendada));
+
+		consultaService.excluir(1L, veterinarioPrincipal(20L));
+
+		verify(consultaRepository).delete(agendada);
+	}
+
+	@Test
+	void deleteBloqueiaConsultaQueProgrediu() {
+		assertDeletePorStatusBloqueado("EP");
+		assertDeletePorStatusBloqueado("AP");
+		assertDeletePorStatusBloqueado("FI");
+		assertDeletePorStatusBloqueado("CA");
+	}
+
+	@Test
+	void sobrecargasGenericasDeEscritaExigemPrincipal() {
+		assertThrows(AccessDeniedException.class, () -> consultaService.criar(request("AG")));
+		assertThrows(AccessDeniedException.class, () -> consultaService.atualizar(1L, request("AG")));
+		assertThrows(AccessDeniedException.class, () -> consultaService.excluir(1L));
 	}
 
 	@Test
@@ -167,6 +254,23 @@ class ConsultaServiceTest {
 		);
 	}
 
+	private void assertReassociacaoBloqueada(ConsultaRequest request) {
+		BusinessException exception = assertThrows(BusinessException.class,
+				() -> consultaService.atualizar(1L, request, veterinarioPrincipal(20L)));
+		assertEquals(HttpStatus.CONFLICT, exception.getStatus());
+	}
+
+	private void assertDeletePorStatusBloqueado(String status) {
+		Consulta consulta = consulta(status);
+		when(consultaRepository.findById(1L)).thenReturn(Optional.of(consulta));
+
+		BusinessException exception = assertThrows(BusinessException.class,
+				() -> consultaService.excluir(1L, veterinarioPrincipal(20L)));
+
+		assertEquals(HttpStatus.CONFLICT, exception.getStatus());
+		verify(consultaRepository, never()).delete(consulta);
+	}
+
 	private Consulta consulta(String status) {
 		Consulta consulta = new Consulta();
 		consulta.setStatus(status);
@@ -198,5 +302,24 @@ class ConsultaServiceTest {
 		clinica.setNome("Clinica Arkive");
 		clinica.setAtivo("S");
 		return clinica;
+	}
+
+	private br.com.fiap.arkive.security.UsuarioPrincipal veterinarioPrincipal(Long veterinarioId) {
+		return principal(TipoUsuario.VETERINARIO, null, veterinarioId, null);
+	}
+
+	private br.com.fiap.arkive.security.UsuarioPrincipal principal(TipoUsuario tipo, Long responsavelId, Long veterinarioId, Long clinicaId) {
+		return new br.com.fiap.arkive.security.UsuarioPrincipal(
+				1L,
+				"Usuario",
+				"usuario@arkive.com",
+				"$2a$10$hash",
+				tipo,
+				"S",
+				false,
+				responsavelId,
+				veterinarioId,
+				clinicaId
+		);
 	}
 }

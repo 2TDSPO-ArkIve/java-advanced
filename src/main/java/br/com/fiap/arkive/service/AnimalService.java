@@ -6,6 +6,7 @@ import br.com.fiap.arkive.entity.Animal;
 import br.com.fiap.arkive.entity.Clinica;
 import br.com.fiap.arkive.entity.Especie;
 import br.com.fiap.arkive.entity.Raca;
+import br.com.fiap.arkive.entity.TipoUsuario;
 import br.com.fiap.arkive.exception.BusinessException;
 import br.com.fiap.arkive.exception.ResourceNotFoundException;
 import br.com.fiap.arkive.repository.AnimalRepository;
@@ -18,6 +19,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
+import java.util.Objects;
 
 @Service
 @Profile("!local-nodb")
@@ -48,8 +50,14 @@ public class AnimalService {
 
 	@Transactional
 	public AnimalResponse criar(AnimalRequest request) {
+		throw new AccessDeniedException("Criacao de animal exige perfil administrativo.");
+	}
+
+	@Transactional
+	public AnimalResponse criar(AnimalRequest request, UsuarioPrincipal principal) {
+		AnimalRequest requestAutorizado = requestAutorizadoParaCriacao(request, principal);
 		Animal animal = new Animal();
-		aplicarDados(animal, request, true);
+		aplicarDados(animal, requestAutorizado, true);
 		Animal salvo = animalRepository.save(animal);
 		Long clinicaId = salvo.getClinica() == null ? null : salvo.getClinica().getId();
 		eventoJornadaService.registrarEvento(
@@ -139,14 +147,26 @@ public class AnimalService {
 
 	@Transactional
 	public AnimalResponse atualizar(Long id, AnimalRequest request) {
+		throw new AccessDeniedException("Atualizacao de animal exige perfil administrativo.");
+	}
+
+	@Transactional
+	public AnimalResponse atualizar(Long id, AnimalRequest request, UsuarioPrincipal principal) {
 		Animal animal = buscarEntidade(id);
-		aplicarDados(animal, request, false);
+		AnimalRequest requestAutorizado = requestAutorizadoParaAtualizacao(animal, request, principal);
+		aplicarDados(animal, requestAutorizado, false);
 		return AnimalResponse.fromEntity(animalRepository.save(animal));
 	}
 
 	@Transactional
 	public void excluir(Long id) {
+		throw new AccessDeniedException("Exclusao de animal exige perfil administrativo.");
+	}
+
+	@Transactional
+	public void excluir(Long id, UsuarioPrincipal principal) {
 		Animal animal = buscarEntidade(id);
+		exigirPermissaoAdministrativaAnimal(principal, animal);
 		animal.setAtivo("N");
 		animalRepository.save(animal);
 	}
@@ -170,6 +190,81 @@ public class AnimalService {
 		}
 		return animalRepository.buscar(vazioParaNulo(nome), especieId, racaId, clinicaAutenticadaId, vazioParaNulo(ativo), pageable)
 				.map(AnimalResponse::fromEntity);
+	}
+
+	private AnimalRequest requestAutorizadoParaCriacao(AnimalRequest request, UsuarioPrincipal principal) {
+		exigirPrincipal(principal);
+		return switch (principal.getTipoUsuario()) {
+			case SYSADMIN -> request;
+			case ADMIN_CLINICA -> {
+				Long clinicaId = exigirClinicaAutenticada(principal);
+				if (request.clinicaId() != null && !Objects.equals(request.clinicaId(), clinicaId)) {
+					throw new AccessDeniedException("Admin da clinica nao pode criar animal em outra clinica.");
+				}
+				yield comClinica(request, clinicaId);
+			}
+			case VETERINARIO, RESPONSAVEL -> throw new AccessDeniedException("Operacao permitida apenas a SYSADMIN ou ADMIN_CLINICA.");
+		};
+	}
+
+	private AnimalRequest requestAutorizadoParaAtualizacao(Animal animal, AnimalRequest request, UsuarioPrincipal principal) {
+		exigirPrincipal(principal);
+		return switch (principal.getTipoUsuario()) {
+			case SYSADMIN -> request;
+			case ADMIN_CLINICA -> {
+				Long clinicaId = exigirClinicaAutenticada(principal);
+				Long clinicaAtualId = animal.getClinica() == null ? null : animal.getClinica().getId();
+				if (!Objects.equals(clinicaAtualId, clinicaId)) {
+					throw new AccessDeniedException("Admin da clinica nao autorizado para este animal.");
+				}
+				if (request.clinicaId() != null && !Objects.equals(request.clinicaId(), clinicaId)) {
+					throw new BusinessException("Admin da clinica nao pode mover animal para outra clinica.", org.springframework.http.HttpStatus.CONFLICT);
+				}
+				yield comClinica(request, clinicaId);
+			}
+			case VETERINARIO, RESPONSAVEL -> throw new AccessDeniedException("Operacao permitida apenas a SYSADMIN ou ADMIN_CLINICA.");
+		};
+	}
+
+	private void exigirPermissaoAdministrativaAnimal(UsuarioPrincipal principal, Animal animal) {
+		exigirPrincipal(principal);
+		switch (principal.getTipoUsuario()) {
+			case SYSADMIN -> {
+			}
+			case ADMIN_CLINICA -> {
+				Long clinicaId = exigirClinicaAutenticada(principal);
+				Long clinicaAnimalId = animal.getClinica() == null ? null : animal.getClinica().getId();
+				if (!Objects.equals(clinicaAnimalId, clinicaId)) {
+					throw new AccessDeniedException("Admin da clinica nao autorizado para este animal.");
+				}
+			}
+			case VETERINARIO, RESPONSAVEL -> throw new AccessDeniedException("Operacao permitida apenas a SYSADMIN ou ADMIN_CLINICA.");
+		}
+	}
+
+	private Long exigirClinicaAutenticada(UsuarioPrincipal principal) {
+		if (principal.getClinicaId() == null) {
+			throw new AccessDeniedException("Admin da clinica sem clinica vinculada.");
+		}
+		return principal.getClinicaId();
+	}
+
+	private void exigirPrincipal(UsuarioPrincipal principal) {
+		if (principal == null) {
+			throw new AccessDeniedException("Usuario autenticado invalido.");
+		}
+	}
+
+	private AnimalRequest comClinica(AnimalRequest request, Long clinicaId) {
+		return new AnimalRequest(
+				request.nome(),
+				request.especieId(),
+				request.racaId(),
+				request.sexo(),
+				request.castrado(),
+				clinicaId,
+				request.ativo()
+		);
 	}
 
 	private void aplicarDados(Animal animal, AnimalRequest request, boolean criando) {

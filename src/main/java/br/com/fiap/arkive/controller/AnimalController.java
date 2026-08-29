@@ -33,8 +33,11 @@ public class AnimalController {
 	}
 
 	@PostMapping
-	public ResponseEntity<AnimalResponse> criar(@Valid @RequestBody AnimalRequest request) {
-		return ResponseEntity.status(HttpStatus.CREATED).body(animalService.criar(request));
+	public ResponseEntity<AnimalResponse> criar(
+			@Valid @RequestBody AnimalRequest request,
+			@AuthenticationPrincipal UsuarioPrincipal principal
+	) {
+		return ResponseEntity.status(HttpStatus.CREATED).body(animalService.criar(request, principal));
 	}
 
 	@GetMapping
@@ -56,13 +59,17 @@ public class AnimalController {
 	}
 
 	@PutMapping("/{id}")
-	public AnimalResponse atualizar(@PathVariable Long id, @Valid @RequestBody AnimalRequest request) {
-		return animalService.atualizar(id, request);
+	public AnimalResponse atualizar(
+			@PathVariable Long id,
+			@Valid @RequestBody AnimalRequest request,
+			@AuthenticationPrincipal UsuarioPrincipal principal
+	) {
+		return animalService.atualizar(id, request, principal);
 	}
 
 	@DeleteMapping("/{id}")
-	public ResponseEntity<Void> excluir(@PathVariable Long id) {
-		animalService.excluir(id);
+	public ResponseEntity<Void> excluir(@PathVariable Long id, @AuthenticationPrincipal UsuarioPrincipal principal) {
+		animalService.excluir(id, principal);
 		return ResponseEntity.noContent().build();
 	}
 

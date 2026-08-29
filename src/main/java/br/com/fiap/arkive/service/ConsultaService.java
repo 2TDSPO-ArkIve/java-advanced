@@ -6,6 +6,7 @@ import br.com.fiap.arkive.domain.consulta.StatusConsulta;
 import br.com.fiap.arkive.entity.Animal;
 import br.com.fiap.arkive.entity.Clinica;
 import br.com.fiap.arkive.entity.Consulta;
+import br.com.fiap.arkive.entity.TipoUsuario;
 import br.com.fiap.arkive.entity.Veterinario;
 import br.com.fiap.arkive.exception.BusinessException;
 import br.com.fiap.arkive.exception.ResourceNotFoundException;
@@ -24,6 +25,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
+import java.util.Objects;
 import java.util.Set;
 
 @Service
@@ -57,6 +59,15 @@ public class ConsultaService {
 
 	@Transactional
 	public ConsultaResponse criar(ConsultaRequest request) {
+		throw new AccessDeniedException("Criacao de consulta exige veterinario autenticado.");
+	}
+
+	@Transactional
+	public ConsultaResponse criar(ConsultaRequest request, UsuarioPrincipal principal) {
+		exigirVeterinarioAutenticado(principal);
+		if (!Objects.equals(principal.getVeterinarioId(), request.veterinarioId())) {
+			throw new BusinessException("Consulta deve ser criada para o veterinario autenticado.", HttpStatus.CONFLICT);
+		}
 		Consulta consulta = new Consulta();
 		aplicarDados(consulta, request, true);
 		Consulta salva = consultaRepository.save(consulta);
@@ -129,14 +140,30 @@ public class ConsultaService {
 
 	@Transactional
 	public ConsultaResponse atualizar(Long id, ConsultaRequest request) {
+		throw new AccessDeniedException("Atualizacao de consulta exige veterinario autenticado.");
+	}
+
+	@Transactional
+	public ConsultaResponse atualizar(Long id, ConsultaRequest request, UsuarioPrincipal principal) {
 		Consulta consulta = buscarEntidade(id);
+		clinicalAccessService.exigirEscritaClinicaVeterinario(principal, consulta);
+		exigirAssociacoesImutaveis(consulta, request);
 		aplicarDados(consulta, request, false);
 		return ConsultaResponse.fromEntity(consultaRepository.save(consulta));
 	}
 
 	@Transactional
 	public void excluir(Long id) {
+		throw new AccessDeniedException("Exclusao de consulta exige veterinario autenticado.");
+	}
+
+	@Transactional
+	public void excluir(Long id, UsuarioPrincipal principal) {
 		Consulta consulta = buscarEntidade(id);
+		clinicalAccessService.exigirEscritaClinicaVeterinario(principal, consulta);
+		if (!StatusConsulta.AG.getCodigo().equals(consulta.getStatus())) {
+			throw new BusinessException("Somente consultas agendadas podem ser excluidas.", HttpStatus.CONFLICT);
+		}
 		try {
 			consultaRepository.delete(consulta);
 			consultaRepository.flush();
@@ -244,6 +271,23 @@ public class ConsultaService {
 		}
 		if (status != null && !status.isBlank() && !status.equals(consulta.getStatus())) {
 			throw new BusinessException("O status da consulta deve ser alterado pelas operacoes do fluxo clinico.");
+		}
+	}
+
+	private void exigirVeterinarioAutenticado(UsuarioPrincipal principal) {
+		if (principal == null || !TipoUsuario.VETERINARIO.equals(principal.getTipoUsuario()) || principal.getVeterinarioId() == null) {
+			throw new AccessDeniedException("Operacao permitida apenas ao veterinario autenticado.");
+		}
+	}
+
+	private void exigirAssociacoesImutaveis(Consulta consulta, ConsultaRequest request) {
+		Long animalAtualId = consulta.getAnimal() == null ? null : consulta.getAnimal().getId();
+		Long veterinarioAtualId = consulta.getVeterinario() == null ? null : consulta.getVeterinario().getId();
+		Long clinicaAtualId = consulta.getClinica() == null ? null : consulta.getClinica().getId();
+		if (!Objects.equals(animalAtualId, request.animalId())
+				|| !Objects.equals(veterinarioAtualId, request.veterinarioId())
+				|| !Objects.equals(clinicaAtualId, request.clinicaId())) {
+			throw new BusinessException("Animal, veterinario e clinica da consulta nao podem ser alterados pelo PUT generico.", HttpStatus.CONFLICT);
 		}
 	}
 

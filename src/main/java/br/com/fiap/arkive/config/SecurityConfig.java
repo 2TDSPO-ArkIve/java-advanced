@@ -1,15 +1,16 @@
 package br.com.fiap.arkive.config;
 
+import br.com.fiap.arkive.security.ApiAuthenticationEntryPoint;
 import br.com.fiap.arkive.security.ArkiveUserDetailsService;
 import br.com.fiap.arkive.security.MandatoryPasswordChangeFilter;
 import br.com.fiap.arkive.security.PasswordChangeAuthenticationSuccessHandler;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Profile;
 import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
 import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
-import org.springframework.security.web.authentication.www.BasicAuthenticationEntryPoint;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -27,10 +28,8 @@ public class SecurityConfig {
 	}
 
 	@Bean
-	public BasicAuthenticationEntryPoint basicAuthenticationEntryPoint() {
-		BasicAuthenticationEntryPoint entryPoint = new BasicAuthenticationEntryPoint();
-		entryPoint.setRealmName("ArkIve API");
-		return entryPoint;
+	public ApiAuthenticationEntryPoint apiAuthenticationEntryPoint(ObjectMapper objectMapper) {
+		return new ApiAuthenticationEntryPoint(objectMapper);
 	}
 
 	@Bean
@@ -44,12 +43,12 @@ public class SecurityConfig {
 	@Bean
 	public SecurityFilterChain securityFilterChain(
 			HttpSecurity http,
-			BasicAuthenticationEntryPoint basicAuthenticationEntryPoint
+			ApiAuthenticationEntryPoint apiAuthenticationEntryPoint
 	) throws Exception {
 		return http
 				.csrf(csrf -> csrf.ignoringRequestMatchers("/api/**"))
 				.exceptionHandling(exceptionHandling -> exceptionHandling
-						.defaultAuthenticationEntryPointFor(basicAuthenticationEntryPoint, request -> request.getRequestURI().startsWith(request.getContextPath() + "/api/"))
+						.defaultAuthenticationEntryPointFor(apiAuthenticationEntryPoint, request -> request.getRequestURI().startsWith(request.getContextPath() + "/api/"))
 						.defaultAuthenticationEntryPointFor(new LoginUrlAuthenticationEntryPoint("/login"), AnyRequestMatcher.INSTANCE)
 				)
 				.authorizeHttpRequests(authorize -> authorize

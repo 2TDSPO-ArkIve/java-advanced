@@ -275,6 +275,7 @@ ARKIVE_DB_URL=jdbc:oracle:thin:@...
 ARKIVE_DB_USERNAME=...
 ARKIVE_DB_PASSWORD=...
 ARKIVE_CLINICAL_ENGINE_URL=https://...
+ARKIVE_JPA_SHOW_SQL=false
 ```
 
 Bootstrap opcional de SysAdmin:
@@ -412,17 +413,20 @@ Para validar o fluxo principal da API, recomenda-se executar as operações nest
 5. Criar um responsável.
 6. Criar um animal sem responsável obrigatório.
 7. Vincular o responsável ao animal.
-8. Criar uma consulta para o animal.
-9. Criar um diagnóstico para a consulta.
-10. Criar uma prescrição para a consulta.
-11. Registrar adesão à prescrição.
-12. Registrar avaliação de bem-estar.
-13. Criar um protocolo preventivo.
-14. Criar um evento preventivo.
-15. Criar um alerta.
-16. Marcar o alerta como lido.
-17. Registrar feedback NPS.
-18. Consultar a timeline de eventos do animal.
+8. Criar uma consulta `AG` para o animal.
+9. Iniciar a consulta (`AG -> EP`).
+10. Registrar narrativa clínica.
+11. Solicitar suporte clínico por IA (`EP -> AP`).
+12. Finalizar a consulta com conclusão veterinária (`AP -> FI`).
+13. Criar uma prescrição para a consulta `FI`.
+14. Registrar adesão à prescrição.
+15. Registrar avaliação de bem-estar.
+16. Criar um protocolo preventivo.
+17. Criar um evento preventivo.
+18. Criar um alerta.
+19. Marcar o alerta como lido.
+20. Registrar feedback NPS.
+21. Consultar a timeline de eventos do animal.
 
 ---
 

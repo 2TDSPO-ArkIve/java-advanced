@@ -1,5 +1,7 @@
 package br.com.fiap.arkive.config;
 
+import br.com.fiap.arkive.entity.TipoUsuario;
+import br.com.fiap.arkive.security.UsuarioPrincipal;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
@@ -13,6 +15,12 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @WebMvcTest(controllers = SecurityConfigTest.TestEndpoints.class)
@@ -34,7 +42,20 @@ class SecurityConfigTest {
 
 	@Test
 	void anonimoNaoAcessaApiProtegida() throws Exception {
-		mockMvc.perform(get("/api/protegido")).andExpect(status().isUnauthorized());
+		mockMvc.perform(get("/api/protegido"))
+				.andExpect(status().isUnauthorized())
+				.andExpect(header().string("WWW-Authenticate", "Basic realm=\"ArkIve API\""))
+				.andExpect(jsonPath("$.status").value(401))
+				.andExpect(jsonPath("$.error").value("Unauthorized"))
+				.andExpect(jsonPath("$.message").value("Autenticacao obrigatoria."))
+				.andExpect(jsonPath("$.path").value("/api/protegido"));
+	}
+
+	@Test
+	void anonimoNaoAcessaEscritasGenericasDeConsulta() throws Exception {
+		mockMvc.perform(post("/api/consultas")).andExpect(status().isUnauthorized());
+		mockMvc.perform(put("/api/consultas/1")).andExpect(status().isUnauthorized());
+		mockMvc.perform(delete("/api/consultas/1")).andExpect(status().isUnauthorized());
 	}
 
 	@Test
@@ -42,6 +63,38 @@ class SecurityConfigTest {
 		mockMvc.perform(get("/swagger-ui/index.html")).andExpect(status().isOk());
 		mockMvc.perform(get("/swagger-ui.html")).andExpect(status().isOk());
 		mockMvc.perform(get("/v3/api-docs")).andExpect(status().isOk());
+	}
+
+	@Test
+	void trocaObrigatoriaBloqueiaApiMasNaoSwaggerEOpenApi() throws Exception {
+		UsuarioPrincipal principal = new UsuarioPrincipal(
+				1L,
+				"Ana Sys",
+				"ana@arkive.com",
+				"$2a$10$hash",
+				TipoUsuario.SYSADMIN,
+				"S",
+				true
+		);
+
+		mockMvc.perform(get("/api/protegido").with(user(principal)))
+				.andExpect(status().isForbidden());
+		mockMvc.perform(get("/swagger-ui/index.html").with(user(principal)))
+				.andExpect(status().isOk());
+		mockMvc.perform(get("/swagger-ui.html").with(user(principal)))
+				.andExpect(status().isOk());
+		mockMvc.perform(get("/v3/api-docs").with(user(principal)))
+				.andExpect(status().isOk());
+	}
+
+	@Test
+	@WithMockUser
+	void metodoNaoSuportadoEmApiRetornaJson405() throws Exception {
+		mockMvc.perform(put("/api/adesoes-prescricao/80"))
+				.andExpect(status().isMethodNotAllowed())
+				.andExpect(jsonPath("$.status").value(405))
+				.andExpect(jsonPath("$.message").value("Metodo HTTP nao suportado para este recurso."))
+				.andExpect(jsonPath("$.path").value("/api/adesoes-prescricao/80"));
 	}
 
 	@Test
@@ -92,6 +145,16 @@ class SecurityConfigTest {
 
 		@GetMapping("/api/protegido")
 		String apiProtegida() {
+			return "ok";
+		}
+
+		@org.springframework.web.bind.annotation.PostMapping("/api/adesoes-prescricao")
+		String registrarAdesao() {
+			return "ok";
+		}
+
+		@GetMapping("/api/adesoes-prescricao/{id}")
+		String buscarAdesao(@org.springframework.web.bind.annotation.PathVariable Long id) {
 			return "ok";
 		}
 

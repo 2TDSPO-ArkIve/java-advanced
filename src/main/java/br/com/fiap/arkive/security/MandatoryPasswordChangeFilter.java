@@ -50,6 +50,8 @@ public class MandatoryPasswordChangeFilter extends OncePerRequestFilter {
 				|| path.startsWith("/js/")
 				|| path.startsWith("/images/")
 				|| path.startsWith("/swagger-ui/")
+				|| path.equals("/swagger-ui.html")
+				|| path.equals("/v3/api-docs")
 				|| path.startsWith("/v3/api-docs/");
 	}
 }

@@ -33,8 +33,11 @@ public class ConsultaController {
 	}
 
 	@PostMapping
-	public ResponseEntity<ConsultaResponse> criar(@Valid @RequestBody ConsultaRequest request) {
-		return ResponseEntity.status(HttpStatus.CREATED).body(consultaService.criar(request));
+	public ResponseEntity<ConsultaResponse> criar(
+			@Valid @RequestBody ConsultaRequest request,
+			@AuthenticationPrincipal UsuarioPrincipal principal
+	) {
+		return ResponseEntity.status(HttpStatus.CREATED).body(consultaService.criar(request, principal));
 	}
 
 	@GetMapping
@@ -56,13 +59,17 @@ public class ConsultaController {
 	}
 
 	@PutMapping("/{id}")
-	public ConsultaResponse atualizar(@PathVariable Long id, @Valid @RequestBody ConsultaRequest request) {
-		return consultaService.atualizar(id, request);
+	public ConsultaResponse atualizar(
+			@PathVariable Long id,
+			@Valid @RequestBody ConsultaRequest request,
+			@AuthenticationPrincipal UsuarioPrincipal principal
+	) {
+		return consultaService.atualizar(id, request, principal);
 	}
 
 	@DeleteMapping("/{id}")
-	public ResponseEntity<Void> excluir(@PathVariable Long id) {
-		consultaService.excluir(id);
+	public ResponseEntity<Void> excluir(@PathVariable Long id, @AuthenticationPrincipal UsuarioPrincipal principal) {
+		consultaService.excluir(id, principal);
 		return ResponseEntity.noContent().build();
 	}
 

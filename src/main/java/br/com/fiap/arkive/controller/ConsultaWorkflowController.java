@@ -72,7 +72,7 @@ public class ConsultaWorkflowController {
 	}
 
 	@PostMapping("/{id}/suporte-clinico")
-	@Operation(summary = "Gera suporte clinico", description = "Solicita suporte investigativo por IA para consulta EP. Em sucesso, persiste diagnostico provisorio nao confirmado e faz EP -> AP. A IA nao prescreve medicamentos.")
+	@Operation(tags = "Suporte Clinico", summary = "Gera suporte clinico", description = "Solicita suporte investigativo por IA para consulta EP. Em sucesso, persiste diagnostico provisorio nao confirmado e faz EP -> AP. A IA nao prescreve medicamentos.")
 	public ClinicalSupportResponse gerarSuporteClinico(
 			@PathVariable Long id,
 			@AuthenticationPrincipal UsuarioPrincipal principal
@@ -81,7 +81,7 @@ public class ConsultaWorkflowController {
 	}
 
 	@GetMapping("/{id}/suporte-clinico")
-	@Operation(summary = "Consulta suporte clinico persistido", description = "Retorna o suporte clinico previamente gerado sem chamar o motor externo. O resultado e apoio clinico, nao diagnostico veterinario confirmado.")
+	@Operation(tags = "Suporte Clinico", summary = "Consulta suporte clinico persistido", description = "Retorna o suporte clinico previamente gerado sem chamar o motor externo. O resultado e apoio clinico, nao diagnostico veterinario confirmado.")
 	public ClinicalSupportResponse buscarSuporteClinico(
 			@PathVariable Long id,
 			@AuthenticationPrincipal UsuarioPrincipal principal

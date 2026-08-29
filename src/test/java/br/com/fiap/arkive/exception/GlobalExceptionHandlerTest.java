@@ -8,6 +8,7 @@ import org.springframework.security.access.AccessDeniedException;
 import org.springframework.validation.BeanPropertyBindingResult;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.web.HttpRequestMethodNotSupportedException;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
@@ -43,6 +44,19 @@ class GlobalExceptionHandlerTest {
 		assertEquals(400, response.getBody().status());
 		assertEquals("nao deve estar em branco", response.getBody().fields().get("medicamento"));
 		assertEquals("/api/prescricoes", response.getBody().path());
+	}
+
+	@Test
+	void metodoNaoSuportadoRetornaMethodNotAllowed() {
+		GlobalExceptionHandler handler = new GlobalExceptionHandler();
+		MockHttpServletRequest request = new MockHttpServletRequest("PUT", "/api/adesoes-prescricao/80");
+
+		var response = handler.handleMethodNotSupported(new HttpRequestMethodNotSupportedException("PUT"), request);
+
+		assertEquals(HttpStatus.METHOD_NOT_ALLOWED, response.getStatusCode());
+		assertEquals(405, response.getBody().status());
+		assertEquals("Metodo HTTP nao suportado para este recurso.", response.getBody().message());
+		assertEquals("/api/adesoes-prescricao/80", response.getBody().path());
 	}
 
 	@SuppressWarnings("unused")
