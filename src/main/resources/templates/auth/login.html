@@ -4,18 +4,12 @@
 <body class="login-page">
 <main class="login-shell">
 	<section class="login-panel" aria-labelledby="login-title">
-		<div class="login-brand">
-			<span class="brand-mark">A</span>
-			<div>
-				<strong>ArkIve</strong>
-				<small>Ambiente administrativo</small>
-			</div>
-		</div>
+		<img class="login-logo" th:src="@{/images/definitive.png}" alt="ArkIve">
 
 		<div class="login-copy">
-			<p class="eyebrow">Acesso restrito</p>
-			<h1 id="login-title">Entrar no ArkIve</h1>
-			<p>Use suas credenciais administrativas para acessar o painel web.</p>
+			<p class="eyebrow">Acesso administrativo</p>
+			<h1 id="login-title">Entrar</h1>
+			<p>Use suas credenciais para acessar o ambiente administrativo.</p>
 		</div>
 
 		<div class="alert alert-error" th:if="${param.error}">

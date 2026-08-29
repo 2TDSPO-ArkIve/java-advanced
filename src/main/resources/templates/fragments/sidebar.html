@@ -3,17 +3,22 @@
 <body>
 <aside class="sidebar" th:fragment="sidebar">
 	<a class="brand" th:href="@{/}">
-		<span class="brand-mark">A</span>
-		<span>
-			<strong>ArkIve</strong>
-			<small>Admin</small>
-		</span>
+		<img class="brand-logo" th:src="@{/images/definitive.png}" alt="ArkIve">
 	</a>
 
 	<nav class="nav" aria-label="Navegacao administrativa">
-		<a class="nav-link" th:href="@{/sysadmin/dashboard}" sec:authorize="hasRole('SYSADMIN')">Visão Geral</a>
-		<a class="nav-link" th:href="@{/sysadmin/usuarios}" sec:authorize="hasRole('SYSADMIN')">Usuários</a>
-		<a class="nav-link" th:href="@{/admin/dashboard}" sec:authorize="hasRole('ADMIN_CLINICA')">Visão Geral</a>
+		<a class="nav-link"
+		   th:classappend="${roleLabel == 'SysAdmin' and pageTitle == 'Visão Geral'} ? ' is-active'"
+		   th:href="@{/sysadmin/dashboard}"
+		   sec:authorize="hasRole('SYSADMIN')">Visão Geral</a>
+		<a class="nav-link"
+		   th:classappend="${roleLabel == 'SysAdmin' and (pageTitle == 'Usuários' or pageTitle == 'Novo Usuário')} ? ' is-active'"
+		   th:href="@{/sysadmin/usuarios}"
+		   sec:authorize="hasRole('SYSADMIN')">Usuários</a>
+		<a class="nav-link"
+		   th:classappend="${roleLabel == 'Administrador da Clínica' and pageTitle == 'Visão Geral'} ? ' is-active'"
+		   th:href="@{/admin/dashboard}"
+		   sec:authorize="hasRole('ADMIN_CLINICA')">Visão Geral</a>
 	</nav>
 </aside>
 </body>

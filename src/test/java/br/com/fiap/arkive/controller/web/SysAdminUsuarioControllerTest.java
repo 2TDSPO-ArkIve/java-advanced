@@ -31,6 +31,7 @@ import static org.hamcrest.Matchers.not;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.never;
@@ -65,6 +66,7 @@ class SysAdminUsuarioControllerTest {
 	@BeforeEach
 	void setUp() {
 		when(usuarioService.listar(any(Pageable.class))).thenReturn(new PageImpl<>(List.of()));
+		when(usuarioService.listarPorTipos(anyList(), any(Pageable.class))).thenReturn(new PageImpl<>(List.of()));
 		when(usuarioService.listarClinicasAtivas()).thenReturn(List.of(new UsuarioContextOption(1L, "Clínica Central")));
 		when(usuarioService.listarVeterinariosAtivos()).thenReturn(List.of(new UsuarioContextOption(2L, "Dra. Vera")));
 		when(usuarioService.listarResponsaveisAtivos()).thenReturn(List.of(new UsuarioContextOption(3L, "Rui Responsável")));
@@ -125,6 +127,7 @@ class SysAdminUsuarioControllerTest {
 				null
 		);
 		when(usuarioService.listar(any(Pageable.class))).thenReturn(new PageImpl<>(List.of(usuario)));
+		when(usuarioService.listarPorTipos(anyList(), any(Pageable.class))).thenReturn(new PageImpl<>(List.of(usuario)));
 
 		mockMvc.perform(get("/sysadmin/usuarios"))
 				.andExpect(status().isOk())
@@ -135,6 +138,54 @@ class SysAdminUsuarioControllerTest {
 				.andExpect(content().string(containsString("Usuários")))
 				.andExpect(content().string(not(containsString("senhaHash"))))
 				.andExpect(content().string(not(containsString("$2a$"))));
+	}
+
+	@Test
+	@WithMockUser(roles = "SYSADMIN")
+	void listagemUsaOrdenacaoPadraoPorCadastroMaisRecente() throws Exception {
+		ArgumentCaptor<Pageable> pageableCaptor = ArgumentCaptor.forClass(Pageable.class);
+
+		mockMvc.perform(get("/sysadmin/usuarios"))
+				.andExpect(status().isOk())
+				.andExpect(content().string(containsString("name=\"sortField\" value=\"dataCadastro\"")))
+				.andExpect(content().string(containsString("name=\"sortDir\" value=\"desc\"")));
+
+		verify(usuarioService).listarPorTipos(eq(List.of()), pageableCaptor.capture());
+		assertEquals("dataCadastro: DESC,id: DESC", pageableCaptor.getValue().getSort().toString());
+	}
+
+	@Test
+	@SuppressWarnings("unchecked")
+	@WithMockUser(roles = "SYSADMIN")
+	void listagemFiltraUsuariosAdministrativos() throws Exception {
+		ArgumentCaptor<List<TipoUsuario>> tiposCaptor = ArgumentCaptor.forClass(List.class);
+
+		mockMvc.perform(get("/sysadmin/usuarios").param("perfil", "ADMINISTRATIVOS"))
+				.andExpect(status().isOk())
+				.andExpect(content().string(containsString("Administrativos")));
+
+		verify(usuarioService).listarPorTipos(tiposCaptor.capture(), any(Pageable.class));
+		assertEquals(List.of(TipoUsuario.SYSADMIN, TipoUsuario.ADMIN_CLINICA), tiposCaptor.getValue());
+	}
+
+	@Test
+	@SuppressWarnings("unchecked")
+	@WithMockUser(roles = "SYSADMIN")
+	void listagemCombinaFiltroDePerfilComOrdenacao() throws Exception {
+		ArgumentCaptor<List<TipoUsuario>> tiposCaptor = ArgumentCaptor.forClass(List.class);
+		ArgumentCaptor<Pageable> pageableCaptor = ArgumentCaptor.forClass(Pageable.class);
+
+		mockMvc.perform(get("/sysadmin/usuarios")
+						.param("perfil", "RESPONSAVEL")
+						.param("sortField", "login")
+				.param("sortDir", "asc"))
+				.andExpect(status().isOk())
+				.andExpect(content().string(containsString("name=\"sortField\" value=\"login\"")))
+				.andExpect(content().string(containsString("name=\"sortDir\" value=\"asc\"")));
+
+		verify(usuarioService).listarPorTipos(tiposCaptor.capture(), pageableCaptor.capture());
+		assertEquals(List.of(TipoUsuario.RESPONSAVEL), tiposCaptor.getValue());
+		assertEquals("login: ASC,dataCadastro: DESC,id: DESC", pageableCaptor.getValue().getSort().toString());
 	}
 
 	@Test

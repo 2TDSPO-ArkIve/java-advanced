@@ -67,7 +67,15 @@ public class UsuarioService {
 
 	@Transactional(readOnly = true)
 	public Page<UsuarioResponse> listar(Pageable pageable) {
-		return usuarioRepository.findAll(pageable).map(UsuarioResponse::fromEntity);
+		return listarPorTipos(List.of(), pageable);
+	}
+
+	@Transactional(readOnly = true)
+	public Page<UsuarioResponse> listarPorTipos(List<TipoUsuario> tipos, Pageable pageable) {
+		if (tipos == null || tipos.isEmpty()) {
+			return usuarioRepository.findAll(pageable).map(UsuarioResponse::fromEntity);
+		}
+		return usuarioRepository.findByTipoIn(tipos, pageable).map(UsuarioResponse::fromEntity);
 	}
 
 	@Transactional(readOnly = true)

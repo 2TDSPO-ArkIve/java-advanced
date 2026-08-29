@@ -10,14 +10,30 @@
 			<div class="page-actions">
 				<div>
 					<p class="eyebrow">SysAdmin</p>
-					<h2>Usuários</h2>
-					<p>Gerencie contas administrativas e vínculos de acesso do ArkIve.</p>
+					<h2 class="page-title">Usuários</h2>
+					<p>Gerencie contas administrativas e vínculos de acesso.</p>
 				</div>
 				<a class="button button-primary" th:href="@{/sysadmin/usuarios/novo}">Novo usuário</a>
 			</div>
 
 			<div class="alert alert-success" th:if="${sucesso}" th:text="${sucesso}">Sucesso</div>
 			<div class="alert alert-error" th:if="${erro}" th:text="${erro}">Erro</div>
+
+			<section class="list-toolbar" aria-label="Filtros de usuários">
+				<form class="filter-form" th:action="@{/sysadmin/usuarios}" method="get">
+					<input type="hidden" name="sortField" th:value="${sortField}">
+					<input type="hidden" name="sortDir" th:value="${sortDir}">
+					<label for="perfil-filter">Perfil</label>
+					<select id="perfil-filter" name="perfil">
+						<option th:each="filtro : ${filtrosPerfil}"
+						        th:value="${filtro.value}"
+						        th:text="${filtro.label}"
+						        th:selected="${filtro.value == perfilSelecionado}">Todos</option>
+					</select>
+					<button class="button button-secondary button-small" type="submit">Filtrar</button>
+					<a class="button button-secondary button-small" th:href="@{/sysadmin/usuarios}">Limpar filtros</a>
+				</form>
+			</section>
 
 			<section class="empty-state" th:if="${usuarios.empty}">
 				<h3>Nenhum usuário encontrado</h3>
@@ -28,12 +44,37 @@
 				<table class="data-table">
 					<thead>
 					<tr>
-						<th>Nome</th>
-						<th>Login</th>
-						<th>Perfil</th>
+						<th th:with="nextDir=${sortField == 'nome' and sortDir == 'asc' ? 'desc' : 'asc'}">
+							<a class="sort-link" th:classappend="${sortField == 'nome'} ? ' is-active'" th:href="@{/sysadmin/usuarios(perfil=${perfilSelecionado}, sortField='nome', sortDir=${nextDir})}">
+								<span>Nome</span>
+								<span class="sort-indicator" th:if="${sortField == 'nome'}" th:text="${sortDir == 'asc' ? '↑' : '↓'}">↓</span>
+							</a>
+						</th>
+						<th th:with="nextDir=${sortField == 'login' and sortDir == 'asc' ? 'desc' : 'asc'}">
+							<a class="sort-link" th:classappend="${sortField == 'login'} ? ' is-active'" th:href="@{/sysadmin/usuarios(perfil=${perfilSelecionado}, sortField='login', sortDir=${nextDir})}">
+								<span>Login</span>
+								<span class="sort-indicator" th:if="${sortField == 'login'}" th:text="${sortDir == 'asc' ? '↑' : '↓'}">↓</span>
+							</a>
+						</th>
+						<th th:with="nextDir=${sortField == 'perfil' and sortDir == 'asc' ? 'desc' : 'asc'}">
+							<a class="sort-link" th:classappend="${sortField == 'perfil'} ? ' is-active'" th:href="@{/sysadmin/usuarios(perfil=${perfilSelecionado}, sortField='perfil', sortDir=${nextDir})}">
+								<span>Perfil</span>
+								<span class="sort-indicator" th:if="${sortField == 'perfil'}" th:text="${sortDir == 'asc' ? '↑' : '↓'}">↓</span>
+							</a>
+						</th>
 						<th>Vínculo</th>
-						<th>Status</th>
-						<th>Data de cadastro</th>
+						<th th:with="nextDir=${sortField == 'status' and sortDir == 'asc' ? 'desc' : 'asc'}">
+							<a class="sort-link" th:classappend="${sortField == 'status'} ? ' is-active'" th:href="@{/sysadmin/usuarios(perfil=${perfilSelecionado}, sortField='status', sortDir=${nextDir})}">
+								<span>Status</span>
+								<span class="sort-indicator" th:if="${sortField == 'status'}" th:text="${sortDir == 'asc' ? '↑' : '↓'}">↓</span>
+							</a>
+						</th>
+						<th th:with="nextDir=${sortField == 'dataCadastro' and sortDir == 'asc' ? 'desc' : 'asc'}">
+							<a class="sort-link" th:classappend="${sortField == 'dataCadastro'} ? ' is-active'" th:href="@{/sysadmin/usuarios(perfil=${perfilSelecionado}, sortField='dataCadastro', sortDir=${nextDir})}">
+								<span>Data de cadastro</span>
+								<span class="sort-indicator" th:if="${sortField == 'dataCadastro'}" th:text="${sortDir == 'asc' ? '↑' : '↓'}">↓</span>
+							</a>
+						</th>
 						<th>Ação</th>
 					</tr>
 					</thead>
@@ -63,7 +104,7 @@
 						<td>
 							<form th:if="${usuario.ativo == 'S' and usuario.id != currentUserId}" th:action="@{/sysadmin/usuarios/{id}/desativar(id=${usuario.id})}" method="post" onsubmit="return confirm('Desativar este usuário?');">
 								<input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
-								<button class="button button-secondary button-small" type="submit">Desativar</button>
+								<button class="button button-danger button-small" type="submit">Desativar</button>
 							</form>
 							<form th:if="${usuario.ativo == 'N'}" th:action="@{/sysadmin/usuarios/{id}/ativar(id=${usuario.id})}" method="post">
 								<input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
@@ -77,9 +118,9 @@
 			</section>
 
 			<nav class="pagination" th:if="${usuarios.totalPages > 1}" aria-label="Paginação">
-				<a class="button button-secondary" th:if="${usuarios.hasPrevious()}" th:href="@{/sysadmin/usuarios(page=${usuarios.number - 1})}">Anterior</a>
+				<a class="button button-secondary" th:if="${usuarios.hasPrevious()}" th:href="@{/sysadmin/usuarios(page=${usuarios.number - 1}, perfil=${perfilSelecionado}, sortField=${sortField}, sortDir=${sortDir})}">Anterior</a>
 				<span th:text="${usuarios.number + 1} + ' de ' + ${usuarios.totalPages}">1 de 1</span>
-				<a class="button button-secondary" th:if="${usuarios.hasNext()}" th:href="@{/sysadmin/usuarios(page=${usuarios.number + 1})}">Próxima</a>
+				<a class="button button-secondary" th:if="${usuarios.hasNext()}" th:href="@{/sysadmin/usuarios(page=${usuarios.number + 1}, perfil=${perfilSelecionado}, sortField=${sortField}, sortDir=${sortDir})}">Próxima</a>
 			</nav>
 		</main>
 	</div>
