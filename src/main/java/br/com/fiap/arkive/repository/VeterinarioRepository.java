@@ -28,6 +28,8 @@ public interface VeterinarioRepository extends JpaRepository<Veterinario, Long> 
 			Pageable pageable
 	);
 
+	long countByAtivo(String ativo);
+
 	List<Veterinario> findByAtivoOrderByNomeAsc(String ativo);
 
 }

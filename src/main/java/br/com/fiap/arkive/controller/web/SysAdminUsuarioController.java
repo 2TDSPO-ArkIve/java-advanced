@@ -74,7 +74,7 @@ public class SysAdminUsuarioController {
 	@GetMapping("/sysadmin/usuarios/novo")
 	public String novo(Model model, Authentication authentication) {
 		WebModelSupport.addUserAttributes(model, authentication);
-		model.addAttribute("pageTitle", "Novo Usuário");
+		model.addAttribute("pageTitle", "Novo usuário");
 		model.addAttribute("usuario", novoRequest());
 		adicionarOpcoesFormulario(model);
 		return "sysadmin/usuarios/formulario";
@@ -89,7 +89,7 @@ public class SysAdminUsuarioController {
 			RedirectAttributes redirectAttributes
 	) {
 		WebModelSupport.addUserAttributes(model, authentication);
-		model.addAttribute("pageTitle", "Novo Usuário");
+		model.addAttribute("pageTitle", "Novo usuário");
 		if (bindingResult.hasErrors()) {
 			adicionarOpcoesFormulario(model);
 			return "sysadmin/usuarios/formulario";

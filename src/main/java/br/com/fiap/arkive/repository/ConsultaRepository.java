@@ -8,6 +8,9 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.time.LocalDateTime;
+import java.util.List;
+
 @Profile("!local-nodb")
 public interface ConsultaRepository extends JpaRepository<Consulta, Long> {
 
@@ -27,5 +30,23 @@ public interface ConsultaRepository extends JpaRepository<Consulta, Long> {
 			@Param("modalidade") String modalidade,
 			Pageable pageable
 	);
+
+	long countByDataHoraBetween(LocalDateTime inicio, LocalDateTime fim);
+
+	@Query("""
+			select year(c.dataHora), month(c.dataHora), count(c)
+			from Consulta c
+			where c.dataHora >= :inicio and c.dataHora < :fim
+			group by year(c.dataHora), month(c.dataHora)
+			""")
+	List<Object[]> contarPorMes(@Param("inicio") LocalDateTime inicio, @Param("fim") LocalDateTime fim);
+
+	@Query("""
+			select c.status, count(c)
+			from Consulta c
+			group by c.status
+			order by count(c) desc, c.status asc
+			""")
+	List<Object[]> contarPorStatus();
 
 }

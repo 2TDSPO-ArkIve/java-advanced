@@ -28,4 +28,15 @@ public interface AnimalRepository extends JpaRepository<Animal, Long> {
 			Pageable pageable
 	);
 
+	long countByAtivo(String ativo);
+
+	@Query("""
+			select a.especie.nome, count(a)
+			from Animal a
+			where a.ativo = :ativo
+			group by a.especie.nome
+			order by count(a) desc, a.especie.nome asc
+			""")
+	java.util.List<Object[]> contarAtivosPorEspecie(@Param("ativo") String ativo);
+
 }

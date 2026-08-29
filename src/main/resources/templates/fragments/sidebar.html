@@ -12,7 +12,7 @@
 		   th:href="@{/sysadmin/dashboard}"
 		   sec:authorize="hasRole('SYSADMIN')">Visão Geral</a>
 		<a class="nav-link"
-		   th:classappend="${roleLabel == 'SysAdmin' and (pageTitle == 'Usuários' or pageTitle == 'Novo Usuário')} ? ' is-active'"
+		   th:classappend="${roleLabel == 'SysAdmin' and (pageTitle == 'Usuários' or pageTitle == 'Novo usuário')} ? ' is-active'"
 		   th:href="@{/sysadmin/usuarios}"
 		   sec:authorize="hasRole('SYSADMIN')">Usuários</a>
 		<a class="nav-link"

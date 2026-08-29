@@ -20,6 +20,8 @@ public interface ClinicaRepository extends JpaRepository<Clinica, Long> {
 			""")
 	Page<Clinica> buscar(@Param("nome") String nome, @Param("ativo") String ativo, Pageable pageable);
 
+	long countByAtivo(String ativo);
+
 	List<Clinica> findByAtivoOrderByNomeAsc(String ativo);
 
 }

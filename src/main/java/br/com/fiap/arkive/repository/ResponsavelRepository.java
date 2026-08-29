@@ -28,6 +28,8 @@ public interface ResponsavelRepository extends JpaRepository<Responsavel, Long> 
 			Pageable pageable
 	);
 
+	long countByAtivo(String ativo);
+
 	List<Responsavel> findByAtivoOrderByNomeAsc(String ativo);
 
 }
