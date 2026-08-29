@@ -44,14 +44,15 @@ public class PrescricaoController {
 	public Page<PrescricaoResponse> listar(
 			@RequestParam(required = false) Long consultaId,
 			@RequestParam(required = false) String medicamento,
-			Pageable pageable
+			Pageable pageable,
+			@AuthenticationPrincipal UsuarioPrincipal principal
 	) {
-		return prescricaoService.listar(consultaId, medicamento, pageable);
+		return prescricaoService.listarAutorizado(consultaId, medicamento, pageable, principal);
 	}
 
 	@GetMapping("/{id}")
-	public PrescricaoResponse buscarPorId(@PathVariable Long id) {
-		return prescricaoService.buscarPorId(id);
+	public PrescricaoResponse buscarPorId(@PathVariable Long id, @AuthenticationPrincipal UsuarioPrincipal principal) {
+		return prescricaoService.buscarPorIdAutorizado(id, principal);
 	}
 
 	@PutMapping("/{id}")

@@ -1,10 +1,12 @@
 package br.com.fiap.arkive.service;
 
 import br.com.fiap.arkive.entity.Animal;
+import br.com.fiap.arkive.entity.AdesaoPrescricao;
 import br.com.fiap.arkive.entity.Clinica;
 import br.com.fiap.arkive.entity.Consulta;
 import br.com.fiap.arkive.entity.Diagnostico;
 import br.com.fiap.arkive.entity.Prescricao;
+import br.com.fiap.arkive.entity.Responsavel;
 import br.com.fiap.arkive.entity.TipoUsuario;
 import br.com.fiap.arkive.entity.Veterinario;
 import br.com.fiap.arkive.repository.AnimalResponsavelRepository;
@@ -101,6 +103,47 @@ class ClinicalAccessServiceTest {
 		assertThrows(AccessDeniedException.class, () -> clinicalAccessService.exigirEscritaPrescricaoVeterinario(adminClinica(30L), prescricao));
 	}
 
+	@Test
+	void prescricaoUsaEscopoDaConsultaParaLeitura() {
+		when(animalResponsavelRepository.existsVinculoAtivoVigente(eq(50L), eq(40L), any(LocalDate.class))).thenReturn(true);
+		Prescricao prescricao = prescricao(consulta(10L, 30L));
+
+		assertDoesNotThrow(() -> clinicalAccessService.exigirLeituraPrescricao(veterinario(10L), prescricao));
+		assertDoesNotThrow(() -> clinicalAccessService.exigirLeituraPrescricao(responsavel(40L), prescricao));
+		assertDoesNotThrow(() -> clinicalAccessService.exigirLeituraPrescricao(adminClinica(30L), prescricao));
+		assertDoesNotThrow(() -> clinicalAccessService.exigirLeituraPrescricao(sysadmin(), prescricao));
+		assertThrows(AccessDeniedException.class, () -> clinicalAccessService.exigirLeituraPrescricao(veterinario(22L), prescricao));
+		assertThrows(AccessDeniedException.class, () -> clinicalAccessService.exigirLeituraPrescricao(responsavel(41L), prescricao));
+		assertThrows(AccessDeniedException.class, () -> clinicalAccessService.exigirLeituraPrescricao(adminClinica(31L), prescricao));
+	}
+
+	@Test
+	void registroDeAdesaoPermitidoSomenteAoResponsavelVinculado() {
+		when(animalResponsavelRepository.existsVinculoAtivoVigente(eq(50L), eq(40L), any(LocalDate.class))).thenReturn(true);
+		Prescricao prescricao = prescricao(consulta(10L, 30L));
+
+		assertDoesNotThrow(() -> clinicalAccessService.exigirRegistroAdesaoResponsavel(responsavel(40L), prescricao));
+		assertThrows(AccessDeniedException.class, () -> clinicalAccessService.exigirRegistroAdesaoResponsavel(responsavel(41L), prescricao));
+		assertThrows(AccessDeniedException.class, () -> clinicalAccessService.exigirRegistroAdesaoResponsavel(veterinario(10L), prescricao));
+		assertThrows(AccessDeniedException.class, () -> clinicalAccessService.exigirRegistroAdesaoResponsavel(adminClinica(30L), prescricao));
+		assertThrows(AccessDeniedException.class, () -> clinicalAccessService.exigirRegistroAdesaoResponsavel(sysadmin(), prescricao));
+	}
+
+	@Test
+	void leituraDeAdesaoPreservaPrivacidadeEntreResponsaveis() {
+		when(animalResponsavelRepository.existsVinculoAtivoVigente(eq(50L), eq(40L), any(LocalDate.class))).thenReturn(true);
+		when(animalResponsavelRepository.existsVinculoAtivoVigente(eq(50L), eq(41L), any(LocalDate.class))).thenReturn(true);
+		AdesaoPrescricao adesao = adesao(prescricao(consulta(10L, 30L)), 40L);
+
+		assertDoesNotThrow(() -> clinicalAccessService.exigirLeituraAdesaoPrescricao(veterinario(10L), adesao));
+		assertDoesNotThrow(() -> clinicalAccessService.exigirLeituraAdesaoPrescricao(responsavel(40L), adesao));
+		assertDoesNotThrow(() -> clinicalAccessService.exigirLeituraAdesaoPrescricao(adminClinica(30L), adesao));
+		assertDoesNotThrow(() -> clinicalAccessService.exigirLeituraAdesaoPrescricao(sysadmin(), adesao));
+		assertThrows(AccessDeniedException.class, () -> clinicalAccessService.exigirLeituraAdesaoPrescricao(veterinario(22L), adesao));
+		assertThrows(AccessDeniedException.class, () -> clinicalAccessService.exigirLeituraAdesaoPrescricao(responsavel(41L), adesao));
+		assertThrows(AccessDeniedException.class, () -> clinicalAccessService.exigirLeituraAdesaoPrescricao(adminClinica(31L), adesao));
+	}
+
 	private Consulta consulta(Long veterinarioId, Long clinicaId) {
 		Consulta consulta = new Consulta();
 		consulta.setId(1L);
@@ -125,6 +168,24 @@ class ClinicalAccessServiceTest {
 			animal.setClinica(clinica);
 		}
 		return animal;
+	}
+
+	private Prescricao prescricao(Consulta consulta) {
+		Prescricao prescricao = new Prescricao();
+		prescricao.setId(9L);
+		prescricao.setConsulta(consulta);
+		return prescricao;
+	}
+
+	private AdesaoPrescricao adesao(Prescricao prescricao, Long responsavelId) {
+		Responsavel responsavel = new Responsavel();
+		responsavel.setId(responsavelId);
+		AdesaoPrescricao adesao = new AdesaoPrescricao();
+		adesao.setId(80L);
+		adesao.setPrescricao(prescricao);
+		adesao.setAnimal(prescricao.getConsulta().getAnimal());
+		adesao.setResponsavel(responsavel);
+		return adesao;
 	}
 
 	private UsuarioPrincipal veterinario(Long veterinarioId) {

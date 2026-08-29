@@ -1,6 +1,7 @@
 package br.com.fiap.arkive.service;
 
 import br.com.fiap.arkive.entity.Animal;
+import br.com.fiap.arkive.entity.AdesaoPrescricao;
 import br.com.fiap.arkive.entity.Consulta;
 import br.com.fiap.arkive.entity.Diagnostico;
 import br.com.fiap.arkive.entity.Prescricao;
@@ -69,6 +70,29 @@ public class ClinicalAccessService {
 		exigirEscritaClinicaVeterinario(principal, prescricao.getConsulta());
 	}
 
+	public void exigirLeituraPrescricao(UsuarioPrincipal principal, Prescricao prescricao) {
+		exigirLeituraConsulta(principal, prescricao.getConsulta());
+	}
+
+	public void exigirRegistroAdesaoResponsavel(UsuarioPrincipal principal, Prescricao prescricao) {
+		exigirPrincipal(principal);
+		if (!TipoUsuario.RESPONSAVEL.equals(principal.getTipoUsuario()) || principal.getResponsavelId() == null) {
+			throw new AccessDeniedException("Registro de adesao permitido apenas ao responsavel vinculado ao animal.");
+		}
+		if (prescricao.getConsulta() == null || prescricao.getConsulta().getAnimal() == null
+				|| !temVinculoResponsavelAnimal(principal.getResponsavelId(), prescricao.getConsulta().getAnimal().getId())) {
+			throw new AccessDeniedException("Responsavel nao autorizado para registrar adesao desta prescricao.");
+		}
+	}
+
+	public void exigirLeituraAdesaoPrescricao(UsuarioPrincipal principal, AdesaoPrescricao adesao) {
+		exigirPrincipal(principal);
+		if (podeLerAdesaoPrescricao(principal, adesao)) {
+			return;
+		}
+		throw new AccessDeniedException("Usuario nao autorizado para esta adesao de prescricao.");
+	}
+
 	private boolean podeLerConsulta(UsuarioPrincipal principal, Consulta consulta) {
 		return switch (principal.getTipoUsuario()) {
 			case SYSADMIN -> true;
@@ -94,6 +118,27 @@ public class ClinicalAccessService {
 			case ADMIN_CLINICA -> principal.getClinicaId() != null
 					&& animal.getClinica() != null
 					&& Objects.equals(principal.getClinicaId(), animal.getClinica().getId());
+		};
+	}
+
+	private boolean podeLerAdesaoPrescricao(UsuarioPrincipal principal, AdesaoPrescricao adesao) {
+		Consulta consulta = adesao.getPrescricao() == null ? null : adesao.getPrescricao().getConsulta();
+		return switch (principal.getTipoUsuario()) {
+			case SYSADMIN -> true;
+			case VETERINARIO -> principal.getVeterinarioId() != null
+					&& consulta != null
+					&& consulta.getVeterinario() != null
+					&& Objects.equals(principal.getVeterinarioId(), consulta.getVeterinario().getId());
+			case RESPONSAVEL -> principal.getResponsavelId() != null
+					&& adesao.getResponsavel() != null
+					&& Objects.equals(principal.getResponsavelId(), adesao.getResponsavel().getId())
+					&& consulta != null
+					&& consulta.getAnimal() != null
+					&& temVinculoResponsavelAnimal(principal.getResponsavelId(), consulta.getAnimal().getId());
+			case ADMIN_CLINICA -> principal.getClinicaId() != null
+					&& consulta != null
+					&& consulta.getClinica() != null
+					&& Objects.equals(principal.getClinicaId(), consulta.getClinica().getId());
 		};
 	}
 

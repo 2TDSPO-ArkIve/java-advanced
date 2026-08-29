@@ -1,7 +1,8 @@
 package br.com.fiap.arkive.controller;
 
-import br.com.fiap.arkive.dto.request.AdesaoPrescricaoRequest;
+import br.com.fiap.arkive.dto.request.RegistrarAdesaoPrescricaoRequest;
 import br.com.fiap.arkive.dto.response.AdesaoPrescricaoResponse;
+import br.com.fiap.arkive.security.UsuarioPrincipal;
 import br.com.fiap.arkive.service.AdesaoPrescricaoService;
 import jakarta.validation.Valid;
 import org.springframework.context.annotation.Profile;
@@ -9,11 +10,10 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -31,8 +31,11 @@ public class AdesaoPrescricaoController {
 	}
 
 	@PostMapping
-	public ResponseEntity<AdesaoPrescricaoResponse> criar(@Valid @RequestBody AdesaoPrescricaoRequest request) {
-		return ResponseEntity.status(HttpStatus.CREATED).body(adesaoPrescricaoService.criar(request));
+	public ResponseEntity<AdesaoPrescricaoResponse> criar(
+			@Valid @RequestBody RegistrarAdesaoPrescricaoRequest request,
+			@AuthenticationPrincipal UsuarioPrincipal principal
+	) {
+		return ResponseEntity.status(HttpStatus.CREATED).body(adesaoPrescricaoService.registrar(request, principal));
 	}
 
 	@GetMapping
@@ -41,25 +44,15 @@ public class AdesaoPrescricaoController {
 			@RequestParam(required = false) Long animalId,
 			@RequestParam(required = false) Long responsavelId,
 			@RequestParam(required = false) String tomou,
-			Pageable pageable
+			Pageable pageable,
+			@AuthenticationPrincipal UsuarioPrincipal principal
 	) {
-		return adesaoPrescricaoService.listar(prescricaoId, animalId, responsavelId, tomou, pageable);
+		return adesaoPrescricaoService.listarAutorizado(prescricaoId, animalId, responsavelId, tomou, pageable, principal);
 	}
 
 	@GetMapping("/{id}")
-	public AdesaoPrescricaoResponse buscarPorId(@PathVariable Long id) {
-		return adesaoPrescricaoService.buscarPorId(id);
-	}
-
-	@PutMapping("/{id}")
-	public AdesaoPrescricaoResponse atualizar(@PathVariable Long id, @Valid @RequestBody AdesaoPrescricaoRequest request) {
-		return adesaoPrescricaoService.atualizar(id, request);
-	}
-
-	@DeleteMapping("/{id}")
-	public ResponseEntity<Void> excluir(@PathVariable Long id) {
-		adesaoPrescricaoService.excluir(id);
-		return ResponseEntity.noContent().build();
+	public AdesaoPrescricaoResponse buscarPorId(@PathVariable Long id, @AuthenticationPrincipal UsuarioPrincipal principal) {
+		return adesaoPrescricaoService.buscarPorIdAutorizado(id, principal);
 	}
 
 }
