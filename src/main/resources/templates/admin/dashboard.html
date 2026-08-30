@@ -16,13 +16,12 @@
 				</article>
 			</section>
 
-			<section class="card-grid" aria-label="Acessos da clínica">
+			<section class="card-grid quick-access-grid" aria-label="Acessos da clínica">
 				<article class="info-card" th:each="item : ${quickAccess}">
-					<p class="kpi-label" th:text="${item.label}">Animais</p>
 					<h3 th:text="${item.label}">Animais</h3>
 					<strong th:if="${item.count != null}" th:text="${item.count}">0</strong>
 					<p th:text="${item.description}">Resumo</p>
-					<a class="button button-secondary button-small" th:href="@{${item.href}}">Acessar</a>
+					<a class="button button-primary button-small" th:href="@{${item.href}}">Acessar</a>
 				</article>
 			</section>
 		</main>
