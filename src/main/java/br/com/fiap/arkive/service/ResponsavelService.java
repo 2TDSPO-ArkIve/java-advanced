@@ -60,6 +60,16 @@ public class ResponsavelService {
 	}
 
 	@Transactional(readOnly = true)
+	public Page<ResponsavelResponse> listarPorTexto(String busca, String ativo, Pageable pageable) {
+		validarSNQuandoInformado(ativo, "Ativo");
+		return responsavelRepository.buscarPorTexto(
+				vazioParaNulo(busca),
+				vazioParaNulo(ativo),
+				pageable
+		).map(ResponsavelResponse::fromEntity);
+	}
+
+	@Transactional(readOnly = true)
 	public ResponsavelResponse buscarPorId(Long id) {
 		return ResponsavelResponse.fromEntity(buscarEntidade(id));
 	}

@@ -28,6 +28,22 @@ public interface ResponsavelRepository extends JpaRepository<Responsavel, Long> 
 			Pageable pageable
 	);
 
+	@Query("""
+			select r from Responsavel r
+			where (
+				:busca is null
+				or lower(r.nome) like lower(concat('%', :busca, '%'))
+				or lower(r.documento) like lower(concat('%', :busca, '%'))
+				or lower(r.email) like lower(concat('%', :busca, '%'))
+			)
+			and (:ativo is null or r.ativo = :ativo)
+			""")
+	Page<Responsavel> buscarPorTexto(
+			@Param("busca") String busca,
+			@Param("ativo") String ativo,
+			Pageable pageable
+	);
+
 	long countByAtivo(String ativo);
 
 	List<Responsavel> findByAtivoOrderByNomeAsc(String ativo);

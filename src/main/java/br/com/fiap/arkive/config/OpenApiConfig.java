@@ -1,13 +1,19 @@
 package br.com.fiap.arkive.config;
 
-import io.swagger.v3.oas.models.OpenAPI;
 import io.swagger.v3.oas.models.Components;
+import io.swagger.v3.oas.models.OpenAPI;
 import io.swagger.v3.oas.models.info.Info;
+import io.swagger.v3.oas.models.parameters.Parameter;
 import io.swagger.v3.oas.models.security.SecurityRequirement;
 import io.swagger.v3.oas.models.security.SecurityScheme;
+import io.swagger.v3.oas.models.media.IntegerSchema;
+import io.swagger.v3.oas.models.media.StringSchema;
 import io.swagger.v3.oas.models.tags.Tag;
+import org.springdoc.core.customizers.OpenApiCustomizer;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+
+import java.math.BigDecimal;
 
 @Configuration
 public class OpenApiConfig {
@@ -36,6 +42,50 @@ public class OpenApiConfig {
 				.addTagsItem(new Tag().name("Veterinarios").description("Profissionais veterinarios."))
 				.addTagsItem(new Tag().name("Responsaveis").description("Responsaveis por animais."))
 				.addTagsItem(new Tag().name("Clinicas").description("Clinicas e contexto administrativo."));
+	}
+
+	@Bean
+	public OpenApiCustomizer pageableQueryParameterCustomizer() {
+		return openApi -> {
+			if (openApi.getPaths() == null) {
+				return;
+			}
+			openApi.getPaths().values().forEach(pathItem -> pathItem.readOperations().forEach(operation -> {
+				if (operation.getParameters() == null) {
+					return;
+				}
+				operation.getParameters().forEach(this::normalizarParametroPageable);
+			}));
+		};
+	}
+
+	private void normalizarParametroPageable(Parameter parameter) {
+		if (!"query".equals(parameter.getIn())) {
+			return;
+		}
+		if ("page".equals(parameter.getName())) {
+			parameter
+					.schema(new IntegerSchema().minimum(BigDecimal.ZERO).example(0))
+					.required(false)
+					.description("Pagina solicitada, iniciando em 0.");
+			return;
+		}
+		if ("size".equals(parameter.getName())) {
+			parameter
+					.schema(new IntegerSchema().minimum(BigDecimal.ONE).example(20))
+					.required(false)
+					.description("Quantidade de itens por pagina.");
+			return;
+		}
+		if ("sort".equals(parameter.getName())) {
+			parameter
+					.schema(new StringSchema().example("dataHora,desc"))
+					.required(false)
+					.description("Ordenacao no formato propriedade,direcao. Ex.: dataHora,desc")
+					.style(Parameter.StyleEnum.FORM)
+					.explode(false)
+					.content(null);
+		}
 	}
 
 }

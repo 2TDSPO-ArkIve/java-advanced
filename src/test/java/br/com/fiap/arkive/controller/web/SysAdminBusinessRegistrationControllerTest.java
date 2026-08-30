@@ -34,6 +34,7 @@ import static org.hamcrest.Matchers.not;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -77,8 +78,11 @@ class SysAdminBusinessRegistrationControllerTest {
 	@BeforeEach
 	void setUp() {
 		when(clinicaService.listar(any(), any(), any(Pageable.class))).thenReturn(new PageImpl<>(List.of()));
+		when(clinicaService.listarPorTexto(any(), any(), any(Pageable.class))).thenReturn(new PageImpl<>(List.of()));
 		when(veterinarioService.listar(any(), any(), any(), any(), any(Pageable.class))).thenReturn(new PageImpl<>(List.of()));
+		when(veterinarioService.listarPorTexto(any(), any(), any(), any(Pageable.class))).thenReturn(new PageImpl<>(List.of()));
 		when(responsavelService.listar(any(), any(), any(), any(), any(Pageable.class))).thenReturn(new PageImpl<>(List.of()));
+		when(responsavelService.listarPorTexto(any(), any(), any(Pageable.class))).thenReturn(new PageImpl<>(List.of()));
 		when(usuarioService.listarClinicasAtivas()).thenReturn(List.of(new UsuarioContextOption(1L, "Clínica Central")));
 		when(responsavelService.listarTipos()).thenReturn(List.of("TUTOR", "ONG"));
 	}
@@ -99,13 +103,18 @@ class SysAdminBusinessRegistrationControllerTest {
 	@WithMockUser(roles = "SYSADMIN")
 	void listaClinicasRenderizaDadosReais() throws Exception {
 		when(clinicaService.listar(any(), any(), any(Pageable.class))).thenReturn(new PageImpl<>(List.of(clinica())));
+		when(clinicaService.listarPorTexto(any(), any(), any(Pageable.class))).thenReturn(new PageImpl<>(List.of(clinica())));
 
 		mockMvc.perform(get("/sysadmin/clinicas"))
 				.andExpect(status().isOk())
 				.andExpect(content().string(containsString("Clínica Central")))
 				.andExpect(content().string(containsString("12345678000199")))
 				.andExpect(content().string(containsString("clinicacentral@arkive.com")))
-				.andExpect(content().string(containsString("Nova clínica")));
+				.andExpect(content().string(containsString("Nova clínica")))
+				.andExpect(content().string(containsString("list-toolbar")))
+				.andExpect(content().string(containsString("Nome, CNPJ ou e-mail")))
+				.andExpect(content().string(containsString("data-auto-filter")))
+				.andExpect(content().string(not(containsString(">Filtrar</button>"))));
 	}
 
 	@Test
@@ -207,13 +216,18 @@ class SysAdminBusinessRegistrationControllerTest {
 	@WithMockUser(roles = "SYSADMIN")
 	void listaVeterinariosRenderizaDadosReais() throws Exception {
 		when(veterinarioService.listar(any(), any(), any(), any(), any(Pageable.class))).thenReturn(new PageImpl<>(List.of(veterinario())));
+		when(veterinarioService.listarPorTexto(any(), any(), any(), any(Pageable.class))).thenReturn(new PageImpl<>(List.of(veterinario())));
 
 		mockMvc.perform(get("/sysadmin/veterinarios"))
 				.andExpect(status().isOk())
 				.andExpect(content().string(containsString("Dra. Vera")))
 				.andExpect(content().string(containsString("12345SP")))
 				.andExpect(content().string(containsString("Clínica Central")))
-				.andExpect(content().string(containsString("Novo veterinário")));
+				.andExpect(content().string(containsString("Novo veterinário")))
+				.andExpect(content().string(containsString("list-toolbar")))
+				.andExpect(content().string(containsString("Nome, CRMV ou e-mail")))
+				.andExpect(content().string(containsString("data-auto-filter")))
+				.andExpect(content().string(not(containsString(">Filtrar</button>"))));
 	}
 
 	@Test
@@ -300,13 +314,41 @@ class SysAdminBusinessRegistrationControllerTest {
 	@WithMockUser(roles = "SYSADMIN")
 	void listaResponsaveisRenderizaDadosReais() throws Exception {
 		when(responsavelService.listar(any(), any(), any(), any(), any(Pageable.class))).thenReturn(new PageImpl<>(List.of(responsavel())));
+		when(responsavelService.listarPorTexto(any(), any(), any(Pageable.class))).thenReturn(new PageImpl<>(List.of(responsavel())));
 
 		mockMvc.perform(get("/sysadmin/responsaveis"))
 				.andExpect(status().isOk())
 				.andExpect(content().string(containsString("Rui Tutor")))
 				.andExpect(content().string(containsString("12345678900")))
 				.andExpect(content().string(containsString("TUTOR")))
-				.andExpect(content().string(containsString("Novo responsável")));
+				.andExpect(content().string(containsString("Novo responsável")))
+				.andExpect(content().string(containsString("list-toolbar")))
+				.andExpect(content().string(containsString("Nome, documento ou e-mail")))
+				.andExpect(content().string(containsString("data-auto-filter")))
+				.andExpect(content().string(not(containsString(">Filtrar</button>"))));
+	}
+
+	@Test
+	@WithMockUser(roles = "SYSADMIN")
+	void filtrosSysadminChamamServicosComParametros() throws Exception {
+		mockMvc.perform(get("/sysadmin/clinicas")
+						.param("busca", "central")
+						.param("ativo", "S"))
+				.andExpect(status().isOk());
+		verify(clinicaService).listarPorTexto(eq("central"), eq("S"), any(Pageable.class));
+
+		mockMvc.perform(get("/sysadmin/veterinarios")
+						.param("busca", "vera")
+						.param("clinicaId", "1")
+						.param("ativo", "N"))
+				.andExpect(status().isOk());
+		verify(veterinarioService).listarPorTexto(eq("vera"), eq(1L), eq("N"), any(Pageable.class));
+
+		mockMvc.perform(get("/sysadmin/responsaveis")
+						.param("busca", "rui")
+						.param("ativo", "S"))
+				.andExpect(status().isOk());
+		verify(responsavelService).listarPorTexto(eq("rui"), eq("S"), any(Pageable.class));
 	}
 
 	@Test

@@ -54,6 +54,13 @@ public class ClinicaService {
 	}
 
 	@Transactional(readOnly = true)
+	@Cacheable(value = "clinicas", key = "'buscarTexto:' + (#busca == null ? '' : #busca) + ':' + (#ativo == null ? '' : #ativo) + ':' + #pageable")
+	public Page<ClinicaResponse> listarPorTexto(String busca, String ativo, Pageable pageable) {
+		validarAtivoQuandoInformado(ativo);
+		return clinicaRepository.buscarPorTexto(vazioParaNulo(busca), vazioParaNulo(ativo), pageable).map(ClinicaResponse::fromEntity);
+	}
+
+	@Transactional(readOnly = true)
 	@Cacheable(value = "clinicas", key = "'id:' + #id")
 	public ClinicaResponse buscarPorId(Long id) {
 		return ClinicaResponse.fromEntity(buscarEntidade(id));

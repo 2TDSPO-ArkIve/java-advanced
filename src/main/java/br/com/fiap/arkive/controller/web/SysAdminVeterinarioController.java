@@ -39,11 +39,22 @@ public class SysAdminVeterinarioController {
 	}
 
 	@GetMapping("/sysadmin/veterinarios")
-	public String listar(@RequestParam(defaultValue = "0") int page, Model model, Authentication authentication) {
+	public String listar(
+			@RequestParam(defaultValue = "0") int page,
+			@RequestParam(required = false) String busca,
+			@RequestParam(required = false) Long clinicaId,
+			@RequestParam(required = false) String ativo,
+			Model model,
+			Authentication authentication
+	) {
 		WebModelSupport.addUserAttributes(model, authentication);
 		Pageable pageable = PageRequest.of(Math.max(page, 0), DEFAULT_SIZE, Sort.by("nome").ascending().and(Sort.by("id").ascending()));
 		model.addAttribute("pageTitle", "Veterinários");
-		model.addAttribute("veterinarios", veterinarioService().listar(null, null, null, null, pageable));
+		model.addAttribute("veterinarios", veterinarioService().listarPorTexto(busca, clinicaId, ativo, pageable));
+		model.addAttribute("clinicas", usuarioService().listarClinicasAtivas());
+		model.addAttribute("busca", busca);
+		model.addAttribute("clinicaSelecionadaId", clinicaId);
+		model.addAttribute("ativoSelecionado", ativo);
 		return "sysadmin/veterinarios/lista";
 	}
 

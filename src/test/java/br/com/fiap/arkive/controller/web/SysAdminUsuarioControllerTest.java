@@ -94,6 +94,19 @@ class SysAdminUsuarioControllerTest {
 	}
 
 	@Test
+	@WithMockUser(roles = "SYSADMIN")
+	void filtroUsuariosNaoMostraLabelPerfilStandalone() throws Exception {
+		mockMvc.perform(get("/sysadmin/usuarios"))
+				.andExpect(status().isOk())
+				.andExpect(content().string(containsString("class=\"sr-only\" for=\"perfil-filter\"")))
+				.andExpect(content().string(not(containsString("<label for=\"perfil-filter\">Perfil</label>"))))
+				.andExpect(content().string(containsString("name=\"perfil\"")))
+				.andExpect(content().string(containsString("data-auto-filter")))
+				.andExpect(content().string(not(containsString(">Filtrar</button>"))))
+				.andExpect(content().string(containsString("Limpar filtros")));
+	}
+
+	@Test
 	@WithMockUser(roles = "ADMIN_CLINICA")
 	void adminClinicaNaoAcessaListagemSysadmin() throws Exception {
 		mockMvc.perform(get("/sysadmin/usuarios"))

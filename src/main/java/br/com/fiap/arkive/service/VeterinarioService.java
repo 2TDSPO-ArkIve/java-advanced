@@ -63,6 +63,17 @@ public class VeterinarioService {
 	}
 
 	@Transactional(readOnly = true)
+	public Page<VeterinarioResponse> listarPorTexto(String busca, Long clinicaId, String ativo, Pageable pageable) {
+		validarAtivoQuandoInformado(ativo);
+		return veterinarioRepository.buscarPorTexto(
+				vazioParaNulo(busca),
+				clinicaId,
+				vazioParaNulo(ativo),
+				pageable
+		).map(VeterinarioResponse::fromEntity);
+	}
+
+	@Transactional(readOnly = true)
 	public VeterinarioResponse buscarPorId(Long id) {
 		return VeterinarioResponse.fromEntity(buscarEntidade(id));
 	}

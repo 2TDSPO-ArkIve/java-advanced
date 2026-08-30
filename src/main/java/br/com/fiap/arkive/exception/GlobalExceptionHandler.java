@@ -5,6 +5,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.ConstraintViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.data.mapping.PropertyReferenceException;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.web.HttpRequestMethodNotSupportedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
@@ -55,6 +56,11 @@ public class GlobalExceptionHandler {
 	@ExceptionHandler(HttpRequestMethodNotSupportedException.class)
 	public ResponseEntity<ErrorResponse> handleMethodNotSupported(HttpRequestMethodNotSupportedException ex, HttpServletRequest request) {
 		return buildResponse(HttpStatus.METHOD_NOT_ALLOWED, "Metodo HTTP nao suportado para este recurso.", request.getRequestURI());
+	}
+
+	@ExceptionHandler(PropertyReferenceException.class)
+	public ResponseEntity<ErrorResponse> handlePropertyReference(PropertyReferenceException ex, HttpServletRequest request) {
+		return buildResponse(HttpStatus.BAD_REQUEST, "Parametro de ordenacao invalido.", request.getRequestURI());
 	}
 
 	@ExceptionHandler(Exception.class)

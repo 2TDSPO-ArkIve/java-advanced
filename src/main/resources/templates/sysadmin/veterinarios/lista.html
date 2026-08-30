@@ -7,17 +7,41 @@
 	<div class="app-content">
 		<header th:replace="~{fragments/header :: header(${pageTitle})}"></header>
 		<main class="main-content">
-			<div class="page-actions">
-				<div>
-					<p class="eyebrow">SysAdmin</p>
-					<h2 class="page-title">Veterinários</h2>
-				</div>
+			<div class="page-actions page-actions-only">
 				<a class="button button-primary" th:href="@{/sysadmin/veterinarios/novo}">Novo veterinário</a>
 			</div>
 
 			<div class="alert alert-success" th:if="${sucesso}" th:text="${sucesso}">Sucesso</div>
 			<div class="alert alert-success" th:if="${primeiroAcesso}" th:text="${primeiroAcesso}">Primeiro acesso</div>
 			<div class="alert alert-error" th:if="${erro}" th:text="${erro}">Erro</div>
+
+			<section class="list-toolbar" aria-label="Filtros de veterinários">
+				<form class="filter-form" th:action="@{/sysadmin/veterinarios}" method="get" data-auto-filter>
+					<div class="filter-field-inline">
+						<label for="veterinarios-busca">Busca</label>
+						<input id="veterinarios-busca" type="search" name="busca" th:value="${busca}" placeholder="Nome, CRMV ou e-mail" data-filter-search>
+					</div>
+					<div class="filter-field-inline">
+						<label for="veterinarios-clinica">Clínica</label>
+						<select id="veterinarios-clinica" name="clinicaId">
+							<option value="" th:selected="${clinicaSelecionadaId == null}">Todas</option>
+							<option th:each="clinica : ${clinicas}"
+							        th:value="${clinica.id}"
+							        th:text="${clinica.label}"
+							        th:selected="${clinica.id == clinicaSelecionadaId}">Clínica</option>
+						</select>
+					</div>
+					<div class="filter-field-inline">
+						<label for="veterinarios-status">Status</label>
+						<select id="veterinarios-status" name="ativo">
+							<option value="" th:selected="${ativoSelecionado == null or ativoSelecionado == ''}">Todos</option>
+							<option value="S" th:selected="${ativoSelecionado == 'S'}">Ativo</option>
+							<option value="N" th:selected="${ativoSelecionado == 'N'}">Inativo</option>
+						</select>
+					</div>
+					<a class="button button-secondary button-small" th:href="@{/sysadmin/veterinarios}">Limpar filtros</a>
+				</form>
+			</section>
 
 			<section class="empty-state" th:if="${veterinarios.empty}">
 				<h3>Nenhum veterinário cadastrado.</h3>
@@ -62,9 +86,9 @@
 			</section>
 
 			<nav class="pagination" th:if="${veterinarios.totalPages > 1}" aria-label="Paginação">
-				<a class="button button-secondary" th:if="${veterinarios.hasPrevious()}" th:href="@{/sysadmin/veterinarios(page=${veterinarios.number - 1})}">Anterior</a>
+				<a class="button button-secondary" th:if="${veterinarios.hasPrevious()}" th:href="@{/sysadmin/veterinarios(page=${veterinarios.number - 1}, busca=${busca}, clinicaId=${clinicaSelecionadaId}, ativo=${ativoSelecionado})}">Anterior</a>
 				<span th:text="${veterinarios.number + 1} + ' de ' + ${veterinarios.totalPages}">1 de 1</span>
-				<a class="button button-secondary" th:if="${veterinarios.hasNext()}" th:href="@{/sysadmin/veterinarios(page=${veterinarios.number + 1})}">Próxima</a>
+				<a class="button button-secondary" th:if="${veterinarios.hasNext()}" th:href="@{/sysadmin/veterinarios(page=${veterinarios.number + 1}, busca=${busca}, clinicaId=${clinicaSelecionadaId}, ativo=${ativoSelecionado})}">Próxima</a>
 			</nav>
 		</main>
 	</div>

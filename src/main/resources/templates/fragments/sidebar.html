@@ -3,7 +3,8 @@
 <body>
 <aside class="sidebar" th:fragment="sidebar">
 	<a class="brand" th:href="@{/}">
-		<img class="brand-logo" th:src="@{/images/definitive.png}" alt="ArkIve">
+		<img class="brand-logo" th:src="@{/images/definitive.png}" alt="">
+		<span class="brand-wordmark">ArkIve</span>
 	</a>
 
 	<nav class="nav" aria-label="Navegacao administrativa">
@@ -31,6 +32,22 @@
 		   th:classappend="${roleLabel == 'Administrador da Clínica' and pageTitle == 'Visão Geral'} ? ' is-active'"
 		   th:href="@{/admin/dashboard}"
 		   sec:authorize="hasRole('ADMIN_CLINICA')">Visão Geral</a>
+		<a class="nav-link"
+		   th:classappend="${roleLabel == 'Administrador da Clínica' and (pageTitle == 'Animais' or pageTitle == 'Novo animal' or pageTitle == 'Editar animal')} ? ' is-active'"
+		   th:href="@{/admin/animais}"
+		   sec:authorize="hasRole('ADMIN_CLINICA')">Animais</a>
+		<a class="nav-link"
+		   th:classappend="${roleLabel == 'Administrador da Clínica' and (pageTitle == 'Consultas' or pageTitle == 'Consulta')} ? ' is-active'"
+		   th:href="@{/admin/consultas}"
+		   sec:authorize="hasRole('ADMIN_CLINICA')">Consultas</a>
+		<a class="nav-link"
+		   th:classappend="${roleLabel == 'Administrador da Clínica' and (pageTitle == 'Prescrições' or pageTitle == 'Prescrição')} ? ' is-active'"
+		   th:href="@{/admin/prescricoes}"
+		   sec:authorize="hasRole('ADMIN_CLINICA')">Prescrições</a>
+		<a class="nav-link"
+		   th:classappend="${roleLabel == 'Administrador da Clínica' and pageTitle == 'Adesão'} ? ' is-active'"
+		   th:href="@{/admin/adesoes}"
+		   sec:authorize="hasRole('ADMIN_CLINICA')">Adesão</a>
 	</nav>
 
 	<div class="sidebar-account">

@@ -132,7 +132,7 @@ class WebSecurityMvcTest {
 				.andExpect(content().string(containsString("sidebar-logout")))
 				.andExpect(content().string(containsString("Sair")))
 				.andExpect(content().string(not(containsString("user-menu"))))
-				.andExpect(content().string(containsString("Administração Global")))
+				.andExpect(content().string(containsString("Indicadores globais")))
 				.andExpect(content().string(not(containsString("senhaHash"))))
 				.andExpect(content().string(not(containsString("$2a$"))));
 
@@ -204,6 +204,13 @@ class WebSecurityMvcTest {
 	}
 
 	@Test
+	void usuarioComTrocaObrigatoriaAindaAcessaOpenApi() throws Exception {
+		mockMvc.perform(get("/v3/api-docs").with(user(principal(true))))
+				.andExpect(status().isOk())
+				.andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON));
+	}
+
+	@Test
 	void paginaAlterarSenhaAcessivelParaTrocaObrigatoria() throws Exception {
 		mockMvc.perform(get("/alterar-senha").with(user(principal(true))))
 				.andExpect(status().isOk())
@@ -259,7 +266,7 @@ class WebSecurityMvcTest {
 	void usuarioSemTrocaObrigatoriaSegueFluxoNormal() throws Exception {
 		mockMvc.perform(get("/sysadmin/dashboard").with(user(principal(false))))
 				.andExpect(status().isOk())
-				.andExpect(content().string(containsString("Administração Global")));
+				.andExpect(content().string(containsString("Indicadores globais")));
 	}
 
 	private UsuarioPrincipal principal(boolean trocaSenhaObrigatoria) {

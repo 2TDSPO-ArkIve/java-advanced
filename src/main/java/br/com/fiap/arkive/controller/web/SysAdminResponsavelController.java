@@ -33,11 +33,19 @@ public class SysAdminResponsavelController {
 	}
 
 	@GetMapping("/sysadmin/responsaveis")
-	public String listar(@RequestParam(defaultValue = "0") int page, Model model, Authentication authentication) {
+	public String listar(
+			@RequestParam(defaultValue = "0") int page,
+			@RequestParam(required = false) String busca,
+			@RequestParam(required = false) String ativo,
+			Model model,
+			Authentication authentication
+	) {
 		WebModelSupport.addUserAttributes(model, authentication);
 		Pageable pageable = PageRequest.of(Math.max(page, 0), DEFAULT_SIZE, Sort.by("nome").ascending().and(Sort.by("id").ascending()));
 		model.addAttribute("pageTitle", "Responsáveis");
-		model.addAttribute("responsaveis", responsavelService().listar(null, null, null, null, pageable));
+		model.addAttribute("responsaveis", responsavelService().listarPorTexto(busca, ativo, pageable));
+		model.addAttribute("busca", busca);
+		model.addAttribute("ativoSelecionado", ativo);
 		return "sysadmin/responsaveis/lista";
 	}
 

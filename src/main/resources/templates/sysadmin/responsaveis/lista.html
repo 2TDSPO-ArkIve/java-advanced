@@ -7,16 +7,30 @@
 	<div class="app-content">
 		<header th:replace="~{fragments/header :: header(${pageTitle})}"></header>
 		<main class="main-content">
-			<div class="page-actions">
-				<div>
-					<p class="eyebrow">SysAdmin</p>
-					<h2 class="page-title">Responsáveis</h2>
-				</div>
+			<div class="page-actions page-actions-only">
 				<a class="button button-primary" th:href="@{/sysadmin/responsaveis/novo}">Novo responsável</a>
 			</div>
 
 			<div class="alert alert-success" th:if="${sucesso}" th:text="${sucesso}">Sucesso</div>
 			<div class="alert alert-error" th:if="${erro}" th:text="${erro}">Erro</div>
+
+			<section class="list-toolbar" aria-label="Filtros de responsáveis">
+				<form class="filter-form" th:action="@{/sysadmin/responsaveis}" method="get" data-auto-filter>
+					<div class="filter-field-inline">
+						<label for="responsaveis-busca">Busca</label>
+						<input id="responsaveis-busca" type="search" name="busca" th:value="${busca}" placeholder="Nome, documento ou e-mail" data-filter-search>
+					</div>
+					<div class="filter-field-inline">
+						<label for="responsaveis-status">Status</label>
+						<select id="responsaveis-status" name="ativo">
+							<option value="" th:selected="${ativoSelecionado == null or ativoSelecionado == ''}">Todos</option>
+							<option value="S" th:selected="${ativoSelecionado == 'S'}">Ativo</option>
+							<option value="N" th:selected="${ativoSelecionado == 'N'}">Inativo</option>
+						</select>
+					</div>
+					<a class="button button-secondary button-small" th:href="@{/sysadmin/responsaveis}">Limpar filtros</a>
+				</form>
+			</section>
 
 			<section class="empty-state" th:if="${responsaveis.empty}">
 				<h3>Nenhum responsável cadastrado.</h3>
@@ -61,9 +75,9 @@
 			</section>
 
 			<nav class="pagination" th:if="${responsaveis.totalPages > 1}" aria-label="Paginação">
-				<a class="button button-secondary" th:if="${responsaveis.hasPrevious()}" th:href="@{/sysadmin/responsaveis(page=${responsaveis.number - 1})}">Anterior</a>
+				<a class="button button-secondary" th:if="${responsaveis.hasPrevious()}" th:href="@{/sysadmin/responsaveis(page=${responsaveis.number - 1}, busca=${busca}, ativo=${ativoSelecionado})}">Anterior</a>
 				<span th:text="${responsaveis.number + 1} + ' de ' + ${responsaveis.totalPages}">1 de 1</span>
-				<a class="button button-secondary" th:if="${responsaveis.hasNext()}" th:href="@{/sysadmin/responsaveis(page=${responsaveis.number + 1})}">Próxima</a>
+				<a class="button button-secondary" th:if="${responsaveis.hasNext()}" th:href="@{/sysadmin/responsaveis(page=${responsaveis.number + 1}, busca=${busca}, ativo=${ativoSelecionado})}">Próxima</a>
 			</nav>
 		</main>
 	</div>

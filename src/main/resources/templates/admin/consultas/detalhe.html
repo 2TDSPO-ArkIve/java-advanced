@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="pt-BR" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/head :: head(${pageTitle})}"></head>
+<body>
+<div class="app-shell">
+	<aside th:replace="~{fragments/sidebar :: sidebar}"></aside>
+	<div class="app-content">
+		<header th:replace="~{fragments/header :: header(${pageTitle})}"></header>
+		<main class="main-content">
+			<div class="page-actions">
+				<div>
+					<p class="eyebrow">Administrador da Clínica</p>
+					<h2 class="page-title">Consulta</h2>
+				</div>
+				<a class="button button-secondary" th:href="@{/admin/consultas}">Voltar</a>
+			</div>
+
+			<section class="detail-grid" aria-label="Detalhes da consulta">
+				<article class="detail-card">
+					<p class="section-label">Atendimento</p>
+					<dl>
+						<div>
+							<dt>Data</dt>
+							<dd th:text="${#temporals.format(consulta.dataHora, 'dd/MM/yyyy HH:mm')}">01/01/2026 10:00</dd>
+						</div>
+						<div>
+							<dt>Status</dt>
+							<dd><span class="status-badge status-warning" th:text="${consulta.statusDescricao}">Agendada</span></dd>
+						</div>
+						<div>
+							<dt>Modalidade</dt>
+							<dd th:text="${consulta.modalidade}">PRESENCIAL</dd>
+						</div>
+						<div>
+							<dt>Motivo</dt>
+							<dd th:text="${consulta.motivo ?: '-'}">Motivo</dd>
+						</div>
+					</dl>
+				</article>
+
+				<article class="detail-card">
+					<p class="section-label">Vínculos</p>
+					<dl>
+						<div>
+							<dt>Animal</dt>
+							<dd th:text="${consulta.animalNome}">Animal</dd>
+						</div>
+						<div>
+							<dt>Veterinário</dt>
+							<dd th:text="${consulta.veterinarioNome}">Veterinário</dd>
+						</div>
+						<div>
+							<dt>Clínica</dt>
+							<dd th:text="${consulta.clinicaNome ?: '-'}">Clínica</dd>
+						</div>
+						<div>
+							<dt>Peso</dt>
+							<dd th:text="${consulta.peso ?: '-'}">0</dd>
+						</div>
+					</dl>
+				</article>
+
+				<article class="detail-card">
+					<p class="section-label">Registro</p>
+					<dl>
+						<div>
+							<dt>Sintomas</dt>
+							<dd th:text="${consulta.sintomas ?: '-'}">Sintomas</dd>
+						</div>
+						<div>
+							<dt>Observação</dt>
+							<dd th:text="${consulta.observacao ?: '-'}">Observação</dd>
+						</div>
+					</dl>
+				</article>
+			</section>
+		</main>
+	</div>
+</div>
+</body>
+</html>

@@ -7,11 +7,7 @@
 	<div class="app-content">
 		<header th:replace="~{fragments/header :: header(${pageTitle})}"></header>
 		<main class="main-content">
-			<div class="page-actions">
-				<div>
-					<p class="eyebrow">SysAdmin</p>
-					<h2 class="page-title">Usuários</h2>
-				</div>
+			<div class="page-actions page-actions-only">
 				<a class="button button-primary" th:href="@{/sysadmin/usuarios/novo}">Novo usuário</a>
 			</div>
 
@@ -31,17 +27,16 @@
 			</section>
 
 			<section class="list-toolbar" aria-label="Filtros de usuários">
-				<form class="filter-form" th:action="@{/sysadmin/usuarios}" method="get">
+				<form class="filter-form" th:action="@{/sysadmin/usuarios}" method="get" data-auto-filter>
 					<input type="hidden" name="sortField" th:value="${sortField}">
 					<input type="hidden" name="sortDir" th:value="${sortDir}">
-					<label for="perfil-filter">Perfil</label>
+					<label class="sr-only" for="perfil-filter">Perfil do usuário</label>
 					<select id="perfil-filter" name="perfil">
 						<option th:each="filtro : ${filtrosPerfil}"
 						        th:value="${filtro.value}"
 						        th:text="${filtro.label}"
 						        th:selected="${filtro.value == perfilSelecionado}">Todos</option>
 					</select>
-					<button class="button button-secondary button-small" type="submit">Filtrar</button>
 					<a class="button button-secondary button-small" th:href="@{/sysadmin/usuarios}">Limpar filtros</a>
 				</form>
 			</section>

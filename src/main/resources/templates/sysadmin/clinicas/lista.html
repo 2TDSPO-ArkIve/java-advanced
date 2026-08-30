@@ -7,17 +7,31 @@
 	<div class="app-content">
 		<header th:replace="~{fragments/header :: header(${pageTitle})}"></header>
 		<main class="main-content">
-			<div class="page-actions">
-				<div>
-					<p class="eyebrow">SysAdmin</p>
-					<h2 class="page-title">Clínicas</h2>
-				</div>
+			<div class="page-actions page-actions-only">
 				<a class="button button-primary" th:href="@{/sysadmin/clinicas/nova}">Nova clínica</a>
 			</div>
 
 			<div class="alert alert-success" th:if="${sucesso}" th:text="${sucesso}">Sucesso</div>
 			<div class="alert alert-success" th:if="${primeiroAcesso}" th:text="${primeiroAcesso}">Primeiro acesso</div>
 			<div class="alert alert-error" th:if="${erro}" th:text="${erro}">Erro</div>
+
+			<section class="list-toolbar" aria-label="Filtros de clínicas">
+				<form class="filter-form" th:action="@{/sysadmin/clinicas}" method="get" data-auto-filter>
+					<div class="filter-field-inline">
+						<label for="clinicas-busca">Busca</label>
+						<input id="clinicas-busca" type="search" name="busca" th:value="${busca}" placeholder="Nome, CNPJ ou e-mail" data-filter-search>
+					</div>
+					<div class="filter-field-inline">
+						<label for="clinicas-status">Status</label>
+						<select id="clinicas-status" name="ativo">
+							<option value="" th:selected="${ativoSelecionado == null or ativoSelecionado == ''}">Todos</option>
+							<option value="S" th:selected="${ativoSelecionado == 'S'}">Ativo</option>
+							<option value="N" th:selected="${ativoSelecionado == 'N'}">Inativo</option>
+						</select>
+					</div>
+					<a class="button button-secondary button-small" th:href="@{/sysadmin/clinicas}">Limpar filtros</a>
+				</form>
+			</section>
 
 			<section class="empty-state" th:if="${clinicas.empty}">
 				<h3>Nenhuma clínica cadastrada.</h3>
@@ -60,9 +74,9 @@
 			</section>
 
 			<nav class="pagination" th:if="${clinicas.totalPages > 1}" aria-label="Paginação">
-				<a class="button button-secondary" th:if="${clinicas.hasPrevious()}" th:href="@{/sysadmin/clinicas(page=${clinicas.number - 1})}">Anterior</a>
+				<a class="button button-secondary" th:if="${clinicas.hasPrevious()}" th:href="@{/sysadmin/clinicas(page=${clinicas.number - 1}, busca=${busca}, ativo=${ativoSelecionado})}">Anterior</a>
 				<span th:text="${clinicas.number + 1} + ' de ' + ${clinicas.totalPages}">1 de 1</span>
-				<a class="button button-secondary" th:if="${clinicas.hasNext()}" th:href="@{/sysadmin/clinicas(page=${clinicas.number + 1})}">Próxima</a>
+				<a class="button button-secondary" th:if="${clinicas.hasNext()}" th:href="@{/sysadmin/clinicas(page=${clinicas.number + 1}, busca=${busca}, ativo=${ativoSelecionado})}">Próxima</a>
 			</nav>
 		</main>
 	</div>
