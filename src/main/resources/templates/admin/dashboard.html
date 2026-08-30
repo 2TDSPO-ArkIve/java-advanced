@@ -7,11 +7,6 @@
 	<div class="app-content">
 		<header th:replace="~{fragments/header :: header(${pageTitle})}"></header>
 		<main class="main-content">
-			<section class="intro">
-				<p class="eyebrow">Administrador da Clínica</p>
-				<h2 class="page-title" th:text="${sectionTitle}">Administração da Clínica</h2>
-			</section>
-
 			<section class="kpi-grid" aria-label="Indicadores da clínica">
 				<article class="kpi-card" th:each="kpi : ${kpis}">
 					<p class="kpi-label" th:text="${kpi.label}">Indicador</p>

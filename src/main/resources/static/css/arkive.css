@@ -569,13 +569,8 @@ p {
 	padding: var(--space-lg) var(--space-xl) var(--space-xl);
 }
 
-.intro,
 .page-actions {
 	margin-bottom: var(--space-lg);
-}
-
-.intro {
-	max-width: 780px;
 }
 
 .page-actions {
@@ -587,11 +582,6 @@ p {
 
 .page-actions-only {
 	justify-content: flex-end;
-}
-
-.page-actions p {
-	margin-bottom: 0;
-	max-width: 620px;
 }
 
 .list-toolbar {

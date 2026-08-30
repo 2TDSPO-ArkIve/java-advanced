@@ -124,7 +124,8 @@ class AdminClinicaControllerTest {
 	void dashboardAdminClinicaRenderizaAcessosEContagensReais() throws Exception {
 		mockMvc.perform(get("/admin/dashboard").with(user(adminPrincipal())))
 				.andExpect(status().isOk())
-				.andExpect(content().string(containsString("Administração da Clínica")))
+				.andExpect(content().string(containsString("Animais ativos")))
+				.andExpect(content().string(containsString("Aguardando parecer")))
 				.andExpect(content().string(containsString("Cadastro e manutenção dos animais da clínica.")))
 				.andExpect(content().string(containsString("Acompanhamento de consultas no escopo da clínica.")))
 				.andExpect(content().string(containsString("Consulta de prescrições registradas")))

@@ -7,13 +7,6 @@
 	<div class="app-content">
 		<header th:replace="~{fragments/header :: header(${pageTitle})}"></header>
 		<main class="main-content">
-			<div class="page-actions">
-				<div>
-					<p class="eyebrow">Administrador da Clínica</p>
-					<h2 class="page-title">Adesão</h2>
-				</div>
-			</div>
-
 			<div class="alert alert-error" th:if="${erro}" th:text="${erro}">Erro</div>
 
 			<section class="empty-state" th:if="${adesoes.empty}">
