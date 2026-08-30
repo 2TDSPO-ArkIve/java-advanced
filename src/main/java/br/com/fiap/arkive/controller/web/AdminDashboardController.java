@@ -41,8 +41,19 @@ public class AdminDashboardController {
 		WebModelSupport.addUserAttributes(model, authentication);
 		model.addAttribute("pageTitle", "Visão Geral");
 		model.addAttribute("sectionTitle", "Administração da Clínica");
+		model.addAttribute("kpis", kpis(principal(authentication)));
 		model.addAttribute("quickAccess", quickAccess(principal(authentication)));
 		return "admin/dashboard";
+	}
+
+	private List<KpiCard> kpis(UsuarioPrincipal principal) {
+		return List.of(
+				new KpiCard("Animais ativos", totalAnimaisAtivos(principal), "Pacientes disponíveis no escopo da clínica."),
+				new KpiCard("Consultas totais", totalConsultas(principal), "Histórico de atendimentos vinculados à clínica."),
+				new KpiCard("Em progresso", totalConsultasPorStatus(principal, "EP"), "Consultas com atendimento clínico iniciado."),
+				new KpiCard("Aguardando parecer", totalConsultasPorStatus(principal, "AP"), "Atendimentos com apoio clínico pendente de parecer veterinário."),
+				new KpiCard("Prescrições registradas", totalPrescricoes(principal), "Tratamentos emitidos em consultas finalizadas.")
+		);
 	}
 
 	private List<QuickAccessCard> quickAccess(UsuarioPrincipal principal) {
@@ -55,24 +66,36 @@ public class AdminDashboardController {
 	}
 
 	private Long totalAnimais(UsuarioPrincipal principal) {
+		return contarAnimais(principal, null);
+	}
+
+	private Long totalAnimaisAtivos(UsuarioPrincipal principal) {
+		return contarAnimais(principal, "S");
+	}
+
+	private Long contarAnimais(UsuarioPrincipal principal, String ativo) {
 		AnimalService service = animalService.getIfAvailable();
 		if (service == null || principal == null) {
 			return null;
 		}
 		try {
-			return service.listarAutorizado(null, null, null, null, null, countPage(), principal).getTotalElements();
+			return service.listarAutorizado(null, null, null, null, ativo, countPage(), principal).getTotalElements();
 		} catch (AccessDeniedException ex) {
 			return null;
 		}
 	}
 
 	private Long totalConsultas(UsuarioPrincipal principal) {
+		return totalConsultasPorStatus(principal, null);
+	}
+
+	private Long totalConsultasPorStatus(UsuarioPrincipal principal, String status) {
 		ConsultaService service = consultaService.getIfAvailable();
 		if (service == null || principal == null) {
 			return null;
 		}
 		try {
-			return service.listarAutorizado(null, null, null, null, null, countPage(), principal).getTotalElements();
+			return service.listarAutorizado(null, null, null, status, null, countPage(), principal).getTotalElements();
 		} catch (AccessDeniedException ex) {
 			return null;
 		}
@@ -114,6 +137,9 @@ public class AdminDashboardController {
 	}
 
 	public record QuickAccessCard(String label, String description, String href, Long count) {
+	}
+
+	public record KpiCard(String label, Long count, String description) {
 	}
 
 }

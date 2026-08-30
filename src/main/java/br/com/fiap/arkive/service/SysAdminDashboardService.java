@@ -40,7 +40,7 @@ public class SysAdminDashboardService {
 	private static final Map<String, String> STATUS_LABELS = Map.of(
 			"AG", "Agendada",
 			"EP", "Em progresso",
-			"AP", "Aprovada",
+			"AP", "Aguardando Parecer",
 			"FI", "Finalizada",
 			"CA", "Cancelada"
 	);

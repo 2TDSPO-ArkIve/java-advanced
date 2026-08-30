@@ -16,6 +16,20 @@
 
 			<div class="alert alert-error" th:if="${erro}" th:text="${erro}">Erro</div>
 
+			<form class="filter-form" method="get" th:action="@{/admin/consultas}">
+				<label for="status">Status</label>
+				<select id="status" name="status">
+					<option value="">Todos os status</option>
+					<option value="AG" th:selected="${statusSelecionado == 'AG'}">Agendada</option>
+					<option value="EP" th:selected="${statusSelecionado == 'EP'}">Em progresso</option>
+					<option value="AP" th:selected="${statusSelecionado == 'AP'}">Aguardando parecer</option>
+					<option value="FI" th:selected="${statusSelecionado == 'FI'}">Finalizada</option>
+					<option value="CA" th:selected="${statusSelecionado == 'CA'}">Cancelada</option>
+				</select>
+				<button class="button button-secondary" type="submit">Filtrar</button>
+				<a class="button button-ghost" th:href="@{/admin/consultas}">Limpar</a>
+			</form>
+
 			<section class="empty-state" th:if="${consultas.empty}">
 				<h3>Nenhuma consulta encontrada.</h3>
 			</section>
@@ -38,7 +52,11 @@
 						<td th:text="${consulta.animalNome}">Animal</td>
 						<td th:text="${consulta.veterinarioNome}">Veterinário</td>
 						<td th:text="${consulta.modalidade}">PRESENCIAL</td>
-						<td><span class="status-badge status-warning" th:text="${consulta.statusDescricao}">Agendada</span></td>
+						<td>
+							<span class="status-badge"
+								  th:classappend="${consulta.status == 'FI'} ? ' status-success' : (${consulta.status == 'CA'} ? ' status-danger' : (${consulta.status == 'EP'} ? ' status-progress' : (${consulta.status == 'AP'} ? ' status-info' : ' status-warning')))"
+								  th:text="${consulta.statusDescricao}">Agendada</span>
+						</td>
 						<td>
 							<a class="button button-secondary button-small" th:href="@{/admin/consultas/{id}(id=${consulta.id})}">Ver</a>
 						</td>
@@ -48,9 +66,9 @@
 			</section>
 
 			<nav class="pagination" th:if="${consultas.totalPages > 1}" aria-label="Paginação">
-				<a class="button button-secondary" th:if="${consultas.hasPrevious()}" th:href="@{/admin/consultas(page=${consultas.number - 1})}">Anterior</a>
+				<a class="button button-secondary" th:if="${consultas.hasPrevious()}" th:href="@{/admin/consultas(page=${consultas.number - 1}, status=${statusSelecionado})}">Anterior</a>
 				<span th:text="${consultas.number + 1} + ' de ' + ${consultas.totalPages}">1 de 1</span>
-				<a class="button button-secondary" th:if="${consultas.hasNext()}" th:href="@{/admin/consultas(page=${consultas.number + 1})}">Próxima</a>
+				<a class="button button-secondary" th:if="${consultas.hasNext()}" th:href="@{/admin/consultas(page=${consultas.number + 1}, status=${statusSelecionado})}">Próxima</a>
 			</nav>
 		</main>
 	</div>

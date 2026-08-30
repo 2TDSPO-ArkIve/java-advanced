@@ -4,6 +4,7 @@ import br.com.fiap.arkive.domain.consulta.StatusConsulta;
 import br.com.fiap.arkive.dto.response.AdesaoPrescricaoResponse;
 import br.com.fiap.arkive.dto.response.AnimalResponse;
 import br.com.fiap.arkive.dto.response.ConsultaResponse;
+import br.com.fiap.arkive.dto.response.DiagnosticoResponse;
 import br.com.fiap.arkive.dto.response.EspecieResponse;
 import br.com.fiap.arkive.dto.response.PrescricaoResponse;
 import br.com.fiap.arkive.dto.response.RacaResponse;
@@ -12,6 +13,7 @@ import br.com.fiap.arkive.security.UsuarioPrincipal;
 import br.com.fiap.arkive.service.AdesaoPrescricaoService;
 import br.com.fiap.arkive.service.AnimalService;
 import br.com.fiap.arkive.service.ConsultaService;
+import br.com.fiap.arkive.service.DiagnosticoService;
 import br.com.fiap.arkive.service.EspecieService;
 import br.com.fiap.arkive.service.PasswordLifecycleService;
 import br.com.fiap.arkive.service.PrescricaoService;
@@ -64,6 +66,9 @@ class AdminClinicaControllerTest {
 	private ConsultaService consultaService;
 
 	@MockitoBean
+	private DiagnosticoService diagnosticoService;
+
+	@MockitoBean
 	private PrescricaoService prescricaoService;
 
 	@MockitoBean
@@ -89,6 +94,8 @@ class AdminClinicaControllerTest {
 				.thenReturn(new PageImpl<>(List.of(animal())));
 		when(consultaService.listarAutorizado(any(), any(), any(), any(), any(), any(Pageable.class), any()))
 				.thenReturn(new PageImpl<>(List.of(consulta())));
+		when(diagnosticoService.listarAutorizado(any(), any(), any(), any(), any(Pageable.class), any()))
+				.thenReturn(new PageImpl<>(List.of(apoioIa(), parecerVeterinario())));
 		when(prescricaoService.listarAutorizado(any(), any(), any(Pageable.class), any()))
 				.thenReturn(new PageImpl<>(List.of(prescricao())));
 		when(adesaoPrescricaoService.listarAutorizado(any(), any(), any(), any(), any(Pageable.class), any()))
@@ -152,8 +159,17 @@ class AdminClinicaControllerTest {
 		mockMvc.perform(get("/admin/consultas/10").with(user(adminPrincipal())))
 				.andExpect(status().isOk())
 				.andExpect(content().string(containsString("Consulta anual")))
+				.andExpect(content().string(containsString("Fluxo da consulta")))
+				.andExpect(content().string(containsString("Apoio clínico por IA")))
+				.andExpect(content().string(containsString("não substitui a avaliação do médico veterinário")))
+				.andExpect(content().string(containsString("Suspeita de claudicação ortopédica")))
+				.andExpect(content().string(containsString("Provisório")))
+				.andExpect(content().string(containsString("Parecer veterinário")))
+				.andExpect(content().string(containsString("Entorse leve confirmada")))
+				.andExpect(content().string(containsString("Confirmado pelo veterinário")))
+				.andExpect(content().string(containsString("Meloxicam")))
+				.andExpect(content().string(containsString("Dose administrada")))
 				.andExpect(content().string(not(containsString("Iniciar"))))
-				.andExpect(content().string(not(containsString("Narrativa"))))
 				.andExpect(content().string(not(containsString("Suporte clínico"))))
 				.andExpect(content().string(not(containsString("Finalizar"))))
 				.andExpect(content().string(not(containsString("Cancelar"))))
@@ -173,6 +189,29 @@ class AdminClinicaControllerTest {
 				.andExpect(content().string(not(containsString("Cadastrar"))))
 				.andExpect(content().string(not(containsString("Editar"))))
 				.andExpect(content().string(not(containsString("Excluir"))));
+	}
+
+	@Test
+	void sysadminVisualizaDetalheClinicoGlobal() throws Exception {
+		mockMvc.perform(get("/admin/consultas/10").with(user(sysadminPrincipal())))
+				.andExpect(status().isOk())
+				.andExpect(content().string(containsString("Apoio clínico por IA")))
+				.andExpect(content().string(containsString("Parecer veterinário")))
+				.andExpect(content().string(containsString("Entorse leve confirmada")));
+	}
+
+	@Test
+	void filtroDeConsultaPorStatusUsaServicoAutorizado() throws Exception {
+		ArgumentCaptor<String> statusCaptor = ArgumentCaptor.forClass(String.class);
+
+		mockMvc.perform(get("/admin/consultas")
+						.param("status", "AP")
+						.with(user(adminPrincipal())))
+				.andExpect(status().isOk())
+				.andExpect(content().string(containsString("Aguardando parecer")));
+
+		verify(consultaService).listarAutorizado(any(), any(), any(), statusCaptor.capture(), any(), any(Pageable.class), any());
+		assertEquals("AP", statusCaptor.getValue());
 	}
 
 	@Test
@@ -230,6 +269,21 @@ class AdminClinicaControllerTest {
 		);
 	}
 
+	private UsuarioPrincipal sysadminPrincipal() {
+		return new UsuarioPrincipal(
+				1L,
+				"Ana Sys",
+				"ana@arkive.com",
+				"$2a$10$hash",
+				TipoUsuario.SYSADMIN,
+				"S",
+				false,
+				null,
+				null,
+				null
+		);
+	}
+
 	private AnimalResponse animal() {
 		return new AnimalResponse(1L, "Rex", 1L, "Canino", 2L, "SRD", "M", "N", 1L, "Clínica Central", "S");
 	}
@@ -243,15 +297,43 @@ class AdminClinicaControllerTest {
 				"Apatia",
 				"Sem alterações adicionais",
 				new BigDecimal("8.5"),
-				"Texto interno",
-				StatusConsulta.AG.getCodigo(),
-				StatusConsulta.AG.getDescricao(),
+				"Paciente com claudicação em membro posterior após atividade intensa.",
+				StatusConsulta.FI.getCodigo(),
+				StatusConsulta.FI.getDescricao(),
 				1L,
 				"Rex",
 				2L,
 				"Dra. Vera",
 				1L,
 				"Clínica Central"
+		);
+	}
+
+	private DiagnosticoResponse apoioIa() {
+		return new DiagnosticoResponse(
+				11L,
+				"Suspeita de claudicação ortopédica",
+				"MODERADA",
+				"N",
+				"Correlacionar histórico de esforço, dor à palpação e resposta ao repouso antes de confirmar conduta.",
+				new BigDecimal("82"),
+				"N",
+				10L,
+				null
+		);
+	}
+
+	private DiagnosticoResponse parecerVeterinario() {
+		return new DiagnosticoResponse(
+				12L,
+				"Entorse leve confirmada",
+				"LEVE",
+				"S",
+				null,
+				null,
+				"S",
+				10L,
+				99L
 		);
 	}
 
