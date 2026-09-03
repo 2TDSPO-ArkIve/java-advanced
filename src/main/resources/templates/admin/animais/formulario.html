@@ -33,7 +33,7 @@
 						<label for="racaId">Raça</label>
 						<select id="racaId" th:field="*{racaId}">
 							<option value="">Sem raça informada</option>
-							<option th:each="raca : ${racas}" th:value="${raca.id}" th:text="${raca.nome}">Raça</option>
+							<option th:each="raca : ${racas}" th:value="${raca.id}" th:text="${raca.nome + ' — ' + raca.especieNome}">Raça</option>
 						</select>
 					</div>
 
@@ -51,6 +51,27 @@
 						<select id="castrado" th:field="*{castrado}">
 							<option value="N">Não</option>
 							<option value="S">Sim</option>
+						</select>
+					</div>
+
+					<div class="field" th:if="${sysadmin}">
+						<label for="clinicaId">Clínica</label>
+						<select id="clinicaId" th:field="*{clinicaId}">
+							<option value="">Sem clínica</option>
+							<option th:each="clinica : ${clinicas}" th:value="${clinica.id}" th:text="${clinica.nome}">Clínica</option>
+						</select>
+					</div>
+
+					<div class="field" th:if="${adminClinica}">
+						<label for="clinica-atual">Clínica</label>
+						<input id="clinica-atual" type="text" th:value="${clinicaAutenticada != null ? clinicaAutenticada.nome : 'Clínica autenticada'}" disabled>
+					</div>
+
+					<div class="field">
+						<label for="ativo">Status</label>
+						<select id="ativo" th:field="*{ativo}">
+							<option value="S">Ativo</option>
+							<option value="N">Inativo</option>
 						</select>
 					</div>
 				</section>
