@@ -31,6 +31,7 @@ public class AnimalService {
 	private final ClinicaService clinicaService;
 	private final EventoJornadaService eventoJornadaService;
 	private final ClinicalAccessService clinicalAccessService;
+	private final VeterinarioService veterinarioService;
 
 	public AnimalService(
 			AnimalRepository animalRepository,
@@ -38,7 +39,8 @@ public class AnimalService {
 			RacaService racaService,
 			ClinicaService clinicaService,
 			EventoJornadaService eventoJornadaService,
-			ClinicalAccessService clinicalAccessService
+			ClinicalAccessService clinicalAccessService,
+			VeterinarioService veterinarioService
 	) {
 		this.animalRepository = animalRepository;
 		this.especieService = especieService;
@@ -46,6 +48,7 @@ public class AnimalService {
 		this.clinicaService = clinicaService;
 		this.eventoJornadaService = eventoJornadaService;
 		this.clinicalAccessService = clinicalAccessService;
+		this.veterinarioService = veterinarioService;
 	}
 
 	@Transactional
@@ -60,11 +63,12 @@ public class AnimalService {
 		aplicarDados(animal, requestAutorizado, true);
 		Animal salvo = animalRepository.save(animal);
 		Long clinicaId = salvo.getClinica() == null ? null : salvo.getClinica().getId();
+		Long veterinarioId = TipoUsuario.VETERINARIO.equals(principal.getTipoUsuario()) ? principal.getVeterinarioId() : null;
 		eventoJornadaService.registrarEvento(
 				"ANIMAL_CADASTRADO",
-				"SISTEMA",
+				veterinarioId == null ? "SISTEMA" : "VETERINARIO",
 				null,
-				null,
+				veterinarioId,
 				salvo.getId(),
 				clinicaId,
 				"Animal cadastrado.",
@@ -89,6 +93,25 @@ public class AnimalService {
 				racaId,
 				clinicaId,
 				vazioParaNulo(ativo),
+				pageable
+		).map(AnimalResponse::fromEntity);
+	}
+
+	@Transactional(readOnly = true)
+	public Page<AnimalResponse> listarPacientesClinicaVeterinario(
+			String nome,
+			Long especieId,
+			Long racaId,
+			Pageable pageable,
+			UsuarioPrincipal principal
+	) {
+		exigirVeterinarioAutenticado(principal);
+		Long clinicaId = clinicaVeterinarioAutenticado(principal);
+		return animalRepository.buscarAtivosParaClinica(
+				clinicaId,
+				vazioParaNulo(nome),
+				especieId,
+				racaId,
 				pageable
 		).map(AnimalResponse::fromEntity);
 	}
@@ -203,7 +226,17 @@ public class AnimalService {
 				}
 				yield comClinica(request, clinicaId);
 			}
-			case VETERINARIO, RESPONSAVEL -> throw new AccessDeniedException("Operacao permitida apenas a SYSADMIN ou ADMIN_CLINICA.");
+			case VETERINARIO -> {
+				Long clinicaId = clinicaVeterinarioAutenticado(principal);
+				if (request.clinicaId() != null && !Objects.equals(request.clinicaId(), clinicaId)) {
+					throw new AccessDeniedException("Veterinario nao pode criar animal em outra clinica.");
+				}
+				if (request.ativo() != null && !"S".equals(request.ativo())) {
+					throw new BusinessException("Veterinario so pode cadastrar paciente ativo.");
+				}
+				yield comClinicaEAtivo(request, clinicaId, "S");
+			}
+			case RESPONSAVEL -> throw new AccessDeniedException("Operacao permitida apenas a SYSADMIN, ADMIN_CLINICA ou VETERINARIO.");
 		};
 	}
 
@@ -222,7 +255,21 @@ public class AnimalService {
 				}
 				yield comClinica(request, clinicaId);
 			}
-			case VETERINARIO, RESPONSAVEL -> throw new AccessDeniedException("Operacao permitida apenas a SYSADMIN ou ADMIN_CLINICA.");
+			case VETERINARIO -> {
+				Long clinicaId = clinicaVeterinarioAutenticado(principal);
+				Long clinicaAtualId = animal.getClinica() == null ? null : animal.getClinica().getId();
+				if (!"S".equals(animal.getAtivo()) || !Objects.equals(clinicaAtualId, clinicaId)) {
+					throw new AccessDeniedException("Veterinario nao autorizado para atualizar este animal.");
+				}
+				if (request.clinicaId() != null && !Objects.equals(request.clinicaId(), clinicaId)) {
+					throw new BusinessException("Veterinario nao pode mover animal para outra clinica.", org.springframework.http.HttpStatus.CONFLICT);
+				}
+				if (request.ativo() != null && !Objects.equals(request.ativo(), animal.getAtivo())) {
+					throw new BusinessException("Veterinario nao pode alterar status do animal.", org.springframework.http.HttpStatus.CONFLICT);
+				}
+				yield comClinicaEAtivo(request, clinicaId, animal.getAtivo());
+			}
+			case RESPONSAVEL -> throw new AccessDeniedException("Operacao permitida apenas a SYSADMIN, ADMIN_CLINICA ou VETERINARIO.");
 		};
 	}
 
@@ -249,6 +296,21 @@ public class AnimalService {
 		return principal.getClinicaId();
 	}
 
+	private void exigirVeterinarioAutenticado(UsuarioPrincipal principal) {
+		if (principal == null || !TipoUsuario.VETERINARIO.equals(principal.getTipoUsuario()) || principal.getVeterinarioId() == null) {
+			throw new AccessDeniedException("Operacao permitida apenas ao veterinario autenticado.");
+		}
+	}
+
+	private Long clinicaVeterinarioAutenticado(UsuarioPrincipal principal) {
+		exigirVeterinarioAutenticado(principal);
+		Long clinicaId = veterinarioService.buscarClinicaId(principal.getVeterinarioId());
+		if (clinicaId == null) {
+			throw new AccessDeniedException("Veterinario sem clinica vinculada.");
+		}
+		return clinicaId;
+	}
+
 	private void exigirPrincipal(UsuarioPrincipal principal) {
 		if (principal == null) {
 			throw new AccessDeniedException("Usuario autenticado invalido.");
@@ -264,6 +326,18 @@ public class AnimalService {
 				request.castrado(),
 				clinicaId,
 				request.ativo()
+		);
+	}
+
+	private AnimalRequest comClinicaEAtivo(AnimalRequest request, Long clinicaId, String ativo) {
+		return new AnimalRequest(
+				request.nome(),
+				request.especieId(),
+				request.racaId(),
+				request.sexo(),
+				request.castrado(),
+				clinicaId,
+				ativo
 		);
 	}
 

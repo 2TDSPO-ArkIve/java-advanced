@@ -22,13 +22,16 @@ public class ClinicalAccessService {
 
 	private final AnimalResponsavelRepository animalResponsavelRepository;
 	private final ConsultaRepository consultaRepository;
+	private final VeterinarioService veterinarioService;
 
 	public ClinicalAccessService(
 			AnimalResponsavelRepository animalResponsavelRepository,
-			ConsultaRepository consultaRepository
+			ConsultaRepository consultaRepository,
+			VeterinarioService veterinarioService
 	) {
 		this.animalResponsavelRepository = animalResponsavelRepository;
 		this.consultaRepository = consultaRepository;
+		this.veterinarioService = veterinarioService;
 	}
 
 	public void exigirEscritaClinicaVeterinario(UsuarioPrincipal principal, Consulta consulta) {
@@ -114,11 +117,20 @@ public class ClinicalAccessService {
 			case RESPONSAVEL -> principal.getResponsavelId() != null
 					&& temVinculoResponsavelAnimal(principal.getResponsavelId(), animal.getId());
 			case VETERINARIO -> principal.getVeterinarioId() != null
-					&& consultaRepository.existsConsultaDoVeterinarioParaAnimal(animal.getId(), principal.getVeterinarioId());
+					&& (consultaRepository.existsConsultaDoVeterinarioParaAnimal(animal.getId(), principal.getVeterinarioId())
+					|| animalAtivoDaClinicaDoVeterinario(animal, principal.getVeterinarioId()));
 			case ADMIN_CLINICA -> principal.getClinicaId() != null
 					&& animal.getClinica() != null
 					&& Objects.equals(principal.getClinicaId(), animal.getClinica().getId());
 		};
+	}
+
+	private boolean animalAtivoDaClinicaDoVeterinario(Animal animal, Long veterinarioId) {
+		Long clinicaId = veterinarioService.buscarClinicaId(veterinarioId);
+		return clinicaId != null
+				&& "S".equals(animal.getAtivo())
+				&& animal.getClinica() != null
+				&& Objects.equals(clinicaId, animal.getClinica().getId());
 	}
 
 	private boolean podeLerAdesaoPrescricao(UsuarioPrincipal principal, AdesaoPrescricao adesao) {

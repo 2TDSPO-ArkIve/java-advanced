@@ -29,13 +29,15 @@ class ClinicalAccessServiceTest {
 
 	private AnimalResponsavelRepository animalResponsavelRepository;
 	private ConsultaRepository consultaRepository;
+	private VeterinarioService veterinarioService;
 	private ClinicalAccessService clinicalAccessService;
 
 	@BeforeEach
 	void setUp() {
 		animalResponsavelRepository = mock(AnimalResponsavelRepository.class);
 		consultaRepository = mock(ConsultaRepository.class);
-		clinicalAccessService = new ClinicalAccessService(animalResponsavelRepository, consultaRepository);
+		veterinarioService = mock(VeterinarioService.class);
+		clinicalAccessService = new ClinicalAccessService(animalResponsavelRepository, consultaRepository, veterinarioService);
 	}
 
 	@Test
@@ -88,6 +90,32 @@ class ClinicalAccessServiceTest {
 
 		assertDoesNotThrow(() -> clinicalAccessService.exigirLeituraAnimal(veterinario(10L), animal(50L, 30L)));
 		assertThrows(AccessDeniedException.class, () -> clinicalAccessService.exigirLeituraAnimal(veterinario(22L), animal(50L, 30L)));
+	}
+
+	@Test
+	void veterinarioLeAnimalAtivoDaPropriaClinicaSemConsultaPrevia() {
+		when(consultaRepository.existsConsultaDoVeterinarioParaAnimal(50L, 10L)).thenReturn(false);
+		when(veterinarioService.buscarClinicaId(10L)).thenReturn(30L);
+
+		assertDoesNotThrow(() -> clinicalAccessService.exigirLeituraAnimal(veterinario(10L), animal(50L, 30L)));
+	}
+
+	@Test
+	void veterinarioNaoLeAnimalDeOutraClinicaSemConsultaPrevia() {
+		when(consultaRepository.existsConsultaDoVeterinarioParaAnimal(50L, 10L)).thenReturn(false);
+		when(veterinarioService.buscarClinicaId(10L)).thenReturn(30L);
+
+		assertThrows(AccessDeniedException.class, () -> clinicalAccessService.exigirLeituraAnimal(veterinario(10L), animal(50L, 31L)));
+	}
+
+	@Test
+	void veterinarioNaoLeAnimalInativoDaPropriaClinicaSemConsultaPrevia() {
+		when(consultaRepository.existsConsultaDoVeterinarioParaAnimal(50L, 10L)).thenReturn(false);
+		when(veterinarioService.buscarClinicaId(10L)).thenReturn(30L);
+		Animal animal = animal(50L, 30L);
+		animal.setAtivo("N");
+
+		assertThrows(AccessDeniedException.class, () -> clinicalAccessService.exigirLeituraAnimal(veterinario(10L), animal));
 	}
 
 	@Test
@@ -162,6 +190,7 @@ class ClinicalAccessServiceTest {
 	private Animal animal(Long animalId, Long clinicaId) {
 		Animal animal = new Animal();
 		animal.setId(animalId);
+		animal.setAtivo("S");
 		if (clinicaId != null) {
 			Clinica clinica = new Clinica();
 			clinica.setId(clinicaId);

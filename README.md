@@ -199,7 +199,7 @@ Principais perfis:
 
 - `SYSADMIN`: leitura administrativa global.
 - `ADMIN_CLINICA`: leitura administrativa da própria clínica.
-- `VETERINARIO`: escrita clínica apenas nas próprias consultas.
+- `VETERINARIO`: escrita clínica apenas nas próprias consultas, além de cadastro e correção básica de pacientes ativos da própria clínica.
 - `RESPONSAVEL`: acesso aos animais vinculados e registro da própria adesão.
 
 Status de consulta:
@@ -376,6 +376,14 @@ Recursos principais:
 ```
 
 Esses endpoints permitem cadastrar e consultar os dados estruturais da aplicação.
+
+Para veterinários, a listagem geral de animais preserva o histórico já atendido pelo profissional. Para buscar pacientes ativos disponíveis na clínica do veterinário autenticado antes de criar uma nova consulta, use:
+
+```http
+GET /api/animais/clinica
+```
+
+Esse endpoint aceita filtros por `nome`, `especieId` e `racaId`. O backend deriva a clínica pelo vínculo do veterinário autenticado e não expõe animais de outras clínicas.
 
 ---
 
