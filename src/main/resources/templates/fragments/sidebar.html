@@ -29,11 +29,15 @@
 		   th:href="@{/sysadmin/responsaveis}"
 		   sec:authorize="hasRole('SYSADMIN')">Responsáveis</a>
 		<a class="nav-link"
+		   th:classappend="${roleLabel == 'SysAdmin' and (pageTitle == 'Animais' or pageTitle == 'Animal' or pageTitle == 'Novo animal' or pageTitle == 'Editar animal')} ? ' is-active'"
+		   th:href="@{/admin/animais}"
+		   sec:authorize="hasRole('SYSADMIN')">Animais</a>
+		<a class="nav-link"
 		   th:classappend="${roleLabel == 'Administrador da Clínica' and pageTitle == 'Visão Geral'} ? ' is-active'"
 		   th:href="@{/admin/dashboard}"
 		   sec:authorize="hasRole('ADMIN_CLINICA')">Visão Geral</a>
 		<a class="nav-link"
-		   th:classappend="${roleLabel == 'Administrador da Clínica' and (pageTitle == 'Animais' or pageTitle == 'Novo animal' or pageTitle == 'Editar animal')} ? ' is-active'"
+		   th:classappend="${roleLabel == 'Administrador da Clínica' and (pageTitle == 'Animais' or pageTitle == 'Animal' or pageTitle == 'Novo animal' or pageTitle == 'Editar animal')} ? ' is-active'"
 		   th:href="@{/admin/animais}"
 		   sec:authorize="hasRole('ADMIN_CLINICA')">Animais</a>
 		<a class="nav-link"

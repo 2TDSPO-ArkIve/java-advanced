@@ -3,6 +3,8 @@ package br.com.fiap.arkive.controller.web;
 import br.com.fiap.arkive.domain.consulta.StatusConsulta;
 import br.com.fiap.arkive.dto.response.AdesaoPrescricaoResponse;
 import br.com.fiap.arkive.dto.response.AnimalResponse;
+import br.com.fiap.arkive.dto.response.AnimalResponsavelResponse;
+import br.com.fiap.arkive.dto.response.ClinicaResponse;
 import br.com.fiap.arkive.dto.response.ConsultaResponse;
 import br.com.fiap.arkive.dto.response.DiagnosticoResponse;
 import br.com.fiap.arkive.dto.response.EspecieResponse;
@@ -11,7 +13,9 @@ import br.com.fiap.arkive.dto.response.RacaResponse;
 import br.com.fiap.arkive.entity.TipoUsuario;
 import br.com.fiap.arkive.security.UsuarioPrincipal;
 import br.com.fiap.arkive.service.AdesaoPrescricaoService;
+import br.com.fiap.arkive.service.AnimalResponsavelService;
 import br.com.fiap.arkive.service.AnimalService;
+import br.com.fiap.arkive.service.ClinicaService;
 import br.com.fiap.arkive.service.ConsultaService;
 import br.com.fiap.arkive.service.DiagnosticoService;
 import br.com.fiap.arkive.service.EspecieService;
@@ -63,6 +67,12 @@ class AdminClinicaControllerTest {
 	private AnimalService animalService;
 
 	@MockitoBean
+	private AnimalResponsavelService animalResponsavelService;
+
+	@MockitoBean
+	private ClinicaService clinicaService;
+
+	@MockitoBean
 	private ConsultaService consultaService;
 
 	@MockitoBean
@@ -101,11 +111,14 @@ class AdminClinicaControllerTest {
 		when(adesaoPrescricaoService.listarAutorizado(any(), any(), any(), any(), any(Pageable.class), any()))
 				.thenReturn(new PageImpl<>(List.of(adesao())));
 		when(animalService.buscarPorIdAutorizado(eq(1L), any())).thenReturn(animal());
+		when(animalResponsavelService.listarAtivosPorAnimal(1L)).thenReturn(List.of(responsavelPrincipal(), responsavelSecundario()));
 		when(consultaService.buscarPorIdAutorizado(eq(10L), any())).thenReturn(consulta());
 		when(prescricaoService.buscarPorIdAutorizado(eq(20L), any())).thenReturn(prescricao());
 		when(adesaoPrescricaoService.buscarPorIdAutorizado(eq(30L), any())).thenReturn(adesao());
 		when(especieService.listar(any(), any(Pageable.class))).thenReturn(new PageImpl<>(List.of(especie())));
 		when(racaService.listar(any(), any(), any(Pageable.class))).thenReturn(new PageImpl<>(List.of(raca())));
+		when(clinicaService.listar(any(), any(), any(Pageable.class))).thenReturn(new PageImpl<>(List.of(clinica())));
+		when(clinicaService.buscarPorId(1L)).thenReturn(clinica());
 	}
 
 	@Test
@@ -137,7 +150,9 @@ class AdminClinicaControllerTest {
 		mockMvc.perform(get("/admin/animais").with(user(adminPrincipal())))
 				.andExpect(status().isOk())
 				.andExpect(content().string(containsString("Rex")))
-				.andExpect(content().string(containsString("Novo animal")));
+				.andExpect(content().string(containsString("Novo animal")))
+				.andExpect(content().string(containsString("Macho")))
+				.andExpect(content().string(containsString("Clínica Central")));
 
 		mockMvc.perform(get("/admin/consultas").with(user(adminPrincipal())))
 				.andExpect(status().isOk())
@@ -202,6 +217,67 @@ class AdminClinicaControllerTest {
 	}
 
 	@Test
+	void sysadminSidebarIncluiAnimais() throws Exception {
+		mockMvc.perform(get("/sysadmin/dashboard").with(user(sysadminPrincipal())))
+				.andExpect(status().isOk())
+				.andExpect(content().string(containsString("/admin/animais")))
+				.andExpect(content().string(containsString("Animais")));
+	}
+
+	@Test
+	void listaAnimaisUsaFiltrosDoServicoAutorizado() throws Exception {
+		ArgumentCaptor<Long> especieCaptor = ArgumentCaptor.forClass(Long.class);
+		ArgumentCaptor<Long> racaCaptor = ArgumentCaptor.forClass(Long.class);
+		ArgumentCaptor<Long> clinicaCaptor = ArgumentCaptor.forClass(Long.class);
+		ArgumentCaptor<String> ativoCaptor = ArgumentCaptor.forClass(String.class);
+
+		mockMvc.perform(get("/admin/animais")
+						.param("nome", "Rex")
+						.param("especieId", "1")
+						.param("racaId", "2")
+						.param("clinicaId", "1")
+						.param("ativo", "S")
+						.with(user(sysadminPrincipal())))
+				.andExpect(status().isOk())
+				.andExpect(content().string(containsString("Espécie")))
+				.andExpect(content().string(containsString("Raça")))
+				.andExpect(content().string(containsString("Clínica")));
+
+		verify(animalService).listarAutorizado(eq("Rex"), especieCaptor.capture(), racaCaptor.capture(), clinicaCaptor.capture(), ativoCaptor.capture(), any(Pageable.class), any());
+		assertEquals(1L, especieCaptor.getValue());
+		assertEquals(2L, racaCaptor.getValue());
+		assertEquals(1L, clinicaCaptor.getValue());
+		assertEquals("S", ativoCaptor.getValue());
+	}
+
+	@Test
+	void formularioNovoAnimalRespeitaClinicaPorPerfil() throws Exception {
+		mockMvc.perform(get("/admin/animais/novo").with(user(adminPrincipal())))
+				.andExpect(status().isOk())
+				.andExpect(content().string(containsString("Novo animal")))
+				.andExpect(content().string(containsString("Clínica Central")))
+				.andExpect(content().string(not(containsString("name=\"clinicaId\""))))
+				.andExpect(content().string(not(containsString("Veterinário"))));
+
+		mockMvc.perform(get("/admin/animais/novo").with(user(sysadminPrincipal())))
+				.andExpect(status().isOk())
+				.andExpect(content().string(containsString("name=\"clinicaId\"")))
+				.andExpect(content().string(containsString("Sem clínica")));
+	}
+
+	@Test
+	void detalheAnimalMostraResponsaveisEConsultas() throws Exception {
+		mockMvc.perform(get("/admin/animais/1").with(user(adminPrincipal())))
+				.andExpect(status().isOk())
+				.andExpect(content().string(containsString("Responsável principal")))
+				.andExpect(content().string(containsString("Rui Tutor")))
+				.andExpect(content().string(containsString("CUIDADOR")))
+				.andExpect(content().string(containsString("Últimos atendimentos")))
+				.andExpect(content().string(containsString("Dra. Vera")))
+				.andExpect(content().string(containsString("O histórico de consultas será preservado.")));
+	}
+
+	@Test
 	void filtroDeConsultaPorStatusUsaServicoAutorizado() throws Exception {
 		ArgumentCaptor<String> statusCaptor = ArgumentCaptor.forClass(String.class);
 
@@ -235,6 +311,63 @@ class AdminClinicaControllerTest {
 	}
 
 	@Test
+	void criacaoAnimalComErroDeValidacaoRetornaFormulario() throws Exception {
+		mockMvc.perform(post("/admin/animais")
+						.with(user(adminPrincipal()))
+						.with(csrf())
+						.param("nome", "")
+						.param("castrado", "S")
+						.param("ativo", "S"))
+				.andExpect(status().isOk())
+				.andExpect(content().string(containsString("Novo animal")))
+				.andExpect(content().string(containsString("Dados do animal")));
+
+		verify(animalService, never()).criar(any(), any());
+	}
+
+	@Test
+	void edicaoAnimalAtualizaViaServicoAutorizado() throws Exception {
+		mockMvc.perform(post("/admin/animais/1/editar")
+						.with(user(adminPrincipal()))
+						.with(csrf())
+						.param("nome", "Rex Atualizado")
+						.param("especieId", "1")
+						.param("racaId", "2")
+						.param("sexo", "M")
+						.param("castrado", "S")
+						.param("clinicaId", "1")
+						.param("ativo", "S"))
+				.andExpect(status().is3xxRedirection())
+				.andExpect(redirectedUrl("/admin/animais/1"));
+
+		verify(animalService).atualizar(eq(1L), any(), any());
+	}
+
+	@Test
+	void desativacaoAnimalUsaSoftDeleteDoServico() throws Exception {
+		mockMvc.perform(post("/admin/animais/1/desativar")
+						.with(user(adminPrincipal()))
+						.with(csrf()))
+				.andExpect(status().is3xxRedirection())
+				.andExpect(redirectedUrl("/admin/animais/1"));
+
+		verify(animalService).excluir(eq(1L), any());
+	}
+
+	@Test
+	void reativacaoAnimalUsaAtualizacaoNormal() throws Exception {
+		when(animalService.buscarPorIdAutorizado(eq(1L), any())).thenReturn(new AnimalResponse(1L, "Rex", 1L, "Canino", 2L, "SRD", "M", "N", 1L, "Clínica Central", "N"));
+
+		mockMvc.perform(post("/admin/animais/1/ativar")
+						.with(user(adminPrincipal()))
+						.with(csrf()))
+				.andExpect(status().is3xxRedirection())
+				.andExpect(redirectedUrl("/admin/animais/1"));
+
+		verify(animalService).atualizar(eq(1L), any(), any());
+	}
+
+	@Test
 	void consultasPrescricoesEAdesoesNaoTemRotasWebDePost() throws Exception {
 		mockMvc.perform(post("/admin/consultas/10").with(user(adminPrincipal())).with(csrf()))
 				.andExpect(status().is4xxClientError());
@@ -252,6 +385,14 @@ class AdminClinicaControllerTest {
 	@WithMockUser(roles = "VETERINARIO")
 	void veterinarioNaoAcessaAdminClinica() throws Exception {
 		mockMvc.perform(get("/admin/animais"))
+				.andExpect(status().isForbidden());
+
+		mockMvc.perform(post("/admin/animais")
+						.with(csrf())
+						.param("nome", "Luna")
+						.param("especieId", "1")
+						.param("castrado", "S")
+						.param("ativo", "S"))
 				.andExpect(status().isForbidden());
 	}
 
@@ -287,6 +428,14 @@ class AdminClinicaControllerTest {
 
 	private AnimalResponse animal() {
 		return new AnimalResponse(1L, "Rex", 1L, "Canino", 2L, "SRD", "M", "N", 1L, "Clínica Central", "S");
+	}
+
+	private AnimalResponsavelResponse responsavelPrincipal() {
+		return new AnimalResponsavelResponse(1L, "Rex", 3L, "Rui Tutor", "TUTOR_LEGAL", LocalDate.of(2026, 8, 1), null, "S", "S");
+	}
+
+	private AnimalResponsavelResponse responsavelSecundario() {
+		return new AnimalResponsavelResponse(1L, "Rex", 4L, "Ana Cuidadora", "CUIDADOR", LocalDate.of(2026, 8, 2), null, "N", "S");
 	}
 
 	private ConsultaResponse consulta() {
@@ -372,6 +521,10 @@ class AdminClinicaControllerTest {
 
 	private RacaResponse raca() {
 		return new RacaResponse(2L, "SRD", null, 1L, "Canino", "S");
+	}
+
+	private ClinicaResponse clinica() {
+		return new ClinicaResponse(1L, "Clínica Central", "12345678000199", "Rua ArkIve, 100", "11999990000", "clinica@arkive.com", "S");
 	}
 
 }
