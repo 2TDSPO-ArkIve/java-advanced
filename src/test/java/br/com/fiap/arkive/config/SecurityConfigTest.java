@@ -44,6 +44,7 @@ class SecurityConfigTest {
 	void anonimoNaoAcessaApiProtegida() throws Exception {
 		mockMvc.perform(get("/api/protegido"))
 				.andExpect(status().isUnauthorized())
+				.andExpect(header().doesNotExist("Location"))
 				.andExpect(header().string("WWW-Authenticate", "Basic realm=\"ArkIve API\""))
 				.andExpect(jsonPath("$.status").value(401))
 				.andExpect(jsonPath("$.error").value("Unauthorized"))

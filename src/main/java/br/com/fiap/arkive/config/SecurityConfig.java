@@ -9,7 +9,6 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Profile;
 import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
-import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
@@ -17,10 +16,14 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.access.intercept.AuthorizationFilter;
 import org.springframework.security.web.authentication.LoginUrlAuthenticationEntryPoint;
+import org.springframework.security.web.servlet.util.matcher.PathPatternRequestMatcher;
 import org.springframework.security.web.util.matcher.AnyRequestMatcher;
+import org.springframework.security.web.util.matcher.RequestMatcher;
 
 @Configuration
 public class SecurityConfig {
+
+	private static final RequestMatcher API_REQUESTS = PathPatternRequestMatcher.withDefaults().matcher("/api/**");
 
 	@Bean
 	public PasswordEncoder passwordEncoder() {
@@ -48,7 +51,7 @@ public class SecurityConfig {
 		return http
 				.csrf(csrf -> csrf.ignoringRequestMatchers("/api/**"))
 				.exceptionHandling(exceptionHandling -> exceptionHandling
-						.defaultAuthenticationEntryPointFor(apiAuthenticationEntryPoint, request -> request.getRequestURI().startsWith(request.getContextPath() + "/api/"))
+						.defaultAuthenticationEntryPointFor(apiAuthenticationEntryPoint, API_REQUESTS)
 						.defaultAuthenticationEntryPointFor(new LoginUrlAuthenticationEntryPoint("/login"), AnyRequestMatcher.INSTANCE)
 				)
 				.authorizeHttpRequests(authorize -> authorize
@@ -78,7 +81,7 @@ public class SecurityConfig {
 						.logoutSuccessUrl("/login?logout")
 						.permitAll()
 				)
-				.httpBasic(Customizer.withDefaults())
+				.httpBasic(httpBasic -> httpBasic.authenticationEntryPoint(apiAuthenticationEntryPoint))
 				.addFilterAfter(new MandatoryPasswordChangeFilter(), AuthorizationFilter.class)
 				.build();
 	}

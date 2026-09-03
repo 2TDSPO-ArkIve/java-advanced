@@ -231,6 +231,73 @@ POST  /api/consultas/{id}/cancelar
 
 O suporte clínico por IA é investigativo e provisório. Ele não substitui a conclusão do veterinário, não confirma diagnóstico e não prescreve medicamentos. A finalização da consulta cria a conclusão veterinária confirmada.
 
+## Transcrição de Áudio
+
+A API expõe um gateway seguro para converter áudio clínico em texto editável antes do fluxo de narrativa da consulta. A transcrição não cria consulta, não persiste narrativa, não chama o motor clínico, não cria diagnóstico e não cria prescrição.
+
+O endpoint usa Azure Speech SDK com reconhecimento contínuo de arquivo e `PhraseListGrammar`, compatível com recurso Azure Speech Free F0. A transcrição rápida não é usada nesta branch porque as quotas atuais da Microsoft indicam que Fast Transcription não está disponível no F0.
+
+O contrato público aceita o áudio normal do Expo em Android/iOS (`M4A/AAC`) e também `WAV` para testes manuais. Arquivos compactados são convertidos de forma transitória no servidor para PCM WAV antes de serem enviados ao SDK. O áudio não é persistido.
+
+Contrato:
+
+```http
+POST /api/transcricoes
+Content-Type: multipart/form-data
+Authorization: Basic ...
+```
+
+Campos multipart:
+
+```text
+audio=<arquivo M4A/AAC ou WAV>
+idioma=pt-BR | en-US
+```
+
+`idioma` é opcional e assume `pt-BR` quando omitido. A resposta é:
+
+```json
+{
+  "transcricao": "Paciente canino...",
+  "idioma": "pt-BR"
+}
+```
+
+Exemplo seguro:
+
+```bash
+curl -u "VET_USERNAME:VET_PASSWORD" \
+  -X POST \
+  -F "audio=@consulta.m4a" \
+  -F "idioma=pt-BR" \
+  https://arkive-b7v2.onrender.com/api/transcricoes
+```
+
+Limites e formato:
+
+- Formatos aceitos: `M4A`/`MP4` com AAC, `AAC` e `WAV`.
+- Arquivos `WAV` devem possuir cabeçalho `RIFF/WAVE`.
+- Arquivos `M4A`/`AAC` são convertidos no servidor com FFmpeg para PCM WAV 16 kHz, mono, 16 bits.
+- O limite configurado é `10MB` por arquivo e `11MB` por requisição multipart.
+- O reconhecimento usa `startContinuousRecognitionAsync` e acumula apenas eventos finais `RecognizedSpeech`.
+- O tempo limite configurado para reconhecimento é `120s`, adequado ao ditado clínico esperado de 30 a 90 segundos.
+- O tempo limite configurado para conversão é `30s`.
+- A concorrência local foi limitada a `1` requisição por vez para respeitar o Free F0.
+
+Render/Docker:
+
+- A imagem Docker usa runtime Ubuntu Jammy (`eclipse-temurin:17-jre-jammy`), alinhado às distribuições Linux suportadas pelo Azure Speech SDK para Java.
+- A imagem instala `ffmpeg`, `ca-certificates`, `libasound2` e `libssl3`.
+- Em runtime nativo do Render, `ffmpeg` já faz parte das ferramentas disponíveis; em Docker, a dependência fica explícita no `Dockerfile`.
+
+Frases veterinárias usadas para bias de reconhecimento ficam em:
+
+```text
+src/main/resources/azure-speech-veterinary-phrases.txt
+```
+
+O peso inicial configurado para a lista é `1.3`.
+
 ## Fluxo de Prescrição e Adesão
 
 Fluxo principal:
@@ -276,7 +343,11 @@ ARKIVE_DB_USERNAME=...
 ARKIVE_DB_PASSWORD=...
 ARKIVE_CLINICAL_ENGINE_URL=https://...
 ARKIVE_JPA_SHOW_SQL=false
+AZURE_SPEECH_ENDPOINT=
+AZURE_SPEECH_API_KEY=
 ```
+
+Em desenvolvimento local, configure `AZURE_SPEECH_ENDPOINT` e `AZURE_SPEECH_API_KEY` como variáveis de ambiente do sistema, terminal ou Run Configuration da IDE. Não commite valores reais.
 
 Bootstrap opcional de SysAdmin:
 
