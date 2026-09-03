@@ -53,6 +53,17 @@ public class AnimalController {
 		return animalService.listarAutorizado(nome, especieId, racaId, clinicaId, ativo, pageable, principal);
 	}
 
+	@GetMapping("/clinica")
+	public Page<AnimalResponse> listarPacientesClinica(
+			@RequestParam(required = false) String nome,
+			@RequestParam(required = false) Long especieId,
+			@RequestParam(required = false) Long racaId,
+			Pageable pageable,
+			@AuthenticationPrincipal UsuarioPrincipal principal
+	) {
+		return animalService.listarPacientesClinicaVeterinario(nome, especieId, racaId, pageable, principal);
+	}
+
 	@GetMapping("/{id}")
 	public AnimalResponse buscarPorId(@PathVariable Long id, @AuthenticationPrincipal UsuarioPrincipal principal) {
 		return animalService.buscarPorIdAutorizado(id, principal);

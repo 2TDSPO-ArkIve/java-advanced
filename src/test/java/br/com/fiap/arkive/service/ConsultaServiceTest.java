@@ -71,6 +71,14 @@ class ConsultaServiceTest {
 	}
 
 	@Test
+	void criaPrimeiraConsultaParaAnimalRecemCadastradoSemConsultaPrevia() {
+		consultaService.criar(request("AG"), veterinarioPrincipal(20L));
+
+		verify(consultaRepository).save(any(Consulta.class));
+		verify(clinicalAccessService, never()).exigirLeituraAnimal(any(), any());
+	}
+
+	@Test
 	void rejeitaCriacaoComStatusDiferenteDeAg() {
 		assertThrows(BusinessException.class, () -> consultaService.criar(request("EP"), veterinarioPrincipal(20L)));
 		assertThrows(BusinessException.class, () -> consultaService.criar(request("FI"), veterinarioPrincipal(20L)));

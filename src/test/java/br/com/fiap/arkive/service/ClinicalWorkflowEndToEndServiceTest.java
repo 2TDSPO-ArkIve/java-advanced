@@ -85,6 +85,7 @@ class ClinicalWorkflowEndToEndServiceTest {
 		adesaoPrescricaoRepository = mock(AdesaoPrescricaoRepository.class);
 		ResponsavelRepository responsavelRepository = mock(ResponsavelRepository.class);
 		AnimalResponsavelRepository animalResponsavelRepository = mock(AnimalResponsavelRepository.class);
+		VeterinarioService veterinarioService = mock(VeterinarioService.class);
 		eventoJornadaService = mock(EventoJornadaService.class);
 		clinicalSupportProvider = mock(ClinicalSupportProvider.class);
 
@@ -93,7 +94,7 @@ class ClinicalWorkflowEndToEndServiceTest {
 		clinica = clinica();
 		responsavel = responsavel();
 
-		ClinicalAccessService clinicalAccessService = new ClinicalAccessService(animalResponsavelRepository, consultaRepository);
+		ClinicalAccessService clinicalAccessService = new ClinicalAccessService(animalResponsavelRepository, consultaRepository, veterinarioService);
 		consultaService = new ConsultaService(consultaRepository, animalRepository, veterinarioRepository, clinicaRepository, eventoJornadaService, clinicalAccessService);
 		DiagnosticoService diagnosticoService = new DiagnosticoService(diagnosticoRepository, consultaService, doencaRepository, clinicalAccessService);
 		consultaWorkflowService = new ConsultaWorkflowService(consultaService, consultaRepository, diagnosticoService, eventoJornadaService, clinicalAccessService);

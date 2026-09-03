@@ -73,6 +73,22 @@ public interface AnimalRepository extends JpaRepository<Animal, Long> {
 			Pageable pageable
 	);
 
+	@Query("""
+			select a from Animal a
+			where a.clinica.id = :clinicaId
+			and a.ativo = 'S'
+			and (:nome is null or lower(a.nome) like lower(concat('%', :nome, '%')))
+			and (:especieId is null or a.especie.id = :especieId)
+			and (:racaId is null or a.raca.id = :racaId)
+			""")
+	Page<Animal> buscarAtivosParaClinica(
+			@Param("clinicaId") Long clinicaId,
+			@Param("nome") String nome,
+			@Param("especieId") Long especieId,
+			@Param("racaId") Long racaId,
+			Pageable pageable
+	);
+
 	long countByAtivo(String ativo);
 
 	@Query("""

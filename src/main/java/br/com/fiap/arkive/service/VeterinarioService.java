@@ -78,6 +78,12 @@ public class VeterinarioService {
 		return VeterinarioResponse.fromEntity(buscarEntidade(id));
 	}
 
+	@Transactional(readOnly = true)
+	public Long buscarClinicaId(Long id) {
+		Veterinario veterinario = buscarEntidade(id);
+		return veterinario.getClinica() == null ? null : veterinario.getClinica().getId();
+	}
+
 	@Transactional
 	public VeterinarioResponse atualizar(Long id, VeterinarioRequest request) {
 		Veterinario veterinario = buscarEntidade(id);
