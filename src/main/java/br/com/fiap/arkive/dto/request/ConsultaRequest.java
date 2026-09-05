@@ -34,7 +34,6 @@ public record ConsultaRequest(
 		@NotNull
 		Long animalId,
 
-		@NotNull
 		Long veterinarioId,
 
 		Long clinicaId

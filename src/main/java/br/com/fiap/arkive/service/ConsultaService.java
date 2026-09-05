@@ -65,11 +65,13 @@ public class ConsultaService {
 	@Transactional
 	public ConsultaResponse criar(ConsultaRequest request, UsuarioPrincipal principal) {
 		exigirVeterinarioAutenticado(principal);
-		if (!Objects.equals(principal.getVeterinarioId(), request.veterinarioId())) {
+		if (request.veterinarioId() != null && !Objects.equals(principal.getVeterinarioId(), request.veterinarioId())) {
 			throw new BusinessException("Consulta deve ser criada para o veterinario autenticado.", HttpStatus.CONFLICT);
 		}
 		Consulta consulta = new Consulta();
-		aplicarDados(consulta, request, true);
+		aplicarDados(consulta, comVeterinarioAutenticado(request, principal.getVeterinarioId()), true);
+		clinicalAccessService.exigirLeituraAnimal(principal, consulta.getAnimal());
+		validarClinicaDaConsultaParaVeterinario(consulta);
 		Consulta salva = consultaRepository.save(consulta);
 		Long clinicaId = salva.getClinica() == null ? null : salva.getClinica().getId();
 		eventoJornadaService.registrarEvento(
@@ -147,8 +149,9 @@ public class ConsultaService {
 	public ConsultaResponse atualizar(Long id, ConsultaRequest request, UsuarioPrincipal principal) {
 		Consulta consulta = buscarEntidade(id);
 		clinicalAccessService.exigirEscritaClinicaVeterinario(principal, consulta);
-		exigirAssociacoesImutaveis(consulta, request);
-		aplicarDados(consulta, request, false);
+		ConsultaRequest requestAutorizado = comVeterinarioAtualQuandoOmitido(consulta, request);
+		exigirAssociacoesImutaveis(consulta, requestAutorizado);
+		aplicarDados(consulta, requestAutorizado, false);
 		return ConsultaResponse.fromEntity(consultaRepository.save(consulta));
 	}
 
@@ -228,6 +231,38 @@ public class ConsultaService {
 		consulta.setAnimal(animal);
 		consulta.setVeterinario(veterinario);
 		consulta.setClinica(clinica);
+	}
+
+	private ConsultaRequest comVeterinarioAutenticado(ConsultaRequest request, Long veterinarioId) {
+		return new ConsultaRequest(
+				request.dataHora(),
+				request.modalidade(),
+				request.motivo(),
+				request.sintomas(),
+				request.observacao(),
+				request.peso(),
+				request.transcricao(),
+				request.status(),
+				request.animalId(),
+				veterinarioId,
+				request.clinicaId()
+		);
+	}
+
+	private ConsultaRequest comVeterinarioAtualQuandoOmitido(Consulta consulta, ConsultaRequest request) {
+		if (request.veterinarioId() != null) {
+			return request;
+		}
+		Long veterinarioAtualId = consulta.getVeterinario() == null ? null : consulta.getVeterinario().getId();
+		return comVeterinarioAutenticado(request, veterinarioAtualId);
+	}
+
+	private void validarClinicaDaConsultaParaVeterinario(Consulta consulta) {
+		Long clinicaConsultaId = consulta.getClinica() == null ? null : consulta.getClinica().getId();
+		Long clinicaVeterinarioId = consulta.getVeterinario().getClinica() == null ? null : consulta.getVeterinario().getClinica().getId();
+		if (clinicaConsultaId != null && !Objects.equals(clinicaConsultaId, clinicaVeterinarioId)) {
+			throw new AccessDeniedException("Veterinario nao pode criar consulta em outra clinica.");
+		}
 	}
 
 	private Animal buscarAnimal(Long id) {

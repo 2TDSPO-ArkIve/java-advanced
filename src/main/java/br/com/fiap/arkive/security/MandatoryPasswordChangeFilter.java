@@ -46,6 +46,8 @@ public class MandatoryPasswordChangeFilter extends OncePerRequestFilter {
 				|| path.equals("/logout")
 				|| path.equals("/login")
 				|| path.equals("/error")
+				|| path.equals("/api/auth/me")
+				|| path.equals("/api/auth/change-password")
 				|| path.startsWith("/css/")
 				|| path.startsWith("/js/")
 				|| path.startsWith("/images/")

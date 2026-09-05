@@ -98,9 +98,19 @@ public class VeterinarioService {
 		veterinarioRepository.save(veterinario);
 	}
 
-	private Veterinario buscarEntidade(Long id) {
+	@Transactional(readOnly = true)
+	public Veterinario buscarEntidade(Long id) {
 		return veterinarioRepository.findById(id)
 				.orElseThrow(() -> new ResourceNotFoundException("Veterinario nao encontrado."));
+	}
+
+	@Transactional(readOnly = true)
+	public Veterinario buscarEntidadeAtiva(Long id) {
+		Veterinario veterinario = buscarEntidade(id);
+		if (!"S".equals(veterinario.getAtivo())) {
+			throw new BusinessException("Veterinario deve estar ativo.");
+		}
+		return veterinario;
 	}
 
 	private void aplicarDados(Veterinario veterinario, VeterinarioRequest request, boolean criando) {

@@ -107,6 +107,7 @@ class ClinicalWorkflowEndToEndServiceTest {
 		when(animalRepository.findById(50L)).thenReturn(Optional.of(animal));
 		when(veterinarioRepository.findById(10L)).thenReturn(Optional.of(veterinario));
 		when(clinicaRepository.findById(30L)).thenReturn(Optional.of(clinica));
+		when(veterinarioService.buscarClinicaId(10L)).thenReturn(30L);
 		when(responsavelRepository.findById(40L)).thenReturn(Optional.of(responsavel));
 		when(animalResponsavelRepository.existsVinculoAtivoVigente(eq(50L), eq(40L), any(LocalDate.class))).thenReturn(true);
 		when(eventoJornadaService.criarPayload(any(), any(), any())).thenReturn("{\"audit\":\"mock\"}");
@@ -277,6 +278,7 @@ class ClinicalWorkflowEndToEndServiceTest {
 		veterinario.setId(10L);
 		veterinario.setNome("Dra Vera");
 		veterinario.setAtivo("S");
+		veterinario.setClinica(clinica());
 		return veterinario;
 	}
 

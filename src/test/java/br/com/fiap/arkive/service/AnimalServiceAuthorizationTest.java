@@ -6,6 +6,7 @@ import br.com.fiap.arkive.entity.Animal;
 import br.com.fiap.arkive.entity.Clinica;
 import br.com.fiap.arkive.entity.Especie;
 import br.com.fiap.arkive.entity.TipoUsuario;
+import br.com.fiap.arkive.entity.Veterinario;
 import br.com.fiap.arkive.exception.BusinessException;
 import br.com.fiap.arkive.repository.AnimalRepository;
 import br.com.fiap.arkive.security.UsuarioPrincipal;
@@ -20,6 +21,7 @@ import java.time.LocalDate;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.argThat;
@@ -28,6 +30,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.doThrow;
 
 class AnimalServiceAuthorizationTest {
 
@@ -79,55 +82,55 @@ class AnimalServiceAuthorizationTest {
 	@Test
 	void veterinarioListaSomenteAnimaisComConsultasProprias() {
 		UsuarioPrincipal principal = principal(TipoUsuario.VETERINARIO, null, 10L, null);
-		when(animalRepository.buscarParaVeterinario(eq(10L), eq(null), eq(null), eq(null), eq(null), eq(null), any(Pageable.class)))
+		when(veterinarioService.buscarClinicaId(10L)).thenReturn(null);
+		when(animalRepository.buscarParaVeterinario(eq(10L), eq(null), eq(null), eq(null), eq(null), eq(null), eq(null), any(Pageable.class)))
 				.thenReturn(Page.empty());
 
 		animalService.listarAutorizado(null, null, null, null, null, Pageable.unpaged(), principal);
 
-		verify(animalRepository).buscarParaVeterinario(eq(10L), eq(null), eq(null), eq(null), eq(null), eq(null), any(Pageable.class));
+		verify(animalRepository).buscarParaVeterinario(eq(10L), eq(null), eq(null), eq(null), eq(null), eq(null), eq(null), any(Pageable.class));
 	}
 
 	@Test
 	void veterinarioListaPacientesAtivosDaPropriaClinicaSemConsultaPrevia() {
 		UsuarioPrincipal principal = principal(TipoUsuario.VETERINARIO, null, 10L, null);
 		when(veterinarioService.buscarClinicaId(10L)).thenReturn(30L);
-		when(animalRepository.buscarAtivosParaClinica(eq(30L), eq("Nina"), eq(1L), eq(null), any(Pageable.class)))
+		when(animalRepository.buscarParaVeterinario(eq(10L), eq(30L), eq("Nina"), eq(1L), eq(null), eq(null), eq("S"), any(Pageable.class)))
 				.thenReturn(Page.empty());
 
 		animalService.listarPacientesClinicaVeterinario("Nina", 1L, null, Pageable.unpaged(), principal);
 
-		verify(animalRepository).buscarAtivosParaClinica(eq(30L), eq("Nina"), eq(1L), eq(null), any(Pageable.class));
-		verify(animalRepository, never()).buscarParaVeterinario(any(), any(), any(), any(), any(), any(), any());
+		verify(animalRepository).buscarParaVeterinario(eq(10L), eq(30L), eq("Nina"), eq(1L), eq(null), eq(null), eq("S"), any(Pageable.class));
 	}
 
 	@Test
 	void veterinariosDaMesmaClinicaUsamOMesmoEscopoDePacientesDaClinica() {
 		when(veterinarioService.buscarClinicaId(10L)).thenReturn(30L);
 		when(veterinarioService.buscarClinicaId(22L)).thenReturn(30L);
-		when(animalRepository.buscarAtivosParaClinica(eq(30L), eq(null), eq(null), eq(null), any(Pageable.class)))
+		when(animalRepository.buscarParaVeterinario(any(), eq(30L), eq(null), eq(null), eq(null), eq(null), eq("S"), any(Pageable.class)))
 				.thenReturn(Page.empty());
 
 		animalService.listarPacientesClinicaVeterinario(null, null, null, Pageable.unpaged(), principal(TipoUsuario.VETERINARIO, null, 10L, null));
 		animalService.listarPacientesClinicaVeterinario(null, null, null, Pageable.unpaged(), principal(TipoUsuario.VETERINARIO, null, 22L, null));
 
 		verify(animalRepository, org.mockito.Mockito.times(2))
-				.buscarAtivosParaClinica(eq(30L), eq(null), eq(null), eq(null), any(Pageable.class));
+				.buscarParaVeterinario(any(), eq(30L), eq(null), eq(null), eq(null), eq(null), eq("S"), any(Pageable.class));
 	}
 
 	@Test
 	void veterinarioDeOutraClinicaUsaSomenteOProprioEscopoDeClinica() {
 		when(veterinarioService.buscarClinicaId(10L)).thenReturn(30L);
 		when(veterinarioService.buscarClinicaId(22L)).thenReturn(31L);
-		when(animalRepository.buscarAtivosParaClinica(eq(30L), eq(null), eq(null), eq(null), any(Pageable.class)))
+		when(animalRepository.buscarParaVeterinario(eq(10L), eq(30L), eq(null), eq(null), eq(null), eq(null), eq("S"), any(Pageable.class)))
 				.thenReturn(Page.empty());
-		when(animalRepository.buscarAtivosParaClinica(eq(31L), eq(null), eq(null), eq(null), any(Pageable.class)))
+		when(animalRepository.buscarParaVeterinario(eq(22L), eq(31L), eq(null), eq(null), eq(null), eq(null), eq("S"), any(Pageable.class)))
 				.thenReturn(Page.empty());
 
 		animalService.listarPacientesClinicaVeterinario(null, null, null, Pageable.unpaged(), principal(TipoUsuario.VETERINARIO, null, 10L, null));
 		animalService.listarPacientesClinicaVeterinario(null, null, null, Pageable.unpaged(), principal(TipoUsuario.VETERINARIO, null, 22L, null));
 
-		verify(animalRepository).buscarAtivosParaClinica(eq(30L), eq(null), eq(null), eq(null), any(Pageable.class));
-		verify(animalRepository).buscarAtivosParaClinica(eq(31L), eq(null), eq(null), eq(null), any(Pageable.class));
+		verify(animalRepository).buscarParaVeterinario(eq(10L), eq(30L), eq(null), eq(null), eq(null), eq(null), eq("S"), any(Pageable.class));
+		verify(animalRepository).buscarParaVeterinario(eq(22L), eq(31L), eq(null), eq(null), eq(null), eq(null), eq("S"), any(Pageable.class));
 	}
 
 	@Test
@@ -155,6 +158,17 @@ class AnimalServiceAuthorizationTest {
 		animalService.criar(request(31L), principal(TipoUsuario.SYSADMIN, null, null, null));
 
 		verify(animalRepository).save(argThat(animal -> animal.getClinica().getId().equals(31L)));
+	}
+
+	@Test
+	void permiteAnimaisAtivosComMesmoNome() {
+		animalService.criar(request("Luna", 31L), principal(TipoUsuario.SYSADMIN, null, null, null));
+		animalService.criar(request("Luna", 31L), principal(TipoUsuario.SYSADMIN, null, null, null));
+
+		verify(animalRepository, org.mockito.Mockito.times(2)).save(argThat(animal ->
+				"Luna".equals(animal.getNome())
+						&& "S".equals(animal.getAtivo())
+		));
 	}
 
 	@Test
@@ -222,13 +236,50 @@ class AnimalServiceAuthorizationTest {
 	@Test
 	void veterinarioCriaAnimalNaPropriaClinicaSemClinicaNoRequest() {
 		when(veterinarioService.buscarClinicaId(10L)).thenReturn(30L);
+		when(veterinarioService.buscarEntidadeAtiva(10L)).thenReturn(veterinario(10L));
 
 		animalService.criar(request(null), principal(TipoUsuario.VETERINARIO, null, 10L, null));
 
 		verify(animalRepository).save(argThat(animal ->
 				animal.getClinica().getId().equals(30L)
 						&& "S".equals(animal.getAtivo())
+						&& animal.getVeterinarioCadastro().getId().equals(10L)
 		));
+	}
+
+	@Test
+	void veterinarioSemClinicaCriaAnimalCliniclessComCadastroProprio() {
+		when(veterinarioService.buscarClinicaId(10L)).thenReturn(null);
+		when(veterinarioService.buscarEntidadeAtiva(10L)).thenReturn(veterinario(10L));
+
+		animalService.criar(request(null), principal(TipoUsuario.VETERINARIO, null, 10L, null));
+
+		verify(animalRepository).save(argThat(animal ->
+				animal.getClinica() == null
+						&& animal.getVeterinarioCadastro().getId().equals(10L)
+						&& "S".equals(animal.getAtivo())
+		));
+	}
+
+	@Test
+	void veterinarioSemClinicaNaoInformaClinicaNoRequest() {
+		when(veterinarioService.buscarClinicaId(10L)).thenReturn(null);
+
+		assertThrows(AccessDeniedException.class,
+				() -> animalService.criar(request(30L), principal(TipoUsuario.VETERINARIO, null, 10L, null)));
+
+		verify(animalRepository, never()).save(any());
+	}
+
+	@Test
+	void meusPacientesDoVeterinarioUsaEscopoAtivoSemExigirClinica() {
+		when(veterinarioService.buscarClinicaId(10L)).thenReturn(null);
+		when(animalRepository.buscarParaVeterinario(eq(10L), eq(null), eq("Luna"), eq(1L), eq(null), eq(null), eq("S"), any(Pageable.class)))
+				.thenReturn(Page.empty());
+
+		animalService.listarPacientesVeterinario("Luna", 1L, null, Pageable.unpaged(), principal(TipoUsuario.VETERINARIO, null, 10L, null));
+
+		verify(animalRepository).buscarParaVeterinario(eq(10L), eq(null), eq("Luna"), eq(1L), eq(null), eq(null), eq("S"), any(Pageable.class));
 	}
 
 	@Test
@@ -253,7 +304,6 @@ class AnimalServiceAuthorizationTest {
 
 	@Test
 	void veterinarioAtualizaDadosBasicosDoAnimalAtivoDaPropriaClinica() {
-		when(veterinarioService.buscarClinicaId(10L)).thenReturn(30L);
 		when(animalRepository.findById(50L)).thenReturn(Optional.of(animal(30L)));
 
 		animalService.atualizar(50L, request(null), principal(TipoUsuario.VETERINARIO, null, 10L, null));
@@ -267,8 +317,9 @@ class AnimalServiceAuthorizationTest {
 
 	@Test
 	void veterinarioNaoAtualizaAnimalDeOutraClinica() {
-		when(veterinarioService.buscarClinicaId(10L)).thenReturn(30L);
 		when(animalRepository.findById(50L)).thenReturn(Optional.of(animal(31L)));
+		doThrow(new AccessDeniedException("Veterinario nao autorizado para atualizar este animal."))
+				.when(clinicalAccessService).exigirLeituraAnimal(any(), any());
 
 		assertThrows(AccessDeniedException.class,
 				() -> animalService.atualizar(50L, request(null), principal(TipoUsuario.VETERINARIO, null, 10L, null)));
@@ -278,7 +329,6 @@ class AnimalServiceAuthorizationTest {
 
 	@Test
 	void veterinarioNaoMoveAnimalParaOutraClinicaNemAlteraStatus() {
-		when(veterinarioService.buscarClinicaId(10L)).thenReturn(30L);
 		when(animalRepository.findById(50L)).thenReturn(Optional.of(animal(30L)));
 
 		assertThrows(BusinessException.class,
@@ -323,9 +373,19 @@ class AnimalServiceAuthorizationTest {
 		animal.setId(50L);
 		animal.setNome("Nina");
 		animal.setEspecie(especie);
-		animal.setClinica(clinica(clinicaId));
+		if (clinicaId != null) {
+			animal.setClinica(clinica(clinicaId));
+		}
 		animal.setAtivo("S");
 		return animal;
+	}
+
+	private Veterinario veterinario(Long id) {
+		Veterinario veterinario = new Veterinario();
+		veterinario.setId(id);
+		veterinario.setNome("Dra " + id);
+		veterinario.setAtivo("S");
+		return veterinario;
 	}
 
 	private Especie especie() {
@@ -347,7 +407,15 @@ class AnimalServiceAuthorizationTest {
 	}
 
 	private AnimalRequest request(Long clinicaId, String ativo) {
-		return new AnimalRequest("Nina", 1L, null, "F", "N", clinicaId, ativo);
+		return request("Nina", clinicaId, ativo);
+	}
+
+	private AnimalRequest request(String nome, Long clinicaId) {
+		return request(nome, clinicaId, "S");
+	}
+
+	private AnimalRequest request(String nome, Long clinicaId, String ativo) {
+		return new AnimalRequest(nome, 1L, null, "F", "N", clinicaId, ativo);
 	}
 
 	private void assertMutacoesBloqueadas(UsuarioPrincipal principal) {

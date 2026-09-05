@@ -61,6 +61,9 @@ public class AnimalService {
 		AnimalRequest requestAutorizado = requestAutorizadoParaCriacao(request, principal);
 		Animal animal = new Animal();
 		aplicarDados(animal, requestAutorizado, true);
+		if (TipoUsuario.VETERINARIO.equals(principal.getTipoUsuario())) {
+			animal.setVeterinarioCadastro(veterinarioService.buscarEntidadeAtiva(principal.getVeterinarioId()));
+		}
 		Animal salvo = animalRepository.save(animal);
 		Long clinicaId = salvo.getClinica() == null ? null : salvo.getClinica().getId();
 		Long veterinarioId = TipoUsuario.VETERINARIO.equals(principal.getTipoUsuario()) ? principal.getVeterinarioId() : null;
@@ -106,12 +109,36 @@ public class AnimalService {
 			UsuarioPrincipal principal
 	) {
 		exigirVeterinarioAutenticado(principal);
-		Long clinicaId = clinicaVeterinarioAutenticado(principal);
-		return animalRepository.buscarAtivosParaClinica(
+		Long clinicaId = clinicaVeterinarioAutenticadoOpcional(principal);
+		return animalRepository.buscarParaVeterinario(
+				principal.getVeterinarioId(),
 				clinicaId,
 				vazioParaNulo(nome),
 				especieId,
 				racaId,
+				null,
+				"S",
+				pageable
+		).map(AnimalResponse::fromEntity);
+	}
+
+	@Transactional(readOnly = true)
+	public Page<AnimalResponse> listarPacientesVeterinario(
+			String nome,
+			Long especieId,
+			Long racaId,
+			Pageable pageable,
+			UsuarioPrincipal principal
+	) {
+		exigirVeterinarioAutenticado(principal);
+		return animalRepository.buscarParaVeterinario(
+				principal.getVeterinarioId(),
+				clinicaVeterinarioAutenticadoOpcional(principal),
+				vazioParaNulo(nome),
+				especieId,
+				racaId,
+				null,
+				"S",
 				pageable
 		).map(AnimalResponse::fromEntity);
 	}
@@ -143,15 +170,7 @@ public class AnimalService {
 					vazioParaNulo(ativo),
 					pageable
 			).map(AnimalResponse::fromEntity);
-			case VETERINARIO -> principal.getVeterinarioId() == null ? Page.empty(pageable) : animalRepository.buscarParaVeterinario(
-					principal.getVeterinarioId(),
-					vazioParaNulo(nome),
-					especieId,
-					racaId,
-					clinicaId,
-					vazioParaNulo(ativo),
-					pageable
-			).map(AnimalResponse::fromEntity);
+			case VETERINARIO -> listarParaVeterinario(nome, especieId, racaId, clinicaId, ativo, pageable, principal);
 			case ADMIN_CLINICA -> listarParaClinica(nome, especieId, racaId, clinicaId, ativo, pageable, principal.getClinicaId());
 		};
 	}
@@ -227,7 +246,7 @@ public class AnimalService {
 				yield comClinica(request, clinicaId);
 			}
 			case VETERINARIO -> {
-				Long clinicaId = clinicaVeterinarioAutenticado(principal);
+				Long clinicaId = clinicaVeterinarioAutenticadoOpcional(principal);
 				if (request.clinicaId() != null && !Objects.equals(request.clinicaId(), clinicaId)) {
 					throw new AccessDeniedException("Veterinario nao pode criar animal em outra clinica.");
 				}
@@ -256,18 +275,15 @@ public class AnimalService {
 				yield comClinica(request, clinicaId);
 			}
 			case VETERINARIO -> {
-				Long clinicaId = clinicaVeterinarioAutenticado(principal);
 				Long clinicaAtualId = animal.getClinica() == null ? null : animal.getClinica().getId();
-				if (!"S".equals(animal.getAtivo()) || !Objects.equals(clinicaAtualId, clinicaId)) {
-					throw new AccessDeniedException("Veterinario nao autorizado para atualizar este animal.");
-				}
-				if (request.clinicaId() != null && !Objects.equals(request.clinicaId(), clinicaId)) {
+				clinicalAccessService.exigirLeituraAnimal(principal, animal);
+				if (request.clinicaId() != null && !Objects.equals(request.clinicaId(), clinicaAtualId)) {
 					throw new BusinessException("Veterinario nao pode mover animal para outra clinica.", org.springframework.http.HttpStatus.CONFLICT);
 				}
 				if (request.ativo() != null && !Objects.equals(request.ativo(), animal.getAtivo())) {
 					throw new BusinessException("Veterinario nao pode alterar status do animal.", org.springframework.http.HttpStatus.CONFLICT);
 				}
-				yield comClinicaEAtivo(request, clinicaId, animal.getAtivo());
+				yield comClinicaEAtivo(request, clinicaAtualId, animal.getAtivo());
 			}
 			case RESPONSAVEL -> throw new AccessDeniedException("Operacao permitida apenas a SYSADMIN, ADMIN_CLINICA ou VETERINARIO.");
 		};
@@ -296,19 +312,39 @@ public class AnimalService {
 		return principal.getClinicaId();
 	}
 
+	private Page<AnimalResponse> listarParaVeterinario(
+			String nome,
+			Long especieId,
+			Long racaId,
+			Long clinicaId,
+			String ativo,
+			Pageable pageable,
+			UsuarioPrincipal principal
+	) {
+		if (principal.getVeterinarioId() == null) {
+			return Page.empty(pageable);
+		}
+		return animalRepository.buscarParaVeterinario(
+				principal.getVeterinarioId(),
+				clinicaVeterinarioAutenticadoOpcional(principal),
+				vazioParaNulo(nome),
+				especieId,
+				racaId,
+				clinicaId,
+				vazioParaNulo(ativo),
+				pageable
+		).map(AnimalResponse::fromEntity);
+	}
+
 	private void exigirVeterinarioAutenticado(UsuarioPrincipal principal) {
 		if (principal == null || !TipoUsuario.VETERINARIO.equals(principal.getTipoUsuario()) || principal.getVeterinarioId() == null) {
 			throw new AccessDeniedException("Operacao permitida apenas ao veterinario autenticado.");
 		}
 	}
 
-	private Long clinicaVeterinarioAutenticado(UsuarioPrincipal principal) {
+	private Long clinicaVeterinarioAutenticadoOpcional(UsuarioPrincipal principal) {
 		exigirVeterinarioAutenticado(principal);
-		Long clinicaId = veterinarioService.buscarClinicaId(principal.getVeterinarioId());
-		if (clinicaId == null) {
-			throw new AccessDeniedException("Veterinario sem clinica vinculada.");
-		}
-		return clinicaId;
+		return veterinarioService.buscarClinicaId(principal.getVeterinarioId());
 	}
 
 	private void exigirPrincipal(UsuarioPrincipal principal) {

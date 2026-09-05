@@ -93,6 +93,27 @@ class ClinicalAccessServiceTest {
 	}
 
 	@Test
+	void veterinarioLeAnimalAtivoCadastradoPorEleSemClinicaOuConsulta() {
+		Animal animal = animal(50L, null);
+		animal.setVeterinarioCadastro(veterinarioEntidade(10L));
+		when(consultaRepository.existsConsultaDoVeterinarioParaAnimal(50L, 10L)).thenReturn(false);
+		when(veterinarioService.buscarClinicaId(10L)).thenReturn(null);
+
+		assertDoesNotThrow(() -> clinicalAccessService.exigirLeituraAnimal(veterinario(10L), animal));
+		assertThrows(AccessDeniedException.class, () -> clinicalAccessService.exigirLeituraAnimal(veterinario(22L), animal));
+	}
+
+	@Test
+	void veterinarioNaoLeAnimalCliniclessNaoCadastradoPorEleSemConsulta() {
+		Animal animal = animal(50L, null);
+		animal.setVeterinarioCadastro(veterinarioEntidade(22L));
+		when(consultaRepository.existsConsultaDoVeterinarioParaAnimal(50L, 10L)).thenReturn(false);
+		when(veterinarioService.buscarClinicaId(10L)).thenReturn(null);
+
+		assertThrows(AccessDeniedException.class, () -> clinicalAccessService.exigirLeituraAnimal(veterinario(10L), animal));
+	}
+
+	@Test
 	void veterinarioLeAnimalAtivoDaPropriaClinicaSemConsultaPrevia() {
 		when(consultaRepository.existsConsultaDoVeterinarioParaAnimal(50L, 10L)).thenReturn(false);
 		when(veterinarioService.buscarClinicaId(10L)).thenReturn(30L);
@@ -219,6 +240,12 @@ class ClinicalAccessServiceTest {
 
 	private UsuarioPrincipal veterinario(Long veterinarioId) {
 		return new UsuarioPrincipal(1L, "Dra", "vet@arkive.com", "$2a$10$hash", TipoUsuario.VETERINARIO, "S", false, null, veterinarioId, null);
+	}
+
+	private Veterinario veterinarioEntidade(Long veterinarioId) {
+		Veterinario veterinario = new Veterinario();
+		veterinario.setId(veterinarioId);
+		return veterinario;
 	}
 
 	private UsuarioPrincipal responsavel(Long responsavelId) {

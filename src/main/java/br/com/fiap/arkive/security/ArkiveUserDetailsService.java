@@ -21,7 +21,9 @@ public class ArkiveUserDetailsService implements UserDetailsService {
 	@Override
 	@Transactional(readOnly = true)
 	public UserDetails loadUserByUsername(String username) {
-		return usuarioRepository.findByLogin(username)
+		String identificador = username == null ? "" : username.trim();
+		return usuarioRepository.findByLoginIgnoreCase(identificador)
+				.or(() -> usuarioRepository.findVeterinarioByCrmvIgnoreCase(identificador))
 				.map(UsuarioPrincipal::fromEntity)
 				.orElseThrow(() -> new UsernameNotFoundException("Credenciais invalidas."));
 	}

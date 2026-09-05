@@ -7,6 +7,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
 import java.util.List;
 import java.util.Optional;
@@ -15,6 +16,16 @@ import java.util.Optional;
 public interface UsuarioRepository extends JpaRepository<Usuario, Long> {
 
 	Optional<Usuario> findByLogin(String login);
+
+	Optional<Usuario> findByLoginIgnoreCase(String login);
+
+	@Query("""
+			select u from Usuario u
+			join u.veterinario v
+			where u.tipo = br.com.fiap.arkive.entity.TipoUsuario.VETERINARIO
+			and lower(v.crmv) = lower(:crmv)
+			""")
+	Optional<Usuario> findVeterinarioByCrmvIgnoreCase(@Param("crmv") String crmv);
 
 	Page<Usuario> findByTipoIn(List<TipoUsuario> tipos, Pageable pageable);
 

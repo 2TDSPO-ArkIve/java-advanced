@@ -22,6 +22,7 @@ import java.util.Optional;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
@@ -75,7 +76,16 @@ class ConsultaServiceTest {
 		consultaService.criar(request("AG"), veterinarioPrincipal(20L));
 
 		verify(consultaRepository).save(any(Consulta.class));
-		verify(clinicalAccessService, never()).exigirLeituraAnimal(any(), any());
+		verify(clinicalAccessService).exigirLeituraAnimal(any(), any());
+	}
+
+	@Test
+	void criaConsultaSemVeterinarioNoRequestUsaVeterinarioAutenticado() {
+		consultaService.criar(requestSemVeterinario("AG"), veterinarioPrincipal(20L));
+
+		verify(consultaRepository).save(argThat(consulta ->
+				consulta.getVeterinario().getId().equals(20L)
+		));
 	}
 
 	@Test
@@ -100,6 +110,28 @@ class ConsultaServiceTest {
 				() -> consultaService.criar(request("AG"), veterinarioPrincipal(21L)));
 
 		assertEquals(HttpStatus.CONFLICT, exception.getStatus());
+		verify(consultaRepository, never()).save(any());
+	}
+
+	@Test
+	void veterinarioSemClinicaCriaConsultaSemClinica() {
+		when(veterinarioRepository.findById(20L)).thenReturn(Optional.of(veterinarioSemClinica()));
+
+		consultaService.criar(requestSemVeterinarioEClinica("AG"), veterinarioPrincipal(20L));
+
+		verify(consultaRepository).save(argThat(consulta ->
+				consulta.getVeterinario().getId().equals(20L)
+						&& consulta.getClinica() == null
+		));
+	}
+
+	@Test
+	void veterinarioSemClinicaNaoCriaConsultaInformandoClinica() {
+		when(veterinarioRepository.findById(20L)).thenReturn(Optional.of(veterinarioSemClinica()));
+
+		assertThrows(AccessDeniedException.class,
+				() -> consultaService.criar(request("AG"), veterinarioPrincipal(20L)));
+
 		verify(consultaRepository, never()).save(any());
 	}
 
@@ -262,6 +294,38 @@ class ConsultaServiceTest {
 		);
 	}
 
+	private ConsultaRequest requestSemVeterinario(String status) {
+		return new ConsultaRequest(
+				LocalDateTime.now(),
+				"PRESENCIAL",
+				"Check-up",
+				null,
+				null,
+				null,
+				null,
+				status,
+				10L,
+				null,
+				30L
+		);
+	}
+
+	private ConsultaRequest requestSemVeterinarioEClinica(String status) {
+		return new ConsultaRequest(
+				LocalDateTime.now(),
+				"PRESENCIAL",
+				"Check-up",
+				null,
+				null,
+				null,
+				null,
+				status,
+				10L,
+				null,
+				null
+		);
+	}
+
 	private void assertReassociacaoBloqueada(ConsultaRequest request) {
 		BusinessException exception = assertThrows(BusinessException.class,
 				() -> consultaService.atualizar(1L, request, veterinarioPrincipal(20L)));
@@ -297,6 +361,15 @@ class ConsultaServiceTest {
 	}
 
 	private Veterinario veterinario() {
+		Veterinario veterinario = new Veterinario();
+		veterinario.setId(20L);
+		veterinario.setNome("Dra Vera");
+		veterinario.setAtivo("S");
+		veterinario.setClinica(clinica());
+		return veterinario;
+	}
+
+	private Veterinario veterinarioSemClinica() {
 		Veterinario veterinario = new Veterinario();
 		veterinario.setId(20L);
 		veterinario.setNome("Dra Vera");

@@ -40,6 +40,10 @@ public class Animal {
 	@JoinColumn(name = "ID_CLINICA")
 	private Clinica clinica;
 
+	@ManyToOne(fetch = FetchType.LAZY)
+	@JoinColumn(name = "ID_VETERINARIO_CADASTRO")
+	private Veterinario veterinarioCadastro;
+
 	@Column(name = "ST_ATIVO", nullable = false, columnDefinition = "CHAR(1)")
 	private String ativo = "S";
 
@@ -97,6 +101,14 @@ public class Animal {
 
 	public void setClinica(Clinica clinica) {
 		this.clinica = clinica;
+	}
+
+	public Veterinario getVeterinarioCadastro() {
+		return veterinarioCadastro;
+	}
+
+	public void setVeterinarioCadastro(Veterinario veterinarioCadastro) {
+		this.veterinarioCadastro = veterinarioCadastro;
 	}
 
 	public String getAtivo() {

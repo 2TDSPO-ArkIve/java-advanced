@@ -117,12 +117,19 @@ public class ClinicalAccessService {
 			case RESPONSAVEL -> principal.getResponsavelId() != null
 					&& temVinculoResponsavelAnimal(principal.getResponsavelId(), animal.getId());
 			case VETERINARIO -> principal.getVeterinarioId() != null
-					&& (consultaRepository.existsConsultaDoVeterinarioParaAnimal(animal.getId(), principal.getVeterinarioId())
+					&& "S".equals(animal.getAtivo())
+					&& (animalCadastradoPeloVeterinario(animal, principal.getVeterinarioId())
+					|| consultaRepository.existsConsultaDoVeterinarioParaAnimal(animal.getId(), principal.getVeterinarioId())
 					|| animalAtivoDaClinicaDoVeterinario(animal, principal.getVeterinarioId()));
 			case ADMIN_CLINICA -> principal.getClinicaId() != null
 					&& animal.getClinica() != null
 					&& Objects.equals(principal.getClinicaId(), animal.getClinica().getId());
 		};
+	}
+
+	private boolean animalCadastradoPeloVeterinario(Animal animal, Long veterinarioId) {
+		return animal.getVeterinarioCadastro() != null
+				&& Objects.equals(veterinarioId, animal.getVeterinarioCadastro().getId());
 	}
 
 	private boolean animalAtivoDaClinicaDoVeterinario(Animal animal, Long veterinarioId) {

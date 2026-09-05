@@ -55,8 +55,18 @@ public interface AnimalRepository extends JpaRepository<Animal, Long> {
 
 	@Query("""
 			select distinct a from Animal a
-			join Consulta c on c.animal = a
-			where c.veterinario.id = :veterinarioId
+			where (
+				a.veterinarioCadastro.id = :veterinarioId
+				or exists (
+					select c from Consulta c
+					where c.animal = a
+					and c.veterinario.id = :veterinarioId
+				)
+				or (
+					:clinicaVeterinarioId is not null
+					and a.clinica.id = :clinicaVeterinarioId
+				)
+			)
 			and (:nome is null or lower(a.nome) like lower(concat('%', :nome, '%')))
 			and (:especieId is null or a.especie.id = :especieId)
 			and (:racaId is null or a.raca.id = :racaId)
@@ -65,6 +75,7 @@ public interface AnimalRepository extends JpaRepository<Animal, Long> {
 			""")
 	Page<Animal> buscarParaVeterinario(
 			@Param("veterinarioId") Long veterinarioId,
+			@Param("clinicaVeterinarioId") Long clinicaVeterinarioId,
 			@Param("nome") String nome,
 			@Param("especieId") Long especieId,
 			@Param("racaId") Long racaId,

@@ -2,6 +2,7 @@ package br.com.fiap.arkive.security;
 
 import br.com.fiap.arkive.entity.TipoUsuario;
 import br.com.fiap.arkive.entity.Usuario;
+import br.com.fiap.arkive.entity.Veterinario;
 import br.com.fiap.arkive.repository.UsuarioRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -29,7 +30,7 @@ class ArkiveUserDetailsServiceTest {
 
 	@Test
 	void loginExistenteRetornaPrincipal() {
-		when(usuarioRepository.findByLogin("usuario@arkive.com")).thenReturn(Optional.of(usuario("S")));
+		when(usuarioRepository.findByLoginIgnoreCase("usuario@arkive.com")).thenReturn(Optional.of(usuario("S")));
 
 		UserDetails userDetails = userDetailsService.loadUserByUsername("usuario@arkive.com");
 
@@ -40,18 +41,33 @@ class ArkiveUserDetailsServiceTest {
 
 	@Test
 	void loginInexistenteLancaUsernameNotFound() {
-		when(usuarioRepository.findByLogin("usuario@arkive.com")).thenReturn(Optional.empty());
+		when(usuarioRepository.findByLoginIgnoreCase("usuario@arkive.com")).thenReturn(Optional.empty());
+		when(usuarioRepository.findVeterinarioByCrmvIgnoreCase("usuario@arkive.com")).thenReturn(Optional.empty());
 
 		assertThrows(UsernameNotFoundException.class, () -> userDetailsService.loadUserByUsername("usuario@arkive.com"));
 	}
 
 	@Test
 	void usuarioInativoPermaneceDesabilitado() {
-		when(usuarioRepository.findByLogin("usuario@arkive.com")).thenReturn(Optional.of(usuario("N")));
+		when(usuarioRepository.findByLoginIgnoreCase("usuario@arkive.com")).thenReturn(Optional.of(usuario("N")));
 
 		UserDetails userDetails = userDetailsService.loadUserByUsername("usuario@arkive.com");
 
 		assertFalse(userDetails.isEnabled());
+	}
+
+	@Test
+	void crmvResolveMesmoUsuarioVeterinarioQuandoLoginNaoExiste() {
+		Usuario usuario = usuario("S");
+		usuario.setTipo(TipoUsuario.VETERINARIO);
+		usuario.setVeterinario(veterinario());
+		when(usuarioRepository.findByLoginIgnoreCase("CRMV12345")).thenReturn(Optional.empty());
+		when(usuarioRepository.findVeterinarioByCrmvIgnoreCase("CRMV12345")).thenReturn(Optional.of(usuario));
+
+		UserDetails userDetails = userDetailsService.loadUserByUsername(" CRMV12345 ");
+
+		assertEquals("usuario@arkive.com", userDetails.getUsername());
+		assertEquals("ROLE_VETERINARIO", userDetails.getAuthorities().iterator().next().getAuthority());
 	}
 
 	private Usuario usuario(String ativo) {
@@ -63,6 +79,15 @@ class ArkiveUserDetailsServiceTest {
 		usuario.setTipo(TipoUsuario.SYSADMIN);
 		usuario.setAtivo(ativo);
 		return usuario;
+	}
+
+	private Veterinario veterinario() {
+		Veterinario veterinario = new Veterinario();
+		veterinario.setId(45L);
+		veterinario.setCrmv("CRMV12345");
+		veterinario.setEmail("usuario@arkive.com");
+		veterinario.setAtivo("S");
+		return veterinario;
 	}
 
 }
