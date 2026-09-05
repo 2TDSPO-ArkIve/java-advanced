@@ -51,6 +51,18 @@ public interface AnimalResponsavelRepository extends JpaRepository<AnimalRespons
 
 	@Query("""
 			select ar from AnimalResponsavel ar
+			where ar.animal.id = :animalId
+			and ar.ativo = 'S'
+			and ar.principal = 'S'
+			and (ar.dataFim is null or ar.dataFim >= :dataAtual)
+			""")
+	List<AnimalResponsavel> buscarResponsaveisPrincipaisAtivosVigentes(
+			@Param("animalId") Long animalId,
+			@Param("dataAtual") LocalDate dataAtual
+	);
+
+	@Query("""
+			select ar from AnimalResponsavel ar
 			where (:animalId is null or ar.animal.id = :animalId)
 			and (:responsavelId is null or ar.responsavel.id = :responsavelId)
 			and (:tipoVinculo is null or ar.tipoVinculo = :tipoVinculo)

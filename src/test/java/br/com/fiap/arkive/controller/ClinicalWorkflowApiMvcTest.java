@@ -13,6 +13,7 @@ import br.com.fiap.arkive.security.ArkiveUserDetailsService;
 import br.com.fiap.arkive.security.UsuarioPrincipal;
 import br.com.fiap.arkive.service.AdesaoPrescricaoService;
 import br.com.fiap.arkive.service.ClinicalSupportService;
+import br.com.fiap.arkive.service.ConsultaResumoPdfService;
 import br.com.fiap.arkive.service.ConsultaService;
 import br.com.fiap.arkive.service.ConsultaWorkflowService;
 import br.com.fiap.arkive.service.PrescricaoService;
@@ -23,6 +24,7 @@ import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.security.access.AccessDeniedException;
@@ -47,6 +49,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -69,6 +72,9 @@ class ClinicalWorkflowApiMvcTest {
 
 	@MockitoBean
 	private ClinicalSupportService clinicalSupportService;
+
+	@MockitoBean
+	private ConsultaResumoPdfService consultaResumoPdfService;
 
 	@MockitoBean
 	private PrescricaoService prescricaoService;
@@ -253,6 +259,40 @@ class ClinicalWorkflowApiMvcTest {
 				.andExpect(status().isOk())
 				.andExpect(jsonPath("$.fontesPesquisadas[0]").value("https://source-one.example"))
 				.andExpect(jsonPath("$.fontesPesquisadas[1]").value("https://source-two.example"));
+	}
+
+	@Test
+	void resumoPdfDeConsultaFinalizadaRetornaPdfComHeadersPrivados() throws Exception {
+		byte[] pdf = "%PDF-arkive-test".getBytes();
+		when(consultaResumoPdfService.gerarResumo(eq(100L), any(UsuarioPrincipal.class)))
+				.thenReturn(new ConsultaResumoPdfService.ConsultaResumoPdf(pdf, "arkive-consulta-bilu-100.pdf"));
+
+		mockMvc.perform(get("/api/consultas/100/resumo-pdf").with(user(veterinario())))
+				.andExpect(status().isOk())
+				.andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PDF))
+				.andExpect(content().bytes(pdf))
+				.andExpect(header().string(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"arkive-consulta-bilu-100.pdf\""))
+				.andExpect(header().string(HttpHeaders.CACHE_CONTROL, "no-store"));
+	}
+
+	@Test
+	void resumoPdfRejeitaConsultaNaoFinalizada() throws Exception {
+		when(consultaResumoPdfService.gerarResumo(eq(100L), any(UsuarioPrincipal.class)))
+				.thenThrow(new BusinessException("Resumo em PDF disponivel apenas para consulta finalizada.", HttpStatus.CONFLICT));
+
+		mockMvc.perform(get("/api/consultas/100/resumo-pdf").with(user(veterinario())))
+				.andExpect(status().isConflict())
+				.andExpect(jsonPath("$.message").value("Resumo em PDF disponivel apenas para consulta finalizada."));
+	}
+
+	@Test
+	void resumoPdfRejeitaVeterinarioNaoAutorizado() throws Exception {
+		when(consultaResumoPdfService.gerarResumo(eq(100L), any(UsuarioPrincipal.class)))
+				.thenThrow(new AccessDeniedException("Usuario nao autorizado para esta consulta."));
+
+		mockMvc.perform(get("/api/consultas/100/resumo-pdf").with(user(veterinario())))
+				.andExpect(status().isForbidden())
+				.andExpect(jsonPath("$.message").value("Usuario nao autorizado para esta consulta."));
 	}
 
 	@Test

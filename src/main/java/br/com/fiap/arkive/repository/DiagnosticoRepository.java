@@ -94,4 +94,13 @@ public interface DiagnosticoRepository extends JpaRepository<Diagnostico, Long> 
 			""")
 	List<Diagnostico> buscarSuportesClinicos(@Param("consultaId") Long consultaId, Pageable pageable);
 
+	@Query("""
+			select d from Diagnostico d
+			where d.consulta.id = :consultaId
+			and d.confirmado = 'S'
+			and d.validacaoVet = 'S'
+			order by d.id desc
+			""")
+	List<Diagnostico> buscarDiagnosticosConfirmadosVeterinario(@Param("consultaId") Long consultaId, Pageable pageable);
+
 }

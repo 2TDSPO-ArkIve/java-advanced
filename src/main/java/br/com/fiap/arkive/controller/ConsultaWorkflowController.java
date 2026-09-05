@@ -7,11 +7,17 @@ import br.com.fiap.arkive.dto.response.ClinicalSupportResponse;
 import br.com.fiap.arkive.dto.response.ConsultaWorkflowResponse;
 import br.com.fiap.arkive.security.UsuarioPrincipal;
 import br.com.fiap.arkive.service.ClinicalSupportService;
+import br.com.fiap.arkive.service.ConsultaResumoPdfService;
 import br.com.fiap.arkive.service.ConsultaWorkflowService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import org.springframework.context.annotation.Profile;
+import org.springframework.http.CacheControl;
+import org.springframework.http.ContentDisposition;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
@@ -29,10 +35,16 @@ public class ConsultaWorkflowController {
 
 	private final ConsultaWorkflowService consultaWorkflowService;
 	private final ClinicalSupportService clinicalSupportService;
+	private final ConsultaResumoPdfService consultaResumoPdfService;
 
-	public ConsultaWorkflowController(ConsultaWorkflowService consultaWorkflowService, ClinicalSupportService clinicalSupportService) {
+	public ConsultaWorkflowController(
+			ConsultaWorkflowService consultaWorkflowService,
+			ClinicalSupportService clinicalSupportService,
+			ConsultaResumoPdfService consultaResumoPdfService
+	) {
 		this.consultaWorkflowService = consultaWorkflowService;
 		this.clinicalSupportService = clinicalSupportService;
+		this.consultaResumoPdfService = consultaResumoPdfService;
 	}
 
 	@PostMapping("/{id}/iniciar")
@@ -87,5 +99,19 @@ public class ConsultaWorkflowController {
 			@AuthenticationPrincipal UsuarioPrincipal principal
 	) {
 		return clinicalSupportService.buscarSuporte(id, principal);
+	}
+
+	@GetMapping(value = "/{id}/resumo-pdf", produces = MediaType.APPLICATION_PDF_VALUE)
+	@Operation(summary = "Exporta resumo do atendimento veterinario", description = "Gera PDF privado do resumo final do atendimento veterinario, somente para consultas finalizadas.")
+	public ResponseEntity<byte[]> exportarResumoPdf(
+			@PathVariable Long id,
+			@AuthenticationPrincipal UsuarioPrincipal principal
+	) {
+		ConsultaResumoPdfService.ConsultaResumoPdf pdf = consultaResumoPdfService.gerarResumo(id, principal);
+		return ResponseEntity.ok()
+				.contentType(MediaType.APPLICATION_PDF)
+				.header(HttpHeaders.CONTENT_DISPOSITION, ContentDisposition.attachment().filename(pdf.filename()).build().toString())
+				.cacheControl(CacheControl.noStore())
+				.body(pdf.bytes());
 	}
 }

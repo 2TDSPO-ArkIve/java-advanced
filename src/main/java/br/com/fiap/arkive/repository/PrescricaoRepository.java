@@ -8,6 +8,8 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.util.List;
+
 @Profile("!local-nodb")
 public interface PrescricaoRepository extends JpaRepository<Prescricao, Long> {
 
@@ -64,5 +66,12 @@ public interface PrescricaoRepository extends JpaRepository<Prescricao, Long> {
 			@Param("medicamento") String medicamento,
 			Pageable pageable
 	);
+
+	@Query("""
+			select p from Prescricao p
+			where p.consulta.id = :consultaId
+			order by p.id asc
+			""")
+	List<Prescricao> buscarPorConsulta(@Param("consultaId") Long consultaId);
 
 }
