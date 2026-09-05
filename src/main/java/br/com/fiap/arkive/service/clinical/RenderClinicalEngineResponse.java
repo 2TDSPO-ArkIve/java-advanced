@@ -1,7 +1,10 @@
 package br.com.fiap.arkive.service.clinical;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
-import com.fasterxml.jackson.databind.JsonNode;
+
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 
 public record RenderClinicalEngineResponse(
 		@JsonProperty("ds_diagnostico")
@@ -17,9 +20,15 @@ public record RenderClinicalEngineResponse(
 		Integer confianca,
 
 		@JsonProperty("fontes_pesquisadas")
-		JsonNode fontesPesquisadas
+		List<String> fontesPesquisadas
 ) {
+	public RenderClinicalEngineResponse {
+		fontesPesquisadas = fontesPesquisadas == null
+				? List.of()
+				: Collections.unmodifiableList(new ArrayList<>(fontesPesquisadas));
+	}
+
 	public ClinicalSupportProviderResult toProviderResult() {
-		return new ClinicalSupportProviderResult(diagnostico, severidade, insightIa, confianca);
+		return new ClinicalSupportProviderResult(diagnostico, severidade, insightIa, confianca, fontesPesquisadas);
 	}
 }

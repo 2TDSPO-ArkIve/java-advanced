@@ -23,6 +23,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 class DiagnosticoAuthorizationServiceTest {
@@ -92,9 +93,26 @@ class DiagnosticoAuthorizationServiceTest {
 		assertEquals("MODERADA", diagnostico.getSeveridade());
 		assertEquals("Insight", diagnostico.getInsightIa());
 		assertEquals("65", diagnostico.getConfianca().toPlainString());
+		assertNull(diagnostico.getFontesIaJson());
 		assertEquals("N", diagnostico.getConfirmado());
 		assertEquals("N", diagnostico.getValidacaoVet());
 		assertEquals(consulta, diagnostico.getConsulta());
+	}
+
+	@Test
+	void criaSuporteClinicoIaPersisteJsonDeFontesQuandoInformado() {
+		Consulta consulta = consulta(10L);
+
+		Diagnostico diagnostico = diagnosticoService.criarSuporteClinicoIa(
+				consulta,
+				"Hipotese",
+				"MODERADA",
+				"Insight",
+				65,
+				"[\"https://source-one.example\"]"
+		);
+
+		assertEquals("[\"https://source-one.example\"]", diagnostico.getFontesIaJson());
 	}
 
 	@Test

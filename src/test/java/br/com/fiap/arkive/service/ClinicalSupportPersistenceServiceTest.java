@@ -10,11 +10,13 @@ import br.com.fiap.arkive.exception.BusinessException;
 import br.com.fiap.arkive.repository.ConsultaRepository;
 import br.com.fiap.arkive.security.UsuarioPrincipal;
 import br.com.fiap.arkive.service.clinical.ClinicalSupportProviderResult;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.security.access.AccessDeniedException;
 
 import java.math.BigDecimal;
+import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -43,7 +45,8 @@ class ClinicalSupportPersistenceServiceTest {
 				consultaService,
 				consultaRepository,
 				diagnosticoService,
-				clinicalAccessService
+				clinicalAccessService,
+				new ObjectMapper()
 		);
 		when(consultaRepository.save(any(Consulta.class))).thenAnswer(invocation -> invocation.getArgument(0));
 	}
@@ -55,18 +58,33 @@ class ClinicalSupportPersistenceServiceTest {
 		UsuarioPrincipal principal = veterinario(10L);
 		ClinicalSupportProviderResult result = result();
 		when(consultaService.buscarEntidade(6L)).thenReturn(consulta);
-		when(diagnosticoService.criarSuporteClinicoIa(consulta, result.diagnostico(), result.severidade(), result.insightIa(), result.confianca()))
+		when(diagnosticoService.criarSuporteClinicoIa(consulta, result.diagnostico(), result.severidade(), result.insightIa(), result.confianca(), "[\"https://source-one.example\",\"https://source-two.example\"]"))
 				.thenReturn(diagnostico);
 
 		ClinicalSupportResponse response = persistenceService.persistirSuporte(6L, result, principal);
 
 		verify(clinicalAccessService).exigirEscritaClinicaVeterinario(principal, consulta);
-		verify(diagnosticoService).criarSuporteClinicoIa(consulta, result.diagnostico(), result.severidade(), result.insightIa(), result.confianca());
+		verify(diagnosticoService).criarSuporteClinicoIa(consulta, result.diagnostico(), result.severidade(), result.insightIa(), result.confianca(), "[\"https://source-one.example\",\"https://source-two.example\"]");
 		verify(consultaRepository).save(consulta);
 		assertEquals("AP", consulta.getStatus());
 		assertEquals("AP", response.statusConsulta());
 		assertEquals("Aguardando Parecer", response.statusDescricao());
 		assertEquals("Hipotese", response.hipoteseDiagnostica());
+		assertEquals(List.of("https://source-one.example", "https://source-two.example"), response.fontesPesquisadas());
+	}
+
+	@Test
+	void fontesVaziasSaoPersistidasComoNulo() {
+		Consulta consulta = consulta("EP", 10L);
+		Diagnostico diagnostico = diagnosticoIa(consulta);
+		ClinicalSupportProviderResult result = new ClinicalSupportProviderResult("Hipotese", "MODERADA", "Insight clinico", 65, List.of());
+		when(consultaService.buscarEntidade(6L)).thenReturn(consulta);
+		when(diagnosticoService.criarSuporteClinicoIa(consulta, result.diagnostico(), result.severidade(), result.insightIa(), result.confianca(), null))
+				.thenReturn(diagnostico);
+
+		persistenceService.persistirSuporte(6L, result, veterinario(10L));
+
+		verify(diagnosticoService).criarSuporteClinicoIa(consulta, result.diagnostico(), result.severidade(), result.insightIa(), result.confianca(), null);
 	}
 
 	@Test
@@ -76,7 +94,7 @@ class ClinicalSupportPersistenceServiceTest {
 
 		assertThrows(BusinessException.class, () -> persistenceService.persistirSuporte(6L, result(), veterinario(10L)));
 
-		verify(diagnosticoService, never()).criarSuporteClinicoIa(any(), any(), any(), any(), any());
+		verify(diagnosticoService, never()).criarSuporteClinicoIa(any(), any(), any(), any(), any(), any());
 		verify(consultaRepository, never()).save(any());
 	}
 
@@ -90,12 +108,18 @@ class ClinicalSupportPersistenceServiceTest {
 
 		assertThrows(AccessDeniedException.class, () -> persistenceService.persistirSuporte(6L, result(), principal));
 
-		verify(diagnosticoService, never()).criarSuporteClinicoIa(any(), any(), any(), any(), any());
+		verify(diagnosticoService, never()).criarSuporteClinicoIa(any(), any(), any(), any(), any(), any());
 		verify(consultaRepository, never()).save(any());
 	}
 
 	private ClinicalSupportProviderResult result() {
-		return new ClinicalSupportProviderResult("Hipotese", "MODERADA", "Insight clinico", 65);
+		return new ClinicalSupportProviderResult(
+				"Hipotese",
+				"MODERADA",
+				"Insight clinico",
+				65,
+				List.of("https://source-one.example", "https://source-two.example")
+		);
 	}
 
 	private Diagnostico diagnosticoIa(Consulta consulta) {
@@ -104,6 +128,7 @@ class ClinicalSupportPersistenceServiceTest {
 		diagnostico.setDiagnostico("Hipotese");
 		diagnostico.setSeveridade("MODERADA");
 		diagnostico.setInsightIa("Insight clinico");
+		diagnostico.setFontesIaJson("[\"https://source-one.example\",\"https://source-two.example\"]");
 		diagnostico.setConfianca(BigDecimal.valueOf(65));
 		diagnostico.setConfirmado("N");
 		diagnostico.setValidacaoVet("N");

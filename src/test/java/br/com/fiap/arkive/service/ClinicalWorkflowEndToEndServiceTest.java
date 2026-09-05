@@ -27,6 +27,7 @@ import br.com.fiap.arkive.repository.VeterinarioRepository;
 import br.com.fiap.arkive.security.UsuarioPrincipal;
 import br.com.fiap.arkive.service.clinical.ClinicalSupportProvider;
 import br.com.fiap.arkive.service.clinical.ClinicalSupportProviderResult;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.data.domain.Pageable;
@@ -98,7 +99,7 @@ class ClinicalWorkflowEndToEndServiceTest {
 		consultaService = new ConsultaService(consultaRepository, animalRepository, veterinarioRepository, clinicaRepository, eventoJornadaService, clinicalAccessService);
 		DiagnosticoService diagnosticoService = new DiagnosticoService(diagnosticoRepository, consultaService, doencaRepository, clinicalAccessService);
 		consultaWorkflowService = new ConsultaWorkflowService(consultaService, consultaRepository, diagnosticoService, eventoJornadaService, clinicalAccessService);
-		ClinicalSupportPersistenceService persistenceService = new ClinicalSupportPersistenceService(consultaService, consultaRepository, diagnosticoService, clinicalAccessService);
+		ClinicalSupportPersistenceService persistenceService = new ClinicalSupportPersistenceService(consultaService, consultaRepository, diagnosticoService, clinicalAccessService, new ObjectMapper());
 		clinicalSupportService = new ClinicalSupportService(consultaService, diagnosticoService, clinicalAccessService, clinicalSupportProvider, persistenceService);
 		prescricaoService = new PrescricaoService(prescricaoRepository, adesaoPrescricaoRepository, consultaService, eventoJornadaService, clinicalAccessService);
 		adesaoPrescricaoService = new AdesaoPrescricaoService(adesaoPrescricaoRepository, prescricaoService, animalRepository, responsavelRepository, eventoJornadaService, clinicalAccessService);
@@ -109,7 +110,13 @@ class ClinicalWorkflowEndToEndServiceTest {
 		when(responsavelRepository.findById(40L)).thenReturn(Optional.of(responsavel));
 		when(animalResponsavelRepository.existsVinculoAtivoVigente(eq(50L), eq(40L), any(LocalDate.class))).thenReturn(true);
 		when(eventoJornadaService.criarPayload(any(), any(), any())).thenReturn("{\"audit\":\"mock\"}");
-		when(clinicalSupportProvider.gerarSuporte(100L)).thenReturn(new ClinicalSupportProviderResult("Entorse leve", "LEVE", "Avaliar apoio, dor e amplitude articular.", 72));
+		when(clinicalSupportProvider.gerarSuporte(100L)).thenReturn(new ClinicalSupportProviderResult(
+				"Entorse leve",
+				"LEVE",
+				"Avaliar apoio, dor e amplitude articular.",
+				72,
+				List.of("https://source-one.example", "https://source-two.example")
+		));
 
 		when(consultaRepository.save(any(Consulta.class))).thenAnswer(invocation -> {
 			Consulta consulta = invocation.getArgument(0);
@@ -178,11 +185,13 @@ class ClinicalWorkflowEndToEndServiceTest {
 		assertEquals("Entorse leve", suporteGerado.hipoteseDiagnostica());
 		assertEquals("LEVE", suporteGerado.severidadeSugerida());
 		assertEquals(72, suporteGerado.confianca());
+		assertEquals(List.of("https://source-one.example", "https://source-two.example"), suporteGerado.fontesPesquisadas());
 		assertEquals("AP", consultaAtual.getStatus());
 
 		Diagnostico suporteIa = diagnosticos.get(0);
 		assertEquals("N", suporteIa.getConfirmado());
 		assertEquals("N", suporteIa.getValidacaoVet());
+		assertEquals("[\"https://source-one.example\",\"https://source-two.example\"]", suporteIa.getFontesIaJson());
 
 		clinicalSupportService.gerarSuporte(consultaCriada.id(), principalVeterinario);
 		clinicalSupportService.buscarSuporte(consultaCriada.id(), principalVeterinario);

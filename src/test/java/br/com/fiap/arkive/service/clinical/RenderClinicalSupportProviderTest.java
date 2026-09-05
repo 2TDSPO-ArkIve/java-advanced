@@ -9,9 +9,9 @@ import org.springframework.test.web.client.MockRestServiceServer;
 import org.springframework.web.client.RestClient;
 
 import java.nio.charset.StandardCharsets;
+import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.requestTo;
 import static org.springframework.test.web.client.response.MockRestResponseCreators.withServerError;
@@ -29,8 +29,56 @@ class RenderClinicalSupportProviderTest {
 		assertEquals("Suspeita de Displasia Coxofemoral em Golden Retriever", response.diagnostico());
 		assertEquals("MODERADA", response.severidade());
 		assertEquals(65, response.confianca());
-		assertTrue(response.fontesPesquisadas().isArray());
-		assertEquals(0, response.fontesPesquisadas().size());
+		assertEquals(List.of("https://source-one.example", "https://source-two.example"), response.fontesPesquisadas());
+	}
+
+	@Test
+	void toProviderResultPreservaFontesPesquisadas() throws Exception {
+		RenderClinicalEngineResponse response = objectMapper.readValue(fixture(), RenderClinicalEngineResponse.class);
+
+		ClinicalSupportProviderResult result = response.toProviderResult();
+
+		assertEquals(List.of("https://source-one.example", "https://source-two.example"), result.fontesPesquisadas());
+	}
+
+	@Test
+	void fontesPesquisadasVaziasMapeiamComoListaVazia() throws Exception {
+		RenderClinicalEngineResponse response = objectMapper.readValue("""
+				{
+				  "ds_diagnostico": "Hipotese",
+				  "tp_severidade": "MODERADA",
+				  "ds_insight_ia": "Insight",
+				  "pc_confianca": 65,
+				  "fontes_pesquisadas": []
+				}
+				""", RenderClinicalEngineResponse.class);
+
+		assertEquals(List.of(), response.fontesPesquisadas());
+		assertEquals(List.of(), response.toProviderResult().fontesPesquisadas());
+	}
+
+	@Test
+	void fontesPesquisadasAusentesOuNulasMapeiamComoListaVazia() throws Exception {
+		RenderClinicalEngineResponse semCampo = objectMapper.readValue("""
+				{
+				  "ds_diagnostico": "Hipotese",
+				  "tp_severidade": "MODERADA",
+				  "ds_insight_ia": "Insight",
+				  "pc_confianca": 65
+				}
+				""", RenderClinicalEngineResponse.class);
+		RenderClinicalEngineResponse campoNulo = objectMapper.readValue("""
+				{
+				  "ds_diagnostico": "Hipotese",
+				  "tp_severidade": "MODERADA",
+				  "ds_insight_ia": "Insight",
+				  "pc_confianca": 65,
+				  "fontes_pesquisadas": null
+				}
+				""", RenderClinicalEngineResponse.class);
+
+		assertEquals(List.of(), semCampo.fontesPesquisadas());
+		assertEquals(List.of(), campoNulo.fontesPesquisadas());
 	}
 
 	@Test
@@ -46,6 +94,7 @@ class RenderClinicalSupportProviderTest {
 		assertEquals("Suspeita de Displasia Coxofemoral em Golden Retriever", result.diagnostico());
 		assertEquals("MODERADA", result.severidade());
 		assertEquals(65, result.confianca());
+		assertEquals(List.of("https://source-one.example", "https://source-two.example"), result.fontesPesquisadas());
 		server.verify();
 	}
 

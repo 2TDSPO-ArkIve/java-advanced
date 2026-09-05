@@ -223,14 +223,36 @@ class ClinicalWorkflowApiMvcTest {
 				"Entorse leve",
 				"LEVE",
 				"Avaliar apoio, dor e amplitude articular.",
-				72
+				72,
+				List.of("https://source-one.example", "https://source-two.example")
 		));
 
 		mockMvc.perform(post("/api/consultas/100/suporte-clinico").with(user(veterinario())))
 				.andExpect(status().isOk())
 				.andExpect(jsonPath("$.statusConsulta").value("AP"))
 				.andExpect(jsonPath("$.hipoteseDiagnostica").value("Entorse leve"))
-				.andExpect(jsonPath("$.confianca").value(72));
+				.andExpect(jsonPath("$.confianca").value(72))
+				.andExpect(jsonPath("$.fontesPesquisadas[0]").value("https://source-one.example"))
+				.andExpect(jsonPath("$.fontesPesquisadas[1]").value("https://source-two.example"));
+	}
+
+	@Test
+	void buscaSuporteClinicoPersistidoExpoeFontesPesquisadas() throws Exception {
+		when(clinicalSupportService.buscarSuporte(eq(100L), any(UsuarioPrincipal.class))).thenReturn(new ClinicalSupportResponse(
+				100L,
+				"AP",
+				"Aguardando Parecer",
+				"Entorse leve",
+				"LEVE",
+				"Avaliar apoio, dor e amplitude articular.",
+				72,
+				List.of("https://source-one.example", "https://source-two.example")
+		));
+
+		mockMvc.perform(get("/api/consultas/100/suporte-clinico").with(user(veterinario())))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.fontesPesquisadas[0]").value("https://source-one.example"))
+				.andExpect(jsonPath("$.fontesPesquisadas[1]").value("https://source-two.example"));
 	}
 
 	@Test

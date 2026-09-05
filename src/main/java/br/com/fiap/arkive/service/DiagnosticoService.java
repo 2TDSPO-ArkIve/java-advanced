@@ -90,6 +90,17 @@ public class DiagnosticoService {
 			String insightIa,
 			Integer confianca
 	) {
+		return criarSuporteClinicoIa(consulta, diagnosticoTexto, severidade, insightIa, confianca, null);
+	}
+
+	public Diagnostico criarSuporteClinicoIa(
+			Consulta consulta,
+			String diagnosticoTexto,
+			String severidade,
+			String insightIa,
+			Integer confianca,
+			String fontesIaJson
+	) {
 		if (diagnosticoTexto == null || diagnosticoTexto.isBlank()) {
 			throw new BusinessException("Resposta invalida do motor clinico.", HttpStatus.BAD_GATEWAY);
 		}
@@ -104,6 +115,7 @@ public class DiagnosticoService {
 		diagnostico.setDiagnostico(diagnosticoTexto);
 		diagnostico.setSeveridade(severidade);
 		diagnostico.setInsightIa(insightIa);
+		diagnostico.setFontesIaJson(fontesIaJson);
 		diagnostico.setConfianca(BigDecimal.valueOf(confianca));
 		diagnostico.setConfirmado("N");
 		diagnostico.setValidacaoVet("N");
