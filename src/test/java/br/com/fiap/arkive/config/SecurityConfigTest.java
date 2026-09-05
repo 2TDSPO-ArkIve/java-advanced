@@ -11,12 +11,21 @@ import org.springframework.context.annotation.Import;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.web.cors.CorsConfiguration;
+import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.mock.web.MockHttpServletRequest;
 
+import java.util.List;
+
+import static org.hamcrest.Matchers.containsString;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.options;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
@@ -28,11 +37,19 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @Import({ SecurityConfig.class, SecurityConfigTest.TestEndpointConfig.class })
 class SecurityConfigTest {
 
+	private static final String PRODUCTION_FRONTEND_ORIGIN =
+			"https://mobile-application-sooty.vercel.app";
+
 	private final MockMvc mockMvc;
+	private final CorsConfigurationSource corsConfigurationSource;
 
 	@Autowired
-	SecurityConfigTest(MockMvc mockMvc) {
+	SecurityConfigTest(
+			MockMvc mockMvc,
+			CorsConfigurationSource corsConfigurationSource
+	) {
 		this.mockMvc = mockMvc;
+		this.corsConfigurationSource = corsConfigurationSource;
 	}
 
 	@Test
@@ -57,6 +74,89 @@ class SecurityConfigTest {
 		mockMvc.perform(post("/api/consultas")).andExpect(status().isUnauthorized());
 		mockMvc.perform(put("/api/consultas/1")).andExpect(status().isUnauthorized());
 		mockMvc.perform(delete("/api/consultas/1")).andExpect(status().isUnauthorized());
+	}
+
+	@Test
+	void corsApiIncluiOrigemDeProducaoSemRemoverDesenvolvimento() {
+		MockHttpServletRequest request =
+				new MockHttpServletRequest("GET", "/api/consultas");
+
+		CorsConfiguration configuration =
+				corsConfigurationSource.getCorsConfiguration(request);
+
+		assertNotNull(configuration);
+		assertEquals(
+				List.of(PRODUCTION_FRONTEND_ORIGIN),
+				configuration.getAllowedOrigins()
+		);
+		assertEquals(
+				List.of("http://localhost:*", "http://127.0.0.1:*"),
+				configuration.getAllowedOriginPatterns()
+		);
+		assertEquals(
+				List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"),
+				configuration.getAllowedMethods()
+		);
+		assertEquals(
+				List.of("Authorization", "Content-Type", "Accept", "Origin"),
+				configuration.getAllowedHeaders()
+		);
+		assertEquals(Boolean.TRUE, configuration.getAllowCredentials());
+	}
+
+	@Test
+	void preflightApiAceitaOrigemDeProducaoComAuthorization() throws Exception {
+		mockMvc.perform(options("/api/consultas")
+						.header("Origin", PRODUCTION_FRONTEND_ORIGIN)
+						.header("Access-Control-Request-Method", "GET")
+						.header("Access-Control-Request-Headers", "authorization"))
+				.andExpect(status().isOk())
+				.andExpect(header().string(
+						"Access-Control-Allow-Origin",
+						PRODUCTION_FRONTEND_ORIGIN
+				))
+				.andExpect(header().string(
+						"Access-Control-Allow-Credentials",
+						"true"
+				))
+				.andExpect(header().string(
+						"Access-Control-Allow-Methods",
+						containsString("GET")
+				))
+				.andExpect(header().string(
+						"Access-Control-Allow-Methods",
+						containsString("POST")
+				))
+				.andExpect(header().string(
+						"Access-Control-Allow-Methods",
+						containsString("PUT")
+				))
+				.andExpect(header().string(
+						"Access-Control-Allow-Methods",
+						containsString("PATCH")
+				))
+				.andExpect(header().string(
+						"Access-Control-Allow-Methods",
+						containsString("DELETE")
+				))
+				.andExpect(header().string(
+						"Access-Control-Allow-Methods",
+						containsString("OPTIONS")
+				))
+				.andExpect(header().string(
+						"Access-Control-Allow-Headers",
+						containsString("authorization")
+				));
+	}
+
+	@Test
+	void preflightApiNaoAceitaOrigemDesconhecida() throws Exception {
+		mockMvc.perform(options("/api/consultas")
+						.header("Origin", "https://unknown.example")
+						.header("Access-Control-Request-Method", "GET")
+						.header("Access-Control-Request-Headers", "authorization"))
+				.andExpect(status().isForbidden())
+				.andExpect(header().doesNotExist("Access-Control-Allow-Origin"));
 	}
 
 	@Test

@@ -59,6 +59,10 @@ public class SecurityConfig {
 	public CorsConfigurationSource corsConfigurationSource() {
 		CorsConfiguration configuration = new CorsConfiguration();
 
+		configuration.setAllowedOrigins(List.of(
+				"https://mobile-application-sooty.vercel.app"
+		));
+
 		// Expo Web / navegador durante desenvolvimento local.
 		// O wildcard vale apenas para a porta.
 		configuration.setAllowedOriginPatterns(List.of(
