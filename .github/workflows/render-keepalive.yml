@@ -2,16 +2,12 @@ name: Keep ArkIve Java Warm
 
 on:
   schedule:
-    # Monday-Friday, every 10 minutes from 08:00 through 21:59
+    # Monday-Friday, every 10 minutes from 08:03 through 21:53
     # using São Paulo local time.
-    #
-    # We intentionally start at minute 3 instead of minute 0 because
-    # GitHub notes that scheduled workflows can be delayed at the start
-    # of each hour.
     - cron: '3,13,23,33,43,53 8-21 * * 1-5'
       timezone: 'America/Sao_Paulo'
 
-  # Lets us test it manually from the Actions tab.
+  # Allows manual testing from the Actions tab.
   workflow_dispatch:
 
 permissions:
@@ -24,24 +20,48 @@ concurrency:
 jobs:
   keep-alive:
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 6
 
     steps:
       - name: Ping ArkIve health endpoint
         shell: bash
         run: |
-          echo "Pinging ArkIve Java API..."
+          echo "Waking/checking ArkIve Java API..."
 
-          RESPONSE=$(curl \
-            --fail \
-            --silent \
-            --show-error \
-            --connect-timeout 15 \
-            --max-time 120 \
-            --retry 2 \
-            --retry-delay 5 \
-            --retry-all-errors \
-            https://arkive-b7v2.onrender.com/api/health)
+          URL="https://arkive-b7v2.onrender.com/api/health"
 
-          echo "Response: $RESPONSE"
-          echo "ArkIve Java API is reachable."
+          for attempt in {1..12}; do
+            echo "Attempt $attempt/12..."
+
+            HTTP_CODE=$(curl \
+              --silent \
+              --show-error \
+              --output /tmp/arkive-health.txt \
+              --write-out "%{http_code}" \
+              --connect-timeout 10 \
+              --max-time 30 \
+              "$URL" || true)
+
+            if [[ "$HTTP_CODE" =~ ^2[0-9][0-9]$ ]]; then
+              echo "Response:"
+              cat /tmp/arkive-health.txt
+              echo
+              echo "ArkIve Java API is reachable."
+              exit 0
+            fi
+
+            echo "Service not ready yet. HTTP status: $HTTP_CODE"
+
+            if [ -f /tmp/arkive-health.txt ]; then
+              cat /tmp/arkive-health.txt || true
+              echo
+            fi
+
+            if [ "$attempt" -lt 12 ]; then
+              echo "Waiting 15 seconds before retry..."
+              sleep 15
+            fi
+          done
+
+          echo "ArkIve Java API did not become healthy in time."
+          exit 1
