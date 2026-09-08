@@ -111,6 +111,18 @@ class ConsultaResumoPdfServiceTest {
 		assertFalse(texto.contains("87"));
 	}
 
+	@org.junit.jupiter.params.ParameterizedTest
+	@org.junit.jupiter.params.provider.CsvSource(value = {"PRESENCIAL|Rua do Atendimento|true", "PRESENCIAL|NULL|false", "PRESENCIAL|'   '|false", "REMOTA|Rua do Atendimento|false"}, delimiter = '|', nullValues = "NULL")
+	void pdfIncluiEnderecoSomentePresencialPreenchido(String modalidade, String endereco, boolean incluir) throws Exception {
+		Consulta consulta = consultaFinalizada("Retorno");
+		consulta.setModalidade(modalidade); consulta.setEndereco(endereco);
+		when(consultaService.buscarEntidade(63L)).thenReturn(consulta);
+		when(diagnosticoRepository.buscarDiagnosticosConfirmadosVeterinario(eq(63L), any())).thenReturn(List.of(diagnosticoConfirmado(consulta)));
+		String texto = extrairTexto(service.gerarResumo(63L, veterinario()).bytes());
+		assertEquals(incluir, texto.contains("Endere\u00e7o"));
+		assertEquals(incluir, texto.contains("Rua do Atendimento"));
+	}
+
 	@Test
 	void rejeitaConsultaNaoFinalizada() {
 		Consulta consulta = consultaFinalizada("Conclusão");

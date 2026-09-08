@@ -61,6 +61,14 @@ public class ClinicalAccessService {
 		throw new AccessDeniedException("Usuario nao autorizado para este animal.");
 	}
 
+	public void exigirGestaoVinculosAnimal(UsuarioPrincipal principal, Animal animal) {
+		exigirPrincipal(principal);
+		if (TipoUsuario.RESPONSAVEL.equals(principal.getTipoUsuario())) {
+			throw new AccessDeniedException("Gestao de tutores permitida apenas a veterinarios e administradores autorizados.");
+		}
+		exigirLeituraAnimal(principal, animal);
+	}
+
 	public void exigirEscritaDiagnosticoVeterinario(UsuarioPrincipal principal, Diagnostico diagnostico) {
 		exigirEscritaClinicaVeterinario(principal, diagnostico.getConsulta());
 	}

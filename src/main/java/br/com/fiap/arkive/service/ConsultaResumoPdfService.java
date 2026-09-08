@@ -153,6 +153,7 @@ public class ConsultaResumoPdfService {
 			String castrado,
 			LocalDateTime dataConsulta,
 			String modalidade,
+			String endereco,
 			String motivo,
 			String veterinarioNome,
 			String crmv,
@@ -180,6 +181,7 @@ public class ConsultaResumoPdfService {
 					animal == null ? null : formatarCastrado(animal.getCastrado()),
 					consulta.getDataHora(),
 					formatarModalidade(consulta.getModalidade()),
+					"PRESENCIAL".equals(consulta.getModalidade()) ? nuloSeVazio(consulta.getEndereco()) : null,
 					consulta.getMotivo(),
 					veterinario == null ? null : veterinario.getNome(),
 					veterinario == null ? null : veterinario.getCrmv(),
@@ -279,6 +281,7 @@ public class ConsultaResumoPdfService {
 			section("Atendimento");
 			field("Data da consulta", data.dataConsulta() == null ? null : DATA_HORA_FORMATTER.format(data.dataConsulta()));
 			field("Modalidade", data.modalidade());
+			field("Endere\u00e7o", data.endereco());
 			paragraph("Motivo da consulta", data.motivo());
 
 			section("Veterinário");

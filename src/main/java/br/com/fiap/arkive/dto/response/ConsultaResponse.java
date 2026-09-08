@@ -22,8 +22,16 @@ public record ConsultaResponse(
 		Long veterinarioId,
 		String veterinarioNome,
 		Long clinicaId,
-		String clinicaNome
+		String clinicaNome,
+		String endereco
 ) {
+	public ConsultaResponse(Long id, LocalDateTime dataHora, String modalidade, String motivo,
+			String sintomas, String observacao, BigDecimal peso, String transcricao, String status,
+			String statusDescricao, Long animalId, String animalNome, Long veterinarioId,
+			String veterinarioNome, Long clinicaId, String clinicaNome) {
+		this(id, dataHora, modalidade, motivo, sintomas, observacao, peso, transcricao, status,
+				statusDescricao, animalId, animalNome, veterinarioId, veterinarioNome, clinicaId, clinicaNome, null);
+	}
 	public static ConsultaResponse fromEntity(Consulta consulta) {
 		Long clinicaId = consulta.getClinica() == null ? null : consulta.getClinica().getId();
 		String clinicaNome = consulta.getClinica() == null ? null : consulta.getClinica().getNome();
@@ -44,7 +52,8 @@ public record ConsultaResponse(
 				consulta.getVeterinario().getId(),
 				consulta.getVeterinario().getNome(),
 				clinicaId,
-				clinicaNome
+				clinicaNome,
+				consulta.getEndereco()
 		);
 	}
 }

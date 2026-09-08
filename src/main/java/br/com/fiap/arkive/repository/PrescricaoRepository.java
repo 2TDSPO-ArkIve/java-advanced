@@ -42,6 +42,7 @@ public interface PrescricaoRepository extends JpaRepository<Prescricao, Long> {
 			join AnimalResponsavel ar on ar.animal = p.consulta.animal
 			where ar.responsavel.id = :responsavelId
 			and ar.ativo = 'S'
+			and ar.id.dataInicio <= :dataAtual
 			and (ar.dataFim is null or ar.dataFim >= :dataAtual)
 			and (:consultaId is null or p.consulta.id = :consultaId)
 			and (:medicamento is null or lower(p.medicamento) like lower(concat('%', :medicamento, '%')))

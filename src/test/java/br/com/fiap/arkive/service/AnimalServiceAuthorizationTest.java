@@ -42,6 +42,7 @@ class AnimalServiceAuthorizationTest {
 	private ClinicalAccessService clinicalAccessService;
 	private VeterinarioService veterinarioService;
 	private AnimalService animalService;
+	private final java.time.Clock clock = java.time.Clock.fixed(java.time.Instant.parse("2026-09-08T12:00:00Z"), java.time.ZoneId.of("America/Sao_Paulo"));
 
 	@BeforeEach
 	void setUp() {
@@ -59,7 +60,8 @@ class AnimalServiceAuthorizationTest {
 				clinicaService,
 				eventoJornadaService,
 				clinicalAccessService,
-				veterinarioService
+				veterinarioService,
+				clock
 		);
 		when(especieService.buscarEntidade(1L)).thenReturn(especie());
 		when(clinicaService.buscarEntidade(30L)).thenReturn(clinica(30L));
@@ -359,6 +361,43 @@ class AnimalServiceAuthorizationTest {
 		assertThrows(AccessDeniedException.class, () -> animalService.criar(request(30L)));
 		assertThrows(AccessDeniedException.class, () -> animalService.atualizar(50L, request(30L)));
 		assertThrows(AccessDeniedException.class, () -> animalService.excluir(50L));
+	}
+
+	@org.junit.jupiter.params.ParameterizedTest
+	@org.junit.jupiter.params.provider.NullSource
+	@org.junit.jupiter.params.provider.ValueSource(strings = {"2021-04-17", "2026-09-08"})
+	void nascimentoOpcionalValidoNaCriacaoEAtualizacao(String valor) {
+		LocalDate data = valor == null ? null : LocalDate.parse(valor);
+		var request = new AnimalRequest("Nina", 1L, null, "F", "N", null, "S", data);
+		var vet = principal(TipoUsuario.VETERINARIO, null, 10L, null);
+		when(veterinarioService.buscarEntidadeAtiva(10L)).thenReturn(veterinario(10L));
+		assertEquals(data, animalService.criar(request, vet).dataNascimento());
+		when(animalRepository.findById(50L)).thenReturn(Optional.of(animal(null)));
+		assertEquals(data, animalService.atualizar(50L, request, vet).dataNascimento());
+	}
+
+	@Test
+	void nascimentoFuturoRejeitadoNaCriacaoEAtualizacao() {
+		var request = new AnimalRequest("Nina", 1L, null, "F", "N", null, "S", LocalDate.now(clock).plusDays(1));
+		var admin = principal(TipoUsuario.SYSADMIN, null, null, null);
+		when(animalRepository.findById(50L)).thenReturn(Optional.of(animal(null)));
+		assertEquals(HttpStatus.BAD_REQUEST, assertThrows(BusinessException.class, () -> animalService.criar(request, admin)).getStatus());
+		assertThrows(BusinessException.class, () -> animalService.atualizar(50L, request, admin));
+		verify(animalRepository, never()).save(any());
+	}
+
+	@Test
+	void racaDeOutraEspecieContinuaRejeitada() {
+		var raca = new br.com.fiap.arkive.entity.Raca();
+		var outraEspecie = especie();
+		outraEspecie.setId(2L);
+		raca.setEspecie(outraEspecie);
+		when(racaService.buscarEntidade(2L)).thenReturn(raca);
+		var request = new AnimalRequest("Nina", 1L, 2L, "F", "N", null, "S");
+		var admin = principal(TipoUsuario.SYSADMIN, null, null, null);
+		when(animalRepository.findById(50L)).thenReturn(Optional.of(animal(null)));
+		assertThrows(BusinessException.class, () -> animalService.criar(request, admin));
+		assertThrows(BusinessException.class, () -> animalService.atualizar(50L, request, admin));
 	}
 
 	private Animal animal() {

@@ -44,6 +44,20 @@ class AzureSpeechTranscriptionServiceTest {
 		service = new AzureSpeechTranscriptionService(properties, audioConversionService, (wavFile, idioma) -> recognizer);
 	}
 
+	@org.junit.jupiter.params.ParameterizedTest
+	@org.junit.jupiter.params.provider.ValueSource(booleans = {false, true})
+	void webmUsaConversaoExistenteELimpaMesmoQuandoAzureFalha(boolean falha) throws Exception {
+		Path wav = java.nio.file.Files.createFile(tempDir.resolve("webm-convertido.wav"));
+		when(audioConversionService.prepararWav(any(), eq(SupportedAudioFormat.WEBM))).thenReturn(new PreparedAudio(wav, List.of(wav)));
+		recognizer.onStart = () -> {
+			if (falha) recognizer.emitCanceled(true, CancellationErrorCode.ServiceUnavailable);
+			else { recognizer.emitRecognized(true, "Narrativa"); recognizer.emitSessionStopped(); }
+		};
+		if (falha) assertThrows(BusinessException.class, () -> service.transcrever(new byte[] {1}, "audio.webm", "audio/webm", SupportedAudioFormat.WEBM, IdiomaTranscricao.PT_BR));
+		else assertEquals("Narrativa", service.transcrever(new byte[] {1}, "audio.webm", "audio/webm", SupportedAudioFormat.WEBM, IdiomaTranscricao.PT_BR));
+		org.junit.jupiter.api.Assertions.assertFalse(java.nio.file.Files.exists(wav));
+	}
+
 	@Test
 	void acumulaSegmentosFinaisNaOrdemAteSessionStopped() throws Exception {
 		Path wav = tempDir.resolve("entrada.wav");

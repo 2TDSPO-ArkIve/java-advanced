@@ -37,6 +37,7 @@ public interface ConsultaRepository extends JpaRepository<Consulta, Long> {
 			join AnimalResponsavel ar on ar.animal = c.animal
 			where ar.responsavel.id = :responsavelId
 			and ar.ativo = 'S'
+			and ar.id.dataInicio <= :dataAtual
 			and (ar.dataFim is null or ar.dataFim >= :dataAtual)
 			and (:animalId is null or c.animal.id = :animalId)
 			and (:veterinarioId is null or c.veterinario.id = :veterinarioId)

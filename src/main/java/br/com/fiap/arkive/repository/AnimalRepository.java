@@ -5,6 +5,9 @@ import org.springframework.context.annotation.Profile;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
+import jakarta.persistence.LockModeType;
+import java.util.Optional;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -12,6 +15,10 @@ import java.time.LocalDate;
 
 @Profile("!local-nodb")
 public interface AnimalRepository extends JpaRepository<Animal, Long> {
+
+	@Lock(LockModeType.PESSIMISTIC_WRITE)
+	@Query("select a from Animal a where a.id = :id")
+	Optional<Animal> buscarParaAtualizarVinculos(@Param("id") Long id);
 
 	@Query("""
 			select a from Animal a
@@ -35,6 +42,7 @@ public interface AnimalRepository extends JpaRepository<Animal, Long> {
 			join AnimalResponsavel ar on ar.animal = a
 			where ar.responsavel.id = :responsavelId
 			and ar.ativo = 'S'
+			and ar.id.dataInicio <= :dataAtual
 			and (ar.dataFim is null or ar.dataFim >= :dataAtual)
 			and (:nome is null or lower(a.nome) like lower(concat('%', :nome, '%')))
 			and (:especieId is null or a.especie.id = :especieId)

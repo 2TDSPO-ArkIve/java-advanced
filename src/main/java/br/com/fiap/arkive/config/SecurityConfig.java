@@ -142,6 +142,19 @@ public class SecurityConfig {
 						.requestMatchers("/admin/**")
 						.hasAnyRole("SYSADMIN", "ADMIN_CLINICA")
 
+						.requestMatchers(HttpMethod.POST, "/api/racas")
+						.hasAnyRole("SYSADMIN", "ADMIN_CLINICA", "VETERINARIO")
+						.requestMatchers(HttpMethod.PUT, "/api/racas/**")
+						.hasAnyRole("SYSADMIN", "ADMIN_CLINICA")
+						.requestMatchers(HttpMethod.DELETE, "/api/racas/**")
+						.hasAnyRole("SYSADMIN", "ADMIN_CLINICA")
+						.requestMatchers(HttpMethod.GET, "/api/responsaveis/busca")
+						.hasAnyRole("SYSADMIN", "ADMIN_CLINICA", "VETERINARIO")
+						.requestMatchers(HttpMethod.GET, "/api/responsaveis", "/api/responsaveis/**")
+						.hasAnyRole("SYSADMIN", "ADMIN_CLINICA", "RESPONSAVEL")
+						.requestMatchers("/api/responsaveis", "/api/responsaveis/**")
+						.hasAnyRole("SYSADMIN", "ADMIN_CLINICA")
+
 						.requestMatchers("/api/**")
 						.authenticated()
 

@@ -237,7 +237,7 @@ A API expõe um gateway seguro para converter áudio clínico em texto editável
 
 O endpoint usa Azure Speech SDK com reconhecimento contínuo de arquivo e `PhraseListGrammar`, compatível com recurso Azure Speech Free F0. A transcrição rápida não é usada nesta branch porque as quotas atuais da Microsoft indicam que Fast Transcription não está disponível no F0.
 
-O contrato público aceita o áudio normal do Expo em Android/iOS (`M4A/AAC`) e também `WAV` para testes manuais. Arquivos compactados são convertidos de forma transitória no servidor para PCM WAV antes de serem enviados ao SDK. O áudio não é persistido.
+O contrato público aceita o áudio normal do Expo em Android/iOS (`M4A/AAC`), `WebM/Opus` do navegador (`audio/webm`, inclusive `audio/webm;codecs=opus`) e também `WAV` para testes manuais. Arquivos compactados são convertidos de forma transitória no servidor para PCM WAV antes de serem enviados ao SDK. O áudio não é persistido.
 
 Contrato:
 
@@ -250,7 +250,7 @@ Authorization: Basic ...
 Campos multipart:
 
 ```text
-audio=<arquivo M4A/AAC ou WAV>
+audio=<arquivo M4A/MP4, AAC, WebM ou WAV>
 idioma=pt-BR | en-US
 ```
 
@@ -275,9 +275,9 @@ curl -u "VET_USERNAME:VET_PASSWORD" \
 
 Limites e formato:
 
-- Formatos aceitos: `M4A`/`MP4` com AAC, `AAC` e `WAV`.
+- Formatos aceitos: `M4A`/`MP4` com AAC, `AAC`, `WebM/Opus` e `WAV`.
 - Arquivos `WAV` devem possuir cabeçalho `RIFF/WAVE`.
-- Arquivos `M4A`/`AAC` são convertidos no servidor com FFmpeg para PCM WAV 16 kHz, mono, 16 bits.
+- Arquivos `M4A`/`AAC`/`WebM` são convertidos no servidor com FFmpeg para PCM WAV 16 kHz, mono, 16 bits.
 - O limite configurado é `10MB` por arquivo e `11MB` por requisição multipart.
 - O reconhecimento usa `startContinuousRecognitionAsync` e acumula apenas eventos finais `RecognizedSpeech`.
 - O tempo limite configurado para reconhecimento é `120s`, adequado ao ditado clínico esperado de 30 a 90 segundos.

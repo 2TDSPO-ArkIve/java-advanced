@@ -10,7 +10,8 @@ import java.util.Set;
 public enum SupportedAudioFormat {
 	WAV(Set.of("wav"), Set.of("audio/wav", "audio/x-wav", "audio/wave", "audio/vnd.wave"), ".wav", false),
 	M4A(Set.of("m4a", "mp4"), Set.of("audio/mp4", "audio/m4a", "audio/x-m4a", "video/mp4"), ".m4a", true),
-	AAC(Set.of("aac"), Set.of("audio/aac", "audio/aacp", "audio/x-aac"), ".aac", true);
+	AAC(Set.of("aac"), Set.of("audio/aac", "audio/aacp", "audio/x-aac"), ".aac", true),
+	WEBM(Set.of("webm"), Set.of("audio/webm"), ".webm", true);
 
 	private static final Set<String> GENERIC_CONTENT_TYPES = Set.of("application/octet-stream", "binary/octet-stream");
 
@@ -52,7 +53,7 @@ public enum SupportedAudioFormat {
 			}
 			return byExtension.get();
 		}
-		return byContentType.orElseThrow(() -> new BusinessException("Formato de audio nao suportado para transcricao. Envie arquivo WAV, M4A/AAC."));
+		return byContentType.orElseThrow(() -> new BusinessException("Formato de audio nao suportado para transcricao. Envie arquivo WAV, M4A/MP4, AAC ou WebM."));
 	}
 
 	private static Optional<SupportedAudioFormat> fromExtension(String filename) {

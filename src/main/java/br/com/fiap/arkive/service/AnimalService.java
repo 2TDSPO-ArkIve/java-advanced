@@ -11,6 +11,7 @@ import br.com.fiap.arkive.exception.BusinessException;
 import br.com.fiap.arkive.exception.ResourceNotFoundException;
 import br.com.fiap.arkive.repository.AnimalRepository;
 import br.com.fiap.arkive.security.UsuarioPrincipal;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Profile;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -19,6 +20,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
+import java.time.Clock;
 import java.util.Objects;
 
 @Service
@@ -32,7 +34,9 @@ public class AnimalService {
 	private final EventoJornadaService eventoJornadaService;
 	private final ClinicalAccessService clinicalAccessService;
 	private final VeterinarioService veterinarioService;
+	private final Clock clock;
 
+	@Autowired
 	public AnimalService(
 			AnimalRepository animalRepository,
 			EspecieService especieService,
@@ -42,6 +46,14 @@ public class AnimalService {
 			ClinicalAccessService clinicalAccessService,
 			VeterinarioService veterinarioService
 	) {
+		this(animalRepository, especieService, racaService, clinicaService, eventoJornadaService,
+				clinicalAccessService, veterinarioService, Clock.systemDefaultZone());
+	}
+
+	AnimalService(AnimalRepository animalRepository, EspecieService especieService, RacaService racaService,
+			ClinicaService clinicaService, EventoJornadaService eventoJornadaService,
+			ClinicalAccessService clinicalAccessService, VeterinarioService veterinarioService, Clock clock) {
+		this.clock = clock;
 		this.animalRepository = animalRepository;
 		this.especieService = especieService;
 		this.racaService = racaService;
@@ -361,7 +373,8 @@ public class AnimalService {
 				request.sexo(),
 				request.castrado(),
 				clinicaId,
-				request.ativo()
+				request.ativo(),
+				request.dataNascimento()
 		);
 	}
 
@@ -373,11 +386,15 @@ public class AnimalService {
 				request.sexo(),
 				request.castrado(),
 				clinicaId,
-				ativo
+				ativo,
+				request.dataNascimento()
 		);
 	}
 
 	private void aplicarDados(Animal animal, AnimalRequest request, boolean criando) {
+		if (request.dataNascimento() != null && request.dataNascimento().isAfter(LocalDate.now(clock))) {
+			throw new BusinessException("Data de nascimento do animal nao pode estar no futuro.");
+		}
 		String ativo = criando && request.ativo() == null ? "S" : request.ativo();
 		String castrado = criando && request.castrado() == null ? "N" : request.castrado();
 		validarAtivoQuandoInformado(ativo);
@@ -390,6 +407,7 @@ public class AnimalService {
 		}
 		Clinica clinica = request.clinicaId() == null ? null : clinicaService.buscarEntidade(request.clinicaId());
 		animal.setNome(request.nome());
+		animal.setDataNascimento(request.dataNascimento());
 		animal.setSexo(request.sexo());
 		animal.setCastrado(castrado == null ? animal.getCastrado() : castrado);
 		animal.setEspecie(especie);

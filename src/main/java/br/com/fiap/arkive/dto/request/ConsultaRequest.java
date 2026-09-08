@@ -36,6 +36,15 @@ public record ConsultaRequest(
 
 		Long veterinarioId,
 
-		Long clinicaId
+		Long clinicaId,
+
+		@Size(max = 255)
+		String endereco
 ) {
+	public ConsultaRequest(LocalDateTime dataHora, String modalidade, String motivo, String sintomas,
+			String observacao, BigDecimal peso, String transcricao, String status, Long animalId,
+			Long veterinarioId, Long clinicaId) {
+		this(dataHora, modalidade, motivo, sintomas, observacao, peso, transcricao, status,
+				animalId, veterinarioId, clinicaId, null);
+	}
 }

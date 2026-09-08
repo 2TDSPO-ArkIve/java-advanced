@@ -56,7 +56,10 @@ public class AudioConversionService {
 				"-hide_banner",
 				"-loglevel", "error",
 				"-y",
+				"-nostdin",
 				"-i", inputFile.toString(),
+				"-vn",
+				"-c:a", "pcm_s16le",
 				"-ac", "1",
 				"-ar", "16000",
 				"-sample_fmt", "s16",
@@ -64,8 +67,9 @@ public class AudioConversionService {
 		);
 		processBuilder.redirectOutput(ProcessBuilder.Redirect.DISCARD);
 		processBuilder.redirectError(ProcessBuilder.Redirect.DISCARD);
+		Process process = null;
 		try {
-			Process process = processBuilder.start();
+			process = iniciarProcesso(processBuilder);
 			boolean finished = process.waitFor(properties.getConversionTimeout().toMillis(), TimeUnit.MILLISECONDS);
 			if (!finished) {
 				process.destroyForcibly();
@@ -79,7 +83,25 @@ public class AudioConversionService {
 		} catch (InterruptedException ex) {
 			Thread.currentThread().interrupt();
 			throw new BusinessException("Servico de conversao de audio temporariamente indisponivel.", HttpStatus.SERVICE_UNAVAILABLE);
+		} finally {
+			if (process != null && process.isAlive()) {
+				process.destroyForcibly();
+				boolean interrupted = Thread.interrupted();
+				try {
+					process.waitFor(5, TimeUnit.SECONDS);
+				} catch (InterruptedException ex) {
+					interrupted = true;
+				} finally {
+					if (interrupted) {
+						Thread.currentThread().interrupt();
+					}
+				}
+			}
 		}
+	}
+
+	Process iniciarProcesso(ProcessBuilder processBuilder) throws IOException {
+		return processBuilder.start();
 	}
 
 	private void deleteIfNotTracked(Path file, List<Path> temporaryFiles) {

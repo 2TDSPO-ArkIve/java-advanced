@@ -37,6 +37,15 @@ class TranscricaoServiceTest {
 		service = new TranscricaoService(gateway, properties);
 	}
 
+	@org.junit.jupiter.params.ParameterizedTest
+	@org.junit.jupiter.params.provider.ValueSource(strings = {"audio/webm", "audio/webm;codecs=opus"})
+	void aceitaWebmDoNavegadorSemAlterarMime(String mime) {
+		when(gateway.transcrever(any(), eq("consulta.webm"), eq(mime), eq(SupportedAudioFormat.WEBM), eq(IdiomaTranscricao.PT_BR))).thenReturn("Narrativa");
+		var response = service.transcrever(new MockMultipartFile("audio", "consulta.webm", mime, new byte[] {1, 2}), null, veterinario());
+		assertEquals("Narrativa", response.transcricao());
+		verify(gateway).transcrever(any(), eq("consulta.webm"), eq(mime), eq(SupportedAudioFormat.WEBM), eq(IdiomaTranscricao.PT_BR));
+	}
+
 	@Test
 	void transcrevePortuguesComoIdiomaPadrao() {
 		when(gateway.transcrever(any(), eq("consulta.wav"), eq("audio/wav"), eq(SupportedAudioFormat.WAV), eq(IdiomaTranscricao.PT_BR)))

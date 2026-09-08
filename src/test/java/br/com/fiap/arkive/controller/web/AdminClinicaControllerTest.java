@@ -111,7 +111,7 @@ class AdminClinicaControllerTest {
 		when(adesaoPrescricaoService.listarAutorizado(any(), any(), any(), any(), any(Pageable.class), any()))
 				.thenReturn(new PageImpl<>(List.of(adesao())));
 		when(animalService.buscarPorIdAutorizado(eq(1L), any())).thenReturn(animal());
-		when(animalResponsavelService.listarAtivosPorAnimal(1L)).thenReturn(List.of(responsavelPrincipal(), responsavelSecundario()));
+		when(animalResponsavelService.listarAtivosPorAnimal(eq(1L), any())).thenReturn(List.of(responsavelPrincipal(), responsavelSecundario()));
 		when(consultaService.buscarPorIdAutorizado(eq(10L), any())).thenReturn(consulta());
 		when(prescricaoService.buscarPorIdAutorizado(eq(20L), any())).thenReturn(prescricao());
 		when(adesaoPrescricaoService.buscarPorIdAutorizado(eq(30L), any())).thenReturn(adesao());
@@ -119,6 +119,38 @@ class AdminClinicaControllerTest {
 		when(racaService.listar(any(), any(), any(Pageable.class))).thenReturn(new PageImpl<>(List.of(raca())));
 		when(clinicaService.listar(any(), any(), any(Pageable.class))).thenReturn(new PageImpl<>(List.of(clinica())));
 		when(clinicaService.buscarPorId(1L)).thenReturn(clinica());
+	}
+
+	@Test
+	void novoAnimalNaoCarregaCatalogoDeRacasSemEspecie() throws Exception {
+		mockMvc.perform(get("/admin/animais/novo").with(user(adminPrincipal())))
+				.andExpect(status().isOk()).andExpect(content().string(containsString("/js/animal-racas.js")))
+				.andExpect(content().string(containsString("salvar-raca")));
+		verify(racaService, never()).listar(any(), any(), any());
+	}
+
+	@Test
+	void edicaoCarregaRacasSomenteDaEspecieDoAnimal() throws Exception {
+		mockMvc.perform(get("/admin/animais/1/editar").with(user(adminPrincipal())))
+				.andExpect(status().isOk());
+		verify(racaService).listar(eq(null), eq(1L), any(Pageable.class));
+	}
+
+	@Test
+	void listaDeAnimaisPreservaFiltroDeRacaSemExigirEspecie() throws Exception {
+		mockMvc.perform(get("/admin/animais").with(user(adminPrincipal())))
+				.andExpect(status().isOk());
+		verify(racaService).listar(eq(null), eq(null), any(Pageable.class));
+	}
+
+	@Test
+	void edicaoJavaPreservaNascimentoInformadoPelaApi() throws Exception {
+		mockMvc.perform(post("/admin/animais/1/editar").with(user(adminPrincipal())).with(csrf())
+				.param("nome", "Rex").param("especieId", "1").param("racaId", "2")
+				.param("sexo", "M").param("castrado", "N").param("ativo", "S")
+				.param("clinicaId", "1").param("dataNascimento", "2021-04-17"))
+				.andExpect(status().is3xxRedirection());
+		verify(animalService).atualizar(eq(1L), org.mockito.ArgumentMatchers.argThat(r -> LocalDate.parse("2021-04-17").equals(r.dataNascimento())), any());
 	}
 
 	@Test

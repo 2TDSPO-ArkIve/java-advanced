@@ -139,7 +139,7 @@ public class AdminAnimalController {
 		WebModelSupport.addUserAttributes(model, authentication);
 		try {
 			AnimalResponse animal = animalService().buscarPorIdAutorizado(id, principal);
-			List<AnimalResponsavelResponse> responsaveis = listarResponsaveis(id);
+			List<AnimalResponsavelResponse> responsaveis = listarResponsaveis(id, principal);
 			model.addAttribute("pageTitle", "Animal");
 			model.addAttribute("animal", animal);
 			model.addAttribute("responsavelPrincipal", responsaveis.stream().filter(this::principalAtivo).findFirst().orElse(null));
@@ -232,7 +232,8 @@ public class AdminAnimalController {
 					animal.sexo(),
 					animal.castrado(),
 					animal.clinicaId(),
-					"S"
+					"S",
+					animal.dataNascimento()
 			), principal);
 			redirectAttributes.addFlashAttribute("sucesso", "Animal reativado com sucesso.");
 		} catch (BusinessException | ResourceNotFoundException | AccessDeniedException ex) {
@@ -257,12 +258,12 @@ public class AdminAnimalController {
 		return service.listarAutorizado(nome, especieId, racaId, clinicaId, ativo, pageable, principal);
 	}
 
-	private List<AnimalResponsavelResponse> listarResponsaveis(Long animalId) {
+	private List<AnimalResponsavelResponse> listarResponsaveis(Long animalId, UsuarioPrincipal principal) {
 		AnimalResponsavelService service = animalResponsavelService.getIfAvailable();
 		if (service == null) {
 			return List.of();
 		}
-		return service.listarAtivosPorAnimal(animalId);
+		return service.listarAtivosPorAnimal(animalId, principal);
 	}
 
 	private List<ConsultaResponse> listarConsultasRecentes(Long animalId, UsuarioPrincipal principal) {
@@ -276,7 +277,9 @@ public class AdminAnimalController {
 
 	private void adicionarOpcoes(Model model, UsuarioPrincipal principal) {
 		model.addAttribute("especies", especies());
-		model.addAttribute("racas", racas());
+		AnimalRequest animal = model.getAttribute("animal") instanceof AnimalRequest request ? request : null;
+		Long especieId = animal == null ? (Long) model.getAttribute("especieSelecionadaId") : animal.especieId();
+		model.addAttribute("racas", animal != null && especieId == null ? List.of() : racas(especieId));
 		model.addAttribute("clinicas", clinicas());
 		model.addAttribute("sysadmin", TipoUsuario.SYSADMIN.equals(tipo(principal)));
 		model.addAttribute("adminClinica", TipoUsuario.ADMIN_CLINICA.equals(tipo(principal)));
@@ -291,12 +294,12 @@ public class AdminAnimalController {
 		return service.listar(null, PageRequest.of(0, OPTION_SIZE, Sort.by("nome").ascending())).getContent();
 	}
 
-	private List<RacaResponse> racas() {
+	private List<RacaResponse> racas(Long especieId) {
 		RacaService service = racaService.getIfAvailable();
 		if (service == null) {
 			return List.of();
 		}
-		return service.listar(null, null, PageRequest.of(0, OPTION_SIZE, Sort.by("nome").ascending())).getContent();
+		return service.listar(null, especieId, PageRequest.of(0, OPTION_SIZE, Sort.by("nome").ascending())).getContent();
 	}
 
 	private List<ClinicaResponse> clinicas() {
@@ -335,7 +338,8 @@ public class AdminAnimalController {
 				animal.sexo(),
 				animal.castrado(),
 				animal.clinicaId(),
-				animal.ativo()
+				animal.ativo(),
+				animal.dataNascimento()
 		);
 	}
 

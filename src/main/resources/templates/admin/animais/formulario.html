@@ -31,13 +31,14 @@
 
 					<div class="field">
 						<label for="racaId">Raça</label>
-						<select id="racaId" th:field="*{racaId}">
+						<select id="racaId" th:field="*{racaId}" th:disabled="${animal.especieId == null}">
 							<option value="">Sem raça informada</option>
 							<option th:each="raca : ${racas}" th:value="${raca.id}" th:text="${raca.nome + ' — ' + raca.especieNome}">Raça</option>
 						</select>
 					</div>
 
 					<div class="field">
+						<div th:replace="~{fragments/raca-inline :: cadastro}"></div>
 						<label for="sexo">Sexo</label>
 						<select id="sexo" th:field="*{sexo}">
 							<option value="">Não informado</option>
@@ -84,5 +85,6 @@
 		</main>
 	</div>
 </div>
+<script th:src="@{/js/animal-racas.js}" defer></script>
 </body>
 </html>

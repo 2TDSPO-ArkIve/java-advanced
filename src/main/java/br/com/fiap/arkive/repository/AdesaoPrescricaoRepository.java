@@ -51,6 +51,7 @@ public interface AdesaoPrescricaoRepository extends JpaRepository<AdesaoPrescric
 			where a.responsavel.id = :responsavelAutenticadoId
 			and ar.responsavel.id = :responsavelAutenticadoId
 			and ar.ativo = 'S'
+			and ar.id.dataInicio <= :dataAtual
 			and (ar.dataFim is null or ar.dataFim >= :dataAtual)
 			and (:prescricaoId is null or a.prescricao.id = :prescricaoId)
 			and (:animalId is null or a.animal.id = :animalId)

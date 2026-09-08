@@ -14,6 +14,12 @@ import java.util.List;
 public interface ResponsavelRepository extends JpaRepository<Responsavel, Long> {
 
 	@Query("""
+			select r from Responsavel r where r.ativo = 'S'
+			and (locate(lower(:busca), lower(r.nome)) > 0 or lower(r.email) = lower(:busca))
+			""")
+	Page<Responsavel> buscarParaVinculo(@Param("busca") String busca, Pageable pageable);
+
+	@Query("""
 			select r from Responsavel r
 			where (:nome is null or lower(r.nome) like lower(concat('%', :nome, '%')))
 			and (:documento is null or lower(r.documento) like lower(concat('%', :documento, '%')))

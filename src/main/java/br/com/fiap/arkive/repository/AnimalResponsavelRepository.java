@@ -29,6 +29,7 @@ public interface AnimalResponsavelRepository extends JpaRepository<AnimalRespons
 			where ar.animal.id = :animalId
 			and ar.responsavel.id = :responsavelId
 			and ar.ativo = 'S'
+			and ar.id.dataInicio <= :dataAtual
 			and (ar.dataFim is null or ar.dataFim >= :dataAtual)
 			""")
 	boolean existsVinculoAtivoVigente(
@@ -54,6 +55,7 @@ public interface AnimalResponsavelRepository extends JpaRepository<AnimalRespons
 			where ar.animal.id = :animalId
 			and ar.ativo = 'S'
 			and ar.principal = 'S'
+			and ar.id.dataInicio <= :dataAtual
 			and (ar.dataFim is null or ar.dataFim >= :dataAtual)
 			""")
 	List<AnimalResponsavel> buscarResponsaveisPrincipaisAtivosVigentes(

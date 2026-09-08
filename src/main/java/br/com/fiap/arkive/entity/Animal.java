@@ -9,10 +9,22 @@ import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
+import java.time.LocalDate;
 
 @Entity
 @Table(name = "TB_ARKIVE_ANIMAL")
 public class Animal {
+
+	@Column(name = "DT_NASCIMENTO")
+	private LocalDate dataNascimento;
+
+	public LocalDate getDataNascimento() {
+		return dataNascimento;
+	}
+
+	public void setDataNascimento(LocalDate dataNascimento) {
+		this.dataNascimento = dataNascimento;
+	}
 
 	@Id
 	@GeneratedValue(strategy = GenerationType.IDENTITY)

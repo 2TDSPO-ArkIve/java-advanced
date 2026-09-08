@@ -15,6 +15,7 @@ import br.com.fiap.arkive.repository.ClinicaRepository;
 import br.com.fiap.arkive.repository.ConsultaRepository;
 import br.com.fiap.arkive.repository.VeterinarioRepository;
 import br.com.fiap.arkive.security.UsuarioPrincipal;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Profile;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.Page;
@@ -25,6 +26,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.Clock;
 import java.util.Objects;
 import java.util.Set;
 
@@ -40,7 +43,9 @@ public class ConsultaService {
 	private final ClinicaRepository clinicaRepository;
 	private final EventoJornadaService eventoJornadaService;
 	private final ClinicalAccessService clinicalAccessService;
+	private final Clock clock;
 
+	@Autowired
 	public ConsultaService(
 			ConsultaRepository consultaRepository,
 			AnimalRepository animalRepository,
@@ -49,6 +54,14 @@ public class ConsultaService {
 			EventoJornadaService eventoJornadaService,
 			ClinicalAccessService clinicalAccessService
 	) {
+		this(consultaRepository, animalRepository, veterinarioRepository, clinicaRepository,
+				eventoJornadaService, clinicalAccessService, Clock.systemDefaultZone());
+	}
+
+	ConsultaService(ConsultaRepository consultaRepository, AnimalRepository animalRepository,
+			VeterinarioRepository veterinarioRepository, ClinicaRepository clinicaRepository,
+			EventoJornadaService eventoJornadaService, ClinicalAccessService clinicalAccessService, Clock clock) {
+		this.clock = clock;
 		this.consultaRepository = consultaRepository;
 		this.animalRepository = animalRepository;
 		this.veterinarioRepository = veterinarioRepository;
@@ -217,9 +230,24 @@ public class ConsultaService {
 		String status = criando && request.status() == null ? StatusConsulta.AG.getCodigo() : request.status();
 		validarModalidadeObrigatoria(request.modalidade());
 		validarStatusCriacaoOuAtualizacao(consulta, status, criando);
+		if (request.dataHora() == null) {
+			throw new BusinessException("Data e hora da consulta devem ser informadas.");
+		}
+		if ((criando || !Objects.equals(consulta.getDataHora(), request.dataHora()))
+				&& request.dataHora().isBefore(LocalDateTime.now(clock))) {
+			throw new BusinessException("Data e hora da consulta nao podem estar no passado.");
+		}
 		Animal animal = buscarAnimal(request.animalId());
 		Veterinario veterinario = buscarVeterinario(request.veterinarioId());
 		Clinica clinica = request.clinicaId() == null ? null : buscarClinica(request.clinicaId());
+		String endereco = vazioParaNulo(request.endereco());
+		if (criando && endereco == null && "PRESENCIAL".equals(request.modalidade()) && veterinario.getClinica() != null) {
+			endereco = vazioParaNulo(veterinario.getClinica().getEndereco());
+		}
+		if (endereco != null && endereco.length() > 255) {
+			throw new BusinessException("Endereco da consulta deve ter no maximo 255 caracteres.");
+		}
+		consulta.setEndereco(endereco);
 		consulta.setDataHora(request.dataHora());
 		consulta.setModalidade(request.modalidade());
 		consulta.setMotivo(request.motivo());
@@ -245,7 +273,8 @@ public class ConsultaService {
 				request.status(),
 				request.animalId(),
 				veterinarioId,
-				request.clinicaId()
+				request.clinicaId(),
+				request.endereco()
 		);
 	}
 

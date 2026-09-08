@@ -39,6 +39,7 @@ class ConsultaServiceTest {
 	private EventoJornadaService eventoJornadaService;
 	private ClinicalAccessService clinicalAccessService;
 	private ConsultaService consultaService;
+	private final java.time.Clock clock = java.time.Clock.fixed(java.time.Instant.parse("2026-09-08T12:00:00Z"), java.time.ZoneId.of("America/Sao_Paulo"));
 
 	@BeforeEach
 	void setUp() {
@@ -54,7 +55,8 @@ class ConsultaServiceTest {
 				veterinarioRepository,
 				clinicaRepository,
 				eventoJornadaService,
-				clinicalAccessService
+				clinicalAccessService,
+				clock
 		);
 		when(consultaRepository.save(any(Consulta.class))).thenAnswer(invocation -> invocation.getArgument(0));
 		when(eventoJornadaService.criarPayload(any(), any(), any())).thenReturn("{\"entity\":\"Consulta\"}");
@@ -278,9 +280,100 @@ class ConsultaServiceTest {
 		verify(clinicalAccessService).exigirLeituraConsulta(principal, consulta);
 	}
 
+	@org.junit.jupiter.params.ParameterizedTest
+	@org.junit.jupiter.params.provider.ValueSource(longs = {0, 1, 86400})
+	void aceitaAgoraOuFuturo(long segundos) {
+		var data = LocalDateTime.now(clock).plusSeconds(segundos);
+		assertEquals(data, consultaService.criar(comDataEndereco(data, "REMOTA", null), veterinarioPrincipal(20L)).dataHora());
+	}
+
+	@Test
+	void rejeitaCriacaoNoPassado() {
+		BusinessException ex = assertThrows(BusinessException.class, () -> consultaService.criar(
+				comDataEndereco(LocalDateTime.now(clock).minusNanos(1), "PRESENCIAL", null), veterinarioPrincipal(20L)));
+		assertEquals(HttpStatus.BAD_REQUEST, ex.getStatus());
+		verify(consultaRepository, never()).save(any());
+	}
+
+	@Test
+	void rejeitaReagendamentoNoPassado() {
+		Consulta consulta = consulta("AG");
+		consulta.setDataHora(LocalDateTime.now(clock).plusDays(1));
+		when(consultaRepository.findById(1L)).thenReturn(Optional.of(consulta));
+		assertThrows(BusinessException.class, () -> consultaService.atualizar(1L,
+				comDataEndereco(LocalDateTime.now(clock).minusDays(1), "PRESENCIAL", null), veterinarioPrincipal(20L)));
+		verify(consultaRepository, never()).save(any());
+	}
+
+	@Test
+	void permiteEdicaoHistoricaSemMudarData() {
+		Consulta consulta = consulta("EP");
+		consulta.setDataHora(LocalDateTime.now(clock).minusDays(2));
+		when(consultaRepository.findById(1L)).thenReturn(Optional.of(consulta));
+		var request = new ConsultaRequest(consulta.getDataHora(), "PRESENCIAL", "Retorno corrigido", null,
+				null, null, null, "EP", 10L, 20L, 30L, "Rua original");
+		assertEquals("Retorno corrigido", consultaService.atualizar(1L, request, veterinarioPrincipal(20L)).motivo());
+	}
+
+	@Test
+	void enderecoDaClinicaEhSnapshotInclusiveSemClinicaNoRequest() {
+		Veterinario vet = veterinario();
+		vet.getClinica().setEndereco("Rua da Clinica, 10");
+		when(veterinarioRepository.findById(20L)).thenReturn(Optional.of(vet));
+		var response = consultaService.criar(requestSemVeterinarioEClinica("AG"), veterinarioPrincipal(20L));
+		var captor = org.mockito.ArgumentCaptor.forClass(Consulta.class);
+		verify(consultaRepository).save(captor.capture());
+		vet.getClinica().setEndereco("Novo endereco");
+		assertEquals("Rua da Clinica, 10", response.endereco());
+		assertEquals("Rua da Clinica, 10", captor.getValue().getEndereco());
+	}
+
+	@org.junit.jupiter.params.ParameterizedTest
+	@org.junit.jupiter.params.provider.NullAndEmptySource
+	@org.junit.jupiter.params.provider.ValueSource(strings = {"   "})
+	void enderecoVazioUsaClinica(String endereco) {
+		Veterinario vet = veterinario();
+		vet.getClinica().setEndereco("Rua da Clinica");
+		when(veterinarioRepository.findById(20L)).thenReturn(Optional.of(vet));
+		assertEquals("Rua da Clinica", consultaService.criar(comDataEndereco(LocalDateTime.now(clock), "PRESENCIAL", endereco), veterinarioPrincipal(20L)).endereco());
+	}
+
+	@Test
+	void enderecoPersonalizadoVenceClinica() {
+		assertEquals("Rua escolhida", consultaService.criar(comDataEndereco(LocalDateTime.now(clock), "PRESENCIAL", "Rua escolhida"), veterinarioPrincipal(20L)).endereco());
+	}
+
+	@Test
+	void presencialSemClinicaAceitaEnderecoNulo() {
+		when(veterinarioRepository.findById(20L)).thenReturn(Optional.of(veterinarioSemClinica()));
+		org.junit.jupiter.api.Assertions.assertNull(consultaService.criar(requestSemVeterinarioEClinica("AG"), veterinarioPrincipal(20L)).endereco());
+	}
+
+	@Test
+	void remotaNaoUsaClinicaMasPreservaEnderecoExplicito() {
+		Veterinario vet = veterinario();
+		vet.getClinica().setEndereco("Rua da Clinica");
+		when(veterinarioRepository.findById(20L)).thenReturn(Optional.of(vet));
+		org.junit.jupiter.api.Assertions.assertNull(consultaService.criar(comDataEndereco(LocalDateTime.now(clock), "REMOTA", " "), veterinarioPrincipal(20L)).endereco());
+		assertEquals("Referencia", consultaService.criar(comDataEndereco(LocalDateTime.now(clock), "REMOTA", "Referencia"), veterinarioPrincipal(20L)).endereco());
+	}
+
+	@Test
+	void atualizacaoNaoReaplicaEnderecoDaClinica() {
+		Consulta consulta = consulta("AG");
+		consulta.setDataHora(LocalDateTime.now(clock));
+		consulta.getVeterinario().getClinica().setEndereco("Novo endereco");
+		when(consultaRepository.findById(1L)).thenReturn(Optional.of(consulta));
+		org.junit.jupiter.api.Assertions.assertNull(consultaService.atualizar(1L, comDataEndereco(consulta.getDataHora(), "PRESENCIAL", null), veterinarioPrincipal(20L)).endereco());
+	}
+
+	private ConsultaRequest comDataEndereco(LocalDateTime data, String modalidade, String endereco) {
+		return new ConsultaRequest(data, modalidade, "Check-up", null, null, null, null, "AG", 10L, null, 30L, endereco);
+	}
+
 	private ConsultaRequest request(String status) {
 		return new ConsultaRequest(
-				LocalDateTime.now(),
+				LocalDateTime.now(clock),
 				"PRESENCIAL",
 				"Check-up",
 				null,
@@ -296,7 +389,7 @@ class ConsultaServiceTest {
 
 	private ConsultaRequest requestSemVeterinario(String status) {
 		return new ConsultaRequest(
-				LocalDateTime.now(),
+				LocalDateTime.now(clock),
 				"PRESENCIAL",
 				"Check-up",
 				null,
@@ -312,7 +405,7 @@ class ConsultaServiceTest {
 
 	private ConsultaRequest requestSemVeterinarioEClinica(String status) {
 		return new ConsultaRequest(
-				LocalDateTime.now(),
+				LocalDateTime.now(clock),
 				"PRESENCIAL",
 				"Check-up",
 				null,
