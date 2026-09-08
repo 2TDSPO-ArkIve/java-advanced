@@ -2,9 +2,13 @@ name: Keep ArkIve Java Warm
 
 on:
   schedule:
-    # Monday-Friday, every 10 minutes from 08:03 through 21:53
+    # Monday-Friday, every 5 minutes from 08:02 through 21:57
     # using São Paulo local time.
-    - cron: '3,13,23,33,43,53 8-21 * * 1-5'
+    #
+    # We intentionally avoid :00/:05/:10/... because GitHub Actions
+    # scheduled workflows are more likely to be delayed around common
+    # scheduling boundaries.
+    - cron: '2,7,12,17,22,27,32,37,42,47,52,57 8-21 * * 1-5'
       timezone: 'America/Sao_Paulo'
 
   # Allows manual testing from the Actions tab.
@@ -13,55 +17,75 @@ on:
 permissions:
   contents: read
 
+# Never cancel an existing wake-up attempt because a new scheduled
+# execution has arrived.
 concurrency:
   group: arkive-render-java-keepalive
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 jobs:
   keep-alive:
     runs-on: ubuntu-latest
-    timeout-minutes: 6
+    timeout-minutes: 4
 
     steps:
       - name: Ping ArkIve health endpoint
         shell: bash
         run: |
-          echo "Waking/checking ArkIve Java API..."
+          set -u
 
           URL="https://arkive-b7v2.onrender.com/api/health"
 
-          for attempt in {1..12}; do
-            echo "Attempt $attempt/12..."
+          echo "Checking ArkIve Java API..."
+          echo "Target: $URL"
+
+          # 8 attempts.
+          #
+          # Each request may take at most 15 seconds and retries wait
+          # 10 seconds, keeping the entire job comfortably below the
+          # 4-minute workflow timeout.
+          for attempt in {1..8}; do
+            echo
+            echo "Attempt $attempt/8..."
+
+            rm -f /tmp/arkive-health.txt
 
             HTTP_CODE=$(curl \
               --silent \
               --show-error \
+              --location \
               --output /tmp/arkive-health.txt \
               --write-out "%{http_code}" \
-              --connect-timeout 10 \
-              --max-time 30 \
+              --connect-timeout 8 \
+              --max-time 15 \
               "$URL" || true)
+
+            echo "HTTP status: ${HTTP_CODE:-000}"
 
             if [[ "$HTTP_CODE" =~ ^2[0-9][0-9]$ ]]; then
               echo "Response:"
-              cat /tmp/arkive-health.txt
-              echo
+
+              if [ -f /tmp/arkive-health.txt ]; then
+                cat /tmp/arkive-health.txt || true
+                echo
+              fi
+
               echo "ArkIve Java API is reachable."
               exit 0
             fi
 
-            echo "Service not ready yet. HTTP status: $HTTP_CODE"
-
             if [ -f /tmp/arkive-health.txt ]; then
+              echo "Response body:"
               cat /tmp/arkive-health.txt || true
               echo
             fi
 
-            if [ "$attempt" -lt 12 ]; then
-              echo "Waiting 15 seconds before retry..."
-              sleep 15
+            if [ "$attempt" -lt 8 ]; then
+              echo "Service is not ready. Waiting 10 seconds..."
+              sleep 10
             fi
           done
 
-          echo "ArkIve Java API did not become healthy in time."
+          echo
+          echo "ArkIve Java API did not become healthy after 8 attempts."
           exit 1
