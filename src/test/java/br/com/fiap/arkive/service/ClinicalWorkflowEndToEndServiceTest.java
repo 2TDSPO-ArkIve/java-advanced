@@ -96,7 +96,8 @@ class ClinicalWorkflowEndToEndServiceTest {
 		responsavel = responsavel();
 
 		ClinicalAccessService clinicalAccessService = new ClinicalAccessService(animalResponsavelRepository, consultaRepository, veterinarioService);
-		consultaService = new ConsultaService(consultaRepository, animalRepository, veterinarioRepository, clinicaRepository, eventoJornadaService, clinicalAccessService);
+		consultaService = new ConsultaService(consultaRepository, animalRepository, veterinarioRepository, clinicaRepository,
+				eventoJornadaService, clinicalAccessService, new br.com.fiap.arkive.config.BusinessTimeConfig().businessClock());
 		DiagnosticoService diagnosticoService = new DiagnosticoService(diagnosticoRepository, consultaService, doencaRepository, clinicalAccessService);
 		consultaWorkflowService = new ConsultaWorkflowService(consultaService, consultaRepository, diagnosticoService, eventoJornadaService, clinicalAccessService);
 		ClinicalSupportPersistenceService persistenceService = new ClinicalSupportPersistenceService(consultaService, consultaRepository, diagnosticoService, clinicalAccessService, new ObjectMapper());

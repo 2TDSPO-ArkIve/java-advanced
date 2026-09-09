@@ -99,4 +99,18 @@ class AnimalControllerMvcTest {
 	private UsuarioPrincipal veterinario() {
 		return new UsuarioPrincipal(1L, "Dra Vera", "vera@arkive.com", "$2a$10$hash", TipoUsuario.VETERINARIO, "S", false, null, 10L, null);
 	}
+
+	@Test
+	void meUsaPrincipalAutenticadoEIgnoraTentativaDeTrocarEscopo() throws Exception {
+		var principal = veterinario();
+		when(animalService.listarPacientesVeterinario(eq("Bilu"), eq(1L), eq(2L), any(Pageable.class), any()))
+				.thenReturn(new PageImpl<>(List.of(new AnimalResponse(50L, "Bilu", 1L, "Cachorro",
+						2L, "Poodle", "M", "S", null, null, "S"))));
+		mockMvc.perform(get("/api/animais/me").with(user(principal))
+						.param("nome", "Bilu").param("especieId", "1").param("racaId", "2")
+						.param("veterinarioId", "999").param("clinicaId", "999").param("ativo", "N"))
+				.andExpect(status().isOk()).andExpect(jsonPath("$.content[0].id").value(50));
+		verify(animalService).listarPacientesVeterinario(eq("Bilu"), eq(1L), eq(2L), any(Pageable.class),
+				org.mockito.Mockito.same(principal));
+	}
 }

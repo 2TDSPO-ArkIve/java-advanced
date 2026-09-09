@@ -15,7 +15,7 @@ import br.com.fiap.arkive.repository.ClinicaRepository;
 import br.com.fiap.arkive.repository.ConsultaRepository;
 import br.com.fiap.arkive.repository.VeterinarioRepository;
 import br.com.fiap.arkive.security.UsuarioPrincipal;
-import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.context.annotation.Profile;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.Page;
@@ -28,6 +28,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.Clock;
+import java.time.temporal.ChronoUnit;
 import java.util.Objects;
 import java.util.Set;
 
@@ -45,22 +46,15 @@ public class ConsultaService {
 	private final ClinicalAccessService clinicalAccessService;
 	private final Clock clock;
 
-	@Autowired
 	public ConsultaService(
 			ConsultaRepository consultaRepository,
 			AnimalRepository animalRepository,
 			VeterinarioRepository veterinarioRepository,
 			ClinicaRepository clinicaRepository,
 			EventoJornadaService eventoJornadaService,
-			ClinicalAccessService clinicalAccessService
+			ClinicalAccessService clinicalAccessService,
+			@Qualifier("businessClock") Clock clock
 	) {
-		this(consultaRepository, animalRepository, veterinarioRepository, clinicaRepository,
-				eventoJornadaService, clinicalAccessService, Clock.systemDefaultZone());
-	}
-
-	ConsultaService(ConsultaRepository consultaRepository, AnimalRepository animalRepository,
-			VeterinarioRepository veterinarioRepository, ClinicaRepository clinicaRepository,
-			EventoJornadaService eventoJornadaService, ClinicalAccessService clinicalAccessService, Clock clock) {
 		this.clock = clock;
 		this.consultaRepository = consultaRepository;
 		this.animalRepository = animalRepository;
@@ -234,7 +228,8 @@ public class ConsultaService {
 			throw new BusinessException("Data e hora da consulta devem ser informadas.");
 		}
 		if ((criando || !Objects.equals(consulta.getDataHora(), request.dataHora()))
-				&& request.dataHora().isBefore(LocalDateTime.now(clock))) {
+				&& request.dataHora().truncatedTo(ChronoUnit.MINUTES)
+						.isBefore(LocalDateTime.now(clock).truncatedTo(ChronoUnit.MINUTES))) {
 			throw new BusinessException("Data e hora da consulta nao podem estar no passado.");
 		}
 		Animal animal = buscarAnimal(request.animalId());

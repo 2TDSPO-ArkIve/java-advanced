@@ -63,7 +63,9 @@ public interface AnimalRepository extends JpaRepository<Animal, Long> {
 
 	@Query("""
 			select distinct a from Animal a
-			where (
+			where a.ativo = 'S'
+			and :veterinarioId is not null
+			and (
 				a.veterinarioCadastro.id = :veterinarioId
 				or exists (
 					select c from Consulta c
