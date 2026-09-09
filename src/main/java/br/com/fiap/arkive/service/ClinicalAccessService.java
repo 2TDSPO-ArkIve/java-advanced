@@ -104,7 +104,8 @@ public class ClinicalAccessService {
 		throw new AccessDeniedException("Usuario nao autorizado para esta adesao de prescricao.");
 	}
 
-	private boolean podeLerConsulta(UsuarioPrincipal principal, Consulta consulta) {
+	public boolean podeLerConsulta(UsuarioPrincipal principal, Consulta consulta) {
+		exigirPrincipal(principal);
 		return switch (principal.getTipoUsuario()) {
 			case SYSADMIN -> true;
 			case VETERINARIO -> principal.getVeterinarioId() != null
