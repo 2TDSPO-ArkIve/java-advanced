@@ -2,7 +2,9 @@ package br.com.fiap.arkive.controller;
 
 import br.com.fiap.arkive.config.SecurityConfig;
 import br.com.fiap.arkive.dto.response.AuthMeResponse;
+import br.com.fiap.arkive.dto.response.VeterinarioResponse;
 import br.com.fiap.arkive.entity.TipoUsuario;
+import br.com.fiap.arkive.exception.BusinessException;
 import br.com.fiap.arkive.exception.GlobalExceptionHandler;
 import br.com.fiap.arkive.security.ArkiveUserDetailsService;
 import br.com.fiap.arkive.security.UsuarioPrincipal;
@@ -11,6 +13,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.context.annotation.Import;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
@@ -84,6 +87,45 @@ class AuthControllerMvcTest {
 		mockMvc.perform(get("/api/consultas").with(user(veterinarioComTrocaObrigatoria())))
 				.andExpect(status().isForbidden())
 				.andExpect(jsonPath("$.message").value("Troca de senha obrigatoria antes de continuar."));
+	}
+
+	@Test
+	void cadastroPublicoCriaVeterinarioSemAutenticacao() throws Exception {
+		when(authService.registrarVeterinario(any())).thenReturn(new VeterinarioResponse(
+				77L, "Dra Nova", "CRMV999", null, "nova@arkive.com", null, null, "S"
+		));
+
+		// Deliberately no `.with(user(...))` — proves POST /api/auth/register
+		// is reachable by a genuinely anonymous caller, which is the entire
+		// point of the registration feature.
+		mockMvc.perform(post("/api/auth/register")
+						.contentType(MediaType.APPLICATION_JSON)
+						.content("{\"nome\":\"Dra Nova\",\"crmv\":\"CRMV999\",\"email\":\"nova@arkive.com\"}"))
+				.andExpect(status().isCreated())
+				.andExpect(jsonPath("$.id").value(77))
+				.andExpect(jsonPath("$.nome").value("Dra Nova"))
+				.andExpect(jsonPath("$.crmv").value("CRMV999"))
+				.andExpect(jsonPath("$.email").value("nova@arkive.com"));
+	}
+
+	@Test
+	void cadastroPublicoValidaCamposObrigatorios() throws Exception {
+		mockMvc.perform(post("/api/auth/register")
+						.contentType(MediaType.APPLICATION_JSON)
+						.content("{\"nome\":\"\",\"crmv\":\"\",\"email\":\"nao-e-email\"}"))
+				.andExpect(status().isBadRequest());
+	}
+
+	@Test
+	void cadastroPublicoPropagaConflitoDeCrmvDuplicado() throws Exception {
+		when(authService.registrarVeterinario(any()))
+				.thenThrow(new BusinessException("CRMV ja cadastrado.", HttpStatus.CONFLICT));
+
+		mockMvc.perform(post("/api/auth/register")
+						.contentType(MediaType.APPLICATION_JSON)
+						.content("{\"nome\":\"Dra Nova\",\"crmv\":\"CRMV999\",\"email\":\"nova@arkive.com\"}"))
+				.andExpect(status().isConflict())
+				.andExpect(jsonPath("$.message").value("CRMV ja cadastrado."));
 	}
 
 	private UsuarioPrincipal veterinarioComTrocaObrigatoria() {

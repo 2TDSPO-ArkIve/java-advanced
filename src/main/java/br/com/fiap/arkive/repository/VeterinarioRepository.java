@@ -48,6 +48,8 @@ public interface VeterinarioRepository extends JpaRepository<Veterinario, Long> 
 
 	long countByAtivo(String ativo);
 
+	boolean existsByCrmvIgnoreCase(String crmv);
+
 	List<Veterinario> findByAtivoOrderByNomeAsc(String ativo);
 
 	@Query("""

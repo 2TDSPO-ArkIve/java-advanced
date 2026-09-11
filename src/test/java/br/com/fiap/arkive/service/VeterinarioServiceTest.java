@@ -120,6 +120,26 @@ class VeterinarioServiceTest {
 	}
 
 	@Test
+	void criarVeterinarioRejeitaCrmvDuplicadoSemPersistir() {
+		VeterinarioRepository veterinarioRepository = mock(VeterinarioRepository.class);
+		AccountProvisioningService provisioningService = mock(AccountProvisioningService.class);
+		VeterinarioService service = new VeterinarioService(veterinarioRepository, mock(ClinicaService.class), provisioningService);
+		when(veterinarioRepository.existsByCrmvIgnoreCase("CRMV123")).thenReturn(true);
+
+		BusinessException ex = assertThrows(BusinessException.class, () -> service.criar(new VeterinarioRequest(
+				"Dra Vera",
+				"CRMV123",
+				"Clínica",
+				"vera@arkive.com",
+				null,
+				null
+		)));
+		assertEquals(org.springframework.http.HttpStatus.CONFLICT, ex.getStatus());
+		verify(veterinarioRepository, never()).save(any());
+		verify(provisioningService, never()).provisionar(any());
+	}
+
+	@Test
 	void falhaDeProvisionamentoPropagaParaRollbackTransacional() throws Exception {
 		VeterinarioRepository veterinarioRepository = mock(VeterinarioRepository.class);
 		AccountProvisioningService provisioningService = mock(AccountProvisioningService.class);

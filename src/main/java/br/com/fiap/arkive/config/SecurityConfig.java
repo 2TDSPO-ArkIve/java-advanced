@@ -136,6 +136,14 @@ public class SecurityConfig {
 								"/login"
 						).permitAll()
 
+						// The one deliberate public exception on /api/**: a veterinarian
+						// self-registration endpoint. Method-specific on purpose — this
+						// must never accidentally open GET/PUT/DELETE on /api/auth/register
+						// (there are none today, but a future addition to this controller
+						// must not silently inherit this permitAll).
+						.requestMatchers(HttpMethod.POST, "/api/auth/register")
+						.permitAll()
+
 						.requestMatchers("/sysadmin/**")
 						.hasRole("SYSADMIN")
 

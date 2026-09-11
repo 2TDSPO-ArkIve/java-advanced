@@ -12,6 +12,7 @@ import br.com.fiap.arkive.repository.VeterinarioRepository;
 import org.springframework.context.annotation.Profile;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -36,6 +37,7 @@ public class VeterinarioService {
 	@Transactional
 	public VeterinarioResponse criar(VeterinarioRequest request) {
 		validarEmailObrigatorioParaCriacao(request.email());
+		validarCrmvDisponivel(request.crmv());
 		Veterinario veterinario = new Veterinario();
 		aplicarDados(veterinario, request, true);
 		Veterinario salvo = veterinarioRepository.save(veterinario);
@@ -134,6 +136,12 @@ public class VeterinarioService {
 	private void validarEmailObrigatorioParaCriacao(String email) {
 		if (email == null || email.isBlank()) {
 			throw new BusinessException("E-mail do veterinario e obrigatorio para criar a conta de acesso.");
+		}
+	}
+
+	private void validarCrmvDisponivel(String crmv) {
+		if (veterinarioRepository.existsByCrmvIgnoreCase(crmv)) {
+			throw new BusinessException("CRMV ja cadastrado.", HttpStatus.CONFLICT);
 		}
 	}
 
