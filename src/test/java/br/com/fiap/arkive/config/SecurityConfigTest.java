@@ -3,6 +3,8 @@ package br.com.fiap.arkive.config;
 import br.com.fiap.arkive.entity.TipoUsuario;
 import br.com.fiap.arkive.security.UsuarioPrincipal;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.context.TestConfiguration;
@@ -23,6 +25,7 @@ import static org.hamcrest.Matchers.containsString;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.options;
@@ -226,6 +229,59 @@ class SecurityConfigTest {
 		mockMvc.perform(get("/sysadmin/painel")).andExpect(status().isForbidden());
 	}
 
+	@Test
+	@WithMockUser(roles = "SYSADMIN")
+	void sysadminPodeCriarClinica() throws Exception {
+		mockMvc.perform(post("/api/clinicas")).andExpect(status().isOk());
+	}
+
+	@ParameterizedTest
+	@ValueSource(strings = { "ADMIN_CLINICA", "VETERINARIO", "RESPONSAVEL" })
+	void somenteSysadminPodeCriarClinica(String role) throws Exception {
+		mockMvc.perform(post("/api/clinicas").with(user("user").roles(role)))
+				.andExpect(status().isForbidden());
+	}
+
+	@Test
+	void mutacoesAdministrativasRepresentativasSaoProtegidasPorPerfil() throws Exception {
+		mockMvc.perform(post("/api/veterinarios").with(user("admin").roles("ADMIN_CLINICA")))
+				.andExpect(status().isForbidden());
+		mockMvc.perform(post("/api/especies").with(user("vet").roles("VETERINARIO")))
+				.andExpect(status().isForbidden());
+		mockMvc.perform(post("/api/protocolos-preventivos").with(user("admin").roles("ADMIN_CLINICA")))
+				.andExpect(status().isForbidden());
+		mockMvc.perform(post("/api/eventos-jornada").with(user("vet").roles("VETERINARIO")))
+				.andExpect(status().isForbidden());
+	}
+
+	@Test
+	void recursosDeDominioMantemPermissoesEspecificas() throws Exception {
+		mockMvc.perform(get("/api/especies").with(user("vet").roles("VETERINARIO")))
+				.andExpect(status().isOk());
+		mockMvc.perform(get("/api/protocolos-preventivos").with(user("responsavel").roles("RESPONSAVEL")))
+				.andExpect(status().isOk());
+		mockMvc.perform(post("/api/avaliacoes-bem-estar").with(user("responsavel").roles("RESPONSAVEL")))
+				.andExpect(status().isOk());
+		mockMvc.perform(post("/api/eventos-preventivos").with(user("vet").roles("VETERINARIO")))
+				.andExpect(status().isOk());
+		mockMvc.perform(get("/api/alertas").with(user("responsavel").roles("RESPONSAVEL")))
+				.andExpect(status().isOk());
+		mockMvc.perform(patch("/api/alertas/1/ler").with(user("responsavel").roles("RESPONSAVEL")))
+				.andExpect(status().isOk());
+		mockMvc.perform(post("/api/feedbacks-nps").with(user("responsavel").roles("RESPONSAVEL")))
+				.andExpect(status().isOk());
+		mockMvc.perform(get("/api/eventos-jornada/animal/1/timeline").with(user("vet").roles("VETERINARIO")))
+				.andExpect(status().isOk());
+	}
+
+	@Test
+	void fluxosClinicosPrincipaisContinuamAutorizados() throws Exception {
+		mockMvc.perform(post("/api/consultas").with(user("vet").roles("VETERINARIO")))
+				.andExpect(status().isOk());
+		mockMvc.perform(post("/api/adesoes-prescricao").with(user("responsavel").roles("RESPONSAVEL")))
+				.andExpect(status().isOk());
+	}
+
 	@TestConfiguration
 	static class TestEndpointConfig {
 
@@ -246,6 +302,76 @@ class SecurityConfigTest {
 
 		@GetMapping("/api/protegido")
 		String apiProtegida() {
+			return "ok";
+		}
+
+		@org.springframework.web.bind.annotation.PostMapping("/api/clinicas")
+		String criarClinica() {
+			return "ok";
+		}
+
+		@org.springframework.web.bind.annotation.PostMapping("/api/veterinarios")
+		String criarVeterinario() {
+			return "ok";
+		}
+
+		@GetMapping("/api/especies")
+		String listarEspecies() {
+			return "ok";
+		}
+
+		@org.springframework.web.bind.annotation.PostMapping("/api/especies")
+		String criarEspecie() {
+			return "ok";
+		}
+
+		@GetMapping("/api/protocolos-preventivos")
+		String listarProtocolosPreventivos() {
+			return "ok";
+		}
+
+		@org.springframework.web.bind.annotation.PostMapping("/api/protocolos-preventivos")
+		String criarProtocoloPreventivo() {
+			return "ok";
+		}
+
+		@org.springframework.web.bind.annotation.PostMapping("/api/avaliacoes-bem-estar")
+		String criarAvaliacaoBemEstar() {
+			return "ok";
+		}
+
+		@org.springframework.web.bind.annotation.PostMapping("/api/eventos-preventivos")
+		String criarEventoPreventivo() {
+			return "ok";
+		}
+
+		@GetMapping("/api/alertas")
+		String listarAlertas() {
+			return "ok";
+		}
+
+		@org.springframework.web.bind.annotation.PatchMapping("/api/alertas/{id}/ler")
+		String lerAlerta(@org.springframework.web.bind.annotation.PathVariable Long id) {
+			return "ok";
+		}
+
+		@org.springframework.web.bind.annotation.PostMapping("/api/feedbacks-nps")
+		String criarFeedbackNps() {
+			return "ok";
+		}
+
+		@org.springframework.web.bind.annotation.PostMapping("/api/eventos-jornada")
+		String criarEventoJornada() {
+			return "ok";
+		}
+
+		@GetMapping("/api/eventos-jornada/animal/{animalId}/timeline")
+		String timelineAnimal(@org.springframework.web.bind.annotation.PathVariable Long animalId) {
+			return "ok";
+		}
+
+		@org.springframework.web.bind.annotation.PostMapping("/api/consultas")
+		String criarConsulta() {
 			return "ok";
 		}
 
