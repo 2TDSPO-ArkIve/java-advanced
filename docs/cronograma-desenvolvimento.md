@@ -1,54 +1,18 @@
-# Cronograma de Desenvolvimento — Arkive API
+# Cronograma de Desenvolvimento — ArkIve
 
-Este documento apresenta, de forma resumida, a divisão de responsabilidades da equipe e o cronograma principal de desenvolvimento do projeto **Arkive**, desenvolvido para o **Challenge FIAP 2026 — CLYVO VET**.
+O desenvolvimento foi organizado em etapas incrementais até a preparação da aplicação Spring Boot para a entrega da Sprint 3 de Java Advanced.
 
----
-
-## 1. Equipe e responsabilidades
-
-| Integrante | Responsabilidades |
-| --- | --- |
-| Gustavo | Desenvolvimento da API Java com Spring Boot, integração com Oracle, Swagger, testes de endpoints, documentação técnica e DevOps |
-| Lucca | Modelagem do banco Oracle, DER/MER, scripts SQL, procedures, relatórios de banco e aplicativo mobile |
-| Rafaela | Protótipo IoT/IA, QA, critérios de qualidade, riscos, métricas, benchmarking e arquitetura TOGAF/Archi |
-| Sabelli | API .NET complementar, com foco em Doença, Predisposição e integração com o banco Oracle |
-
----
-
-## 2. Cronograma resumido
-
-| Período | Atividade principal | Responsável |
+| Etapa | Principais atividades | Status |
 | --- | --- | --- |
-| 05/05 a 08/05 | Definição da proposta Arkive, revisão do desafio CLYVO VET e alinhamento do PRD | Grupo |
-| 08/05 a 10/05 | Modelagem inicial do banco Oracle e definição das entidades principais | Lucca |
-| 09/05 a 16/05 | Desenvolvimento da API Java: cadastros, jornada clínica, bem-estar, preventivo, alertas, NPS e eventos de jornada | Gustavo |
-| 14/05 a 16/05 | Alinhamento da API Java com o schema Oracle `TB_ARKIVE_*` e validação da conexão com o banco | Gustavo e Lucca |
-| 16/05 a 20/05 | Documentação técnica, arquitetura, cronograma, Swagger e collection Postman para testes dos endpoints | Gustavo |
-| 20/05 a 24/05 | Revisão final dos artefatos, ajustes de integração, organização do repositório e preparação da entrega | Grupo |
-
----
-
-## 3. Entregas realizadas na API Java
-
-| Entrega | Status |
-| --- | --- |
-| Projeto Spring Boot criado e versionado no GitHub | Concluído |
-| Estrutura em camadas: Controller, Service, Repository, Entity e DTO | Concluído |
-| Persistência em Oracle com JPA/Hibernate | Concluído |
-| Endpoints REST para cadastros básicos | Concluído |
-| Vínculo histórico entre animal e responsável | Concluído |
-| Jornada clínica: consulta, diagnóstico, prescrição e adesão | Concluído |
-| Bem-estar, protocolos preventivos, eventos preventivos, alertas e NPS | Concluído |
-| Eventos de jornada e timeline do animal | Concluído |
-| Swagger/OpenAPI | Concluído |
-| Cache simples em recursos de catálogo | Concluído |
-| Collection Postman para validação dos endpoints | Concluído |
-| Documentação técnica da arquitetura e execução | Concluído |
-
----
-
-## 4. Observações
-
-A primeira entrega do Arkive foi planejada como um **MVP funcional**, priorizando a implementação da API Java, a persistência no banco Oracle e a validação dos principais fluxos da jornada de saúde do pet.
-
-Funcionalidades mais avançadas, como autenticação completa, dashboards, integração real com WhatsApp, IA em produção e data lakehouse, foram mantidas como evolução futura para não comprometer o escopo da Sprint 1/2.
+| 1. Modelagem inicial e banco Oracle | Definição das entidades, relacionamentos, constraints e estrutura `TB_ARKIVE_*`. | Concluído |
+| 2. Estrutura Spring Boot e API REST | Organização do projeto em camadas e criação dos controllers REST. | Concluído |
+| 3. Persistência com JPA | Implementação das entities, repositories e services com Spring Data JPA e Hibernate. | Concluído |
+| 4. Versionamento com Flyway | Criação e evolução do schema Oracle pelas migrations `V1` a `V6`. | Concluído |
+| 5. Autenticação e Spring Security | Usuários no banco, BCrypt, form login, HTTP Basic e troca obrigatória da senha inicial. | Concluído |
+| 6. Perfis e autorização | Regras de rota e de escopo para `SYSADMIN`, `ADMIN_CLINICA`, `VETERINARIO` e `RESPONSAVEL`. | Concluído |
+| 7. Fluxo clínico assistido | Consulta, narrativa, transições de estado, apoio clínico externo e conclusão veterinária. | Concluído |
+| 8. Prescrição e adesão | Prescrição após consulta finalizada e registro imutável de adesão pelo responsável vinculado. | Concluído |
+| 9. Frontend Thymeleaf | Login, dashboards, cadastros administrativos, formulários e visualização clínica para os perfis web atendidos. | Concluído |
+| 10. Transcrição e integrações | Integração com o motor clínico ArkIve e transcrição opcional com Azure Speech e FFmpeg. | Concluído |
+| 11. Testes e correções | Testes automatizados, validação dos fluxos e reforço das regras de autorização REST. | Concluído |
+| 12. Documentação e entrega | Atualização do README, arquitetura, coleção Postman e artefatos de apoio à demonstração. | Concluído |
