@@ -80,6 +80,25 @@ class SecurityConfigTest {
 	}
 
 	@Test
+	void somentePreviewDoConviteEhPublico() throws Exception {
+		mockMvc.perform(post("/api/compartilhamentos/preview"))
+				.andExpect(status().isOk());
+		mockMvc.perform(post("/api/compartilhamentos/redeem"))
+				.andExpect(status().isUnauthorized());
+		mockMvc.perform(post("/api/animais/1/compartilhamentos"))
+				.andExpect(status().isUnauthorized());
+	}
+
+	@Test
+	void somenteRotasExatasDeCadastroPublicoSaoAnonimas() throws Exception {
+		mockMvc.perform(post("/api/auth/register")).andExpect(status().isOk());
+		mockMvc.perform(post("/api/auth/register/responsavel")).andExpect(status().isOk());
+		mockMvc.perform(get("/api/auth/register/responsavel")).andExpect(status().isUnauthorized());
+		mockMvc.perform(post("/api/auth/register/sysadmin")).andExpect(status().isUnauthorized());
+		mockMvc.perform(post("/api/usuarios")).andExpect(status().isUnauthorized());
+	}
+
+	@Test
 	void corsApiIncluiOrigemDeProducaoSemRemoverDesenvolvimento() {
 		MockHttpServletRequest request =
 				new MockHttpServletRequest("GET", "/api/consultas");
@@ -377,6 +396,31 @@ class SecurityConfigTest {
 
 		@org.springframework.web.bind.annotation.PostMapping("/api/adesoes-prescricao")
 		String registrarAdesao() {
+			return "ok";
+		}
+
+		@org.springframework.web.bind.annotation.PostMapping("/api/compartilhamentos/preview")
+		String previewCompartilhamento() {
+			return "ok";
+		}
+
+		@org.springframework.web.bind.annotation.PostMapping("/api/compartilhamentos/redeem")
+		String resgatarCompartilhamento() {
+			return "ok";
+		}
+
+		@org.springframework.web.bind.annotation.PostMapping("/api/animais/{animalId}/compartilhamentos")
+		String criarCompartilhamento(@org.springframework.web.bind.annotation.PathVariable Long animalId) {
+			return "ok";
+		}
+
+		@org.springframework.web.bind.annotation.PostMapping("/api/auth/register")
+		String registrarVeterinario() {
+			return "ok";
+		}
+
+		@org.springframework.web.bind.annotation.PostMapping("/api/auth/register/responsavel")
+		String registrarResponsavel() {
 			return "ok";
 		}
 

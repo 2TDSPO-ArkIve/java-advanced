@@ -6,6 +6,8 @@ import br.com.fiap.arkive.entity.Animal;
 import br.com.fiap.arkive.entity.Consulta;
 import br.com.fiap.arkive.entity.EventoPreventivo;
 import br.com.fiap.arkive.entity.ProtocoloPreventivo;
+import br.com.fiap.arkive.entity.TipoUsuario;
+import br.com.fiap.arkive.security.UsuarioPrincipal;
 import br.com.fiap.arkive.exception.BusinessException;
 import br.com.fiap.arkive.exception.ResourceNotFoundException;
 import br.com.fiap.arkive.repository.AnimalRepository;
@@ -32,23 +34,27 @@ public class EventoPreventivoService {
 	private final ProtocoloPreventivoService protocoloService;
 	private final ConsultaService consultaService;
 	private final EventoJornadaService eventoJornadaService;
+	private final ClinicalAccessService clinicalAccessService;
 
 	public EventoPreventivoService(
 			EventoPreventivoRepository eventoRepository,
 			AnimalRepository animalRepository,
 			ProtocoloPreventivoService protocoloService,
 			ConsultaService consultaService,
-			EventoJornadaService eventoJornadaService
+			EventoJornadaService eventoJornadaService,
+			ClinicalAccessService clinicalAccessService
 	) {
 		this.eventoRepository = eventoRepository;
 		this.animalRepository = animalRepository;
 		this.protocoloService = protocoloService;
 		this.consultaService = consultaService;
 		this.eventoJornadaService = eventoJornadaService;
+		this.clinicalAccessService = clinicalAccessService;
 	}
 
 	@Transactional
-	public EventoPreventivoResponse criar(EventoPreventivoRequest request) {
+	public EventoPreventivoResponse criar(EventoPreventivoRequest request, UsuarioPrincipal principal) {
+		authorizeAnimal(request.animalId(), principal);
 		EventoPreventivo evento = new EventoPreventivo();
 		aplicarDados(evento, request, true);
 		EventoPreventivo salvo = eventoRepository.save(evento);
@@ -68,7 +74,8 @@ public class EventoPreventivoService {
 	}
 
 	@Transactional(readOnly = true)
-	public Page<EventoPreventivoResponse> listar(Long animalId, Long protocoloId, Long consultaId, String status, String alerta, Pageable pageable) {
+	public Page<EventoPreventivoResponse> listar(Long animalId, Long protocoloId, Long consultaId, String status, String alerta, Pageable pageable, UsuarioPrincipal principal) {
+		authorizeList(animalId, principal);
 		validarStatusQuandoInformado(status);
 		validarSNQuandoInformado(alerta, "Alerta");
 		return eventoRepository.buscar(animalId, protocoloId, consultaId, vazioParaNulo(status), vazioParaNulo(alerta), pageable)
@@ -76,20 +83,25 @@ public class EventoPreventivoService {
 	}
 
 	@Transactional(readOnly = true)
-	public EventoPreventivoResponse buscarPorId(Long id) {
-		return EventoPreventivoResponse.fromEntity(buscarEntidade(id));
+	public EventoPreventivoResponse buscarPorId(Long id, UsuarioPrincipal principal) {
+		EventoPreventivo entity = buscarEntidade(id);
+		clinicalAccessService.exigirLeituraAnimal(principal, entity.getAnimal());
+		return EventoPreventivoResponse.fromEntity(entity);
 	}
 
 	@Transactional
-	public EventoPreventivoResponse atualizar(Long id, EventoPreventivoRequest request) {
+	public EventoPreventivoResponse atualizar(Long id, EventoPreventivoRequest request, UsuarioPrincipal principal) {
 		EventoPreventivo evento = buscarEntidade(id);
+		clinicalAccessService.exigirLeituraAnimal(principal, evento.getAnimal());
+		authorizeAnimal(request.animalId(), principal);
 		aplicarDados(evento, request, false);
 		return EventoPreventivoResponse.fromEntity(eventoRepository.save(evento));
 	}
 
 	@Transactional
-	public void excluir(Long id) {
+	public void excluir(Long id, UsuarioPrincipal principal) {
 		EventoPreventivo evento = buscarEntidade(id);
+		clinicalAccessService.exigirLeituraAnimal(principal, evento.getAnimal());
 		try {
 			eventoRepository.delete(evento);
 			eventoRepository.flush();
@@ -154,6 +166,18 @@ public class EventoPreventivoService {
 
 	private String vazioParaNulo(String valor) {
 		return valor == null || valor.isBlank() ? null : valor;
+	}
+
+	private void authorizeAnimal(Long animalId, UsuarioPrincipal principal) {
+		Animal animal = animalRepository.findById(animalId).orElseThrow(() -> new ResourceNotFoundException("Animal nao encontrado."));
+		clinicalAccessService.exigirLeituraAnimal(principal, animal);
+	}
+
+	private void authorizeList(Long animalId, UsuarioPrincipal principal) {
+		if (animalId != null) { authorizeAnimal(animalId, principal); return; }
+		if (principal == null || !TipoUsuario.SYSADMIN.equals(principal.getTipoUsuario())) {
+			throw new BusinessException("Informe animalId para consultar eventos preventivos do paciente.");
+		}
 	}
 
 }

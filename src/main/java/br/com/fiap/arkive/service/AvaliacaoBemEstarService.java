@@ -7,6 +7,8 @@ import br.com.fiap.arkive.entity.AvaliacaoBemEstar;
 import br.com.fiap.arkive.entity.Consulta;
 import br.com.fiap.arkive.entity.Responsavel;
 import br.com.fiap.arkive.entity.Veterinario;
+import br.com.fiap.arkive.entity.TipoUsuario;
+import br.com.fiap.arkive.security.UsuarioPrincipal;
 import br.com.fiap.arkive.exception.BusinessException;
 import br.com.fiap.arkive.exception.ResourceNotFoundException;
 import br.com.fiap.arkive.repository.AnimalRepository;
@@ -38,6 +40,7 @@ public class AvaliacaoBemEstarService {
 	private final VeterinarioRepository veterinarioRepository;
 	private final ConsultaService consultaService;
 	private final EventoJornadaService eventoJornadaService;
+	private final ClinicalAccessService clinicalAccessService;
 
 	public AvaliacaoBemEstarService(
 			AvaliacaoBemEstarRepository avaliacaoRepository,
@@ -45,7 +48,8 @@ public class AvaliacaoBemEstarService {
 			ResponsavelRepository responsavelRepository,
 			VeterinarioRepository veterinarioRepository,
 			ConsultaService consultaService,
-			EventoJornadaService eventoJornadaService
+			EventoJornadaService eventoJornadaService,
+			ClinicalAccessService clinicalAccessService
 	) {
 		this.avaliacaoRepository = avaliacaoRepository;
 		this.animalRepository = animalRepository;
@@ -53,10 +57,12 @@ public class AvaliacaoBemEstarService {
 		this.veterinarioRepository = veterinarioRepository;
 		this.consultaService = consultaService;
 		this.eventoJornadaService = eventoJornadaService;
+		this.clinicalAccessService = clinicalAccessService;
 	}
 
 	@Transactional
-	public AvaliacaoBemEstarResponse criar(AvaliacaoBemEstarRequest request) {
+	public AvaliacaoBemEstarResponse criar(AvaliacaoBemEstarRequest request, UsuarioPrincipal principal) {
+		authorizeAnimal(request.animalId(), principal);
 		AvaliacaoBemEstar avaliacao = new AvaliacaoBemEstar();
 		aplicarDados(avaliacao, request, true);
 		AvaliacaoBemEstar salva = avaliacaoRepository.save(avaliacao);
@@ -84,8 +90,10 @@ public class AvaliacaoBemEstarService {
 			String apetite,
 			String atividade,
 			String comportamento,
-			Pageable pageable
+			Pageable pageable,
+			UsuarioPrincipal principal
 	) {
+		authorizeList(animalId, principal);
 		validarApetiteQuandoInformado(apetite);
 		validarAtividadeQuandoInformada(atividade);
 		validarComportamentoQuandoInformado(comportamento);
@@ -102,20 +110,25 @@ public class AvaliacaoBemEstarService {
 	}
 
 	@Transactional(readOnly = true)
-	public AvaliacaoBemEstarResponse buscarPorId(Long id) {
-		return AvaliacaoBemEstarResponse.fromEntity(buscarEntidade(id));
+	public AvaliacaoBemEstarResponse buscarPorId(Long id, UsuarioPrincipal principal) {
+		AvaliacaoBemEstar entity = buscarEntidade(id);
+		clinicalAccessService.exigirLeituraAnimal(principal, entity.getAnimal());
+		return AvaliacaoBemEstarResponse.fromEntity(entity);
 	}
 
 	@Transactional
-	public AvaliacaoBemEstarResponse atualizar(Long id, AvaliacaoBemEstarRequest request) {
+	public AvaliacaoBemEstarResponse atualizar(Long id, AvaliacaoBemEstarRequest request, UsuarioPrincipal principal) {
 		AvaliacaoBemEstar avaliacao = buscarEntidade(id);
+		clinicalAccessService.exigirLeituraAnimal(principal, avaliacao.getAnimal());
+		authorizeAnimal(request.animalId(), principal);
 		aplicarDados(avaliacao, request, false);
 		return AvaliacaoBemEstarResponse.fromEntity(avaliacaoRepository.save(avaliacao));
 	}
 
 	@Transactional
-	public void excluir(Long id) {
+	public void excluir(Long id, UsuarioPrincipal principal) {
 		AvaliacaoBemEstar avaliacao = buscarEntidade(id);
+		clinicalAccessService.exigirLeituraAnimal(principal, avaliacao.getAnimal());
 		try {
 			avaliacaoRepository.delete(avaliacao);
 			avaliacaoRepository.flush();
@@ -156,6 +169,17 @@ public class AvaliacaoBemEstarService {
 
 	private Animal buscarAnimal(Long id) {
 		return animalRepository.findById(id).orElseThrow(() -> new ResourceNotFoundException("Animal nao encontrado."));
+	}
+
+	private void authorizeAnimal(Long animalId, UsuarioPrincipal principal) {
+		clinicalAccessService.exigirLeituraAnimal(principal, buscarAnimal(animalId));
+	}
+
+	private void authorizeList(Long animalId, UsuarioPrincipal principal) {
+		if (animalId != null) { authorizeAnimal(animalId, principal); return; }
+		if (principal == null || !TipoUsuario.SYSADMIN.equals(principal.getTipoUsuario())) {
+			throw new BusinessException("Informe animalId para consultar avaliacoes do paciente.");
+		}
 	}
 
 	private Responsavel buscarResponsavel(Long id) {

@@ -33,6 +33,8 @@ public interface UsuarioRepository extends JpaRepository<Usuario, Long> {
 
 	boolean existsByLogin(String login);
 
+	boolean existsByLoginIgnoreCase(String login);
+
 	boolean existsByLoginAndIdNot(String login, Long id);
 
 	boolean existsByVeterinarioId(Long veterinarioId);

@@ -3,6 +3,7 @@ package br.com.fiap.arkive.controller;
 import br.com.fiap.arkive.config.SecurityConfig;
 import br.com.fiap.arkive.dto.response.AuthMeResponse;
 import br.com.fiap.arkive.dto.response.VeterinarioResponse;
+import br.com.fiap.arkive.dto.response.RegistroResponsavelResponse;
 import br.com.fiap.arkive.entity.TipoUsuario;
 import br.com.fiap.arkive.exception.BusinessException;
 import br.com.fiap.arkive.exception.GlobalExceptionHandler;
@@ -126,6 +127,60 @@ class AuthControllerMvcTest {
 						.content("{\"nome\":\"Dra Nova\",\"crmv\":\"CRMV999\",\"email\":\"nova@arkive.com\"}"))
 				.andExpect(status().isConflict())
 				.andExpect(jsonPath("$.message").value("CRMV ja cadastrado."));
+	}
+
+	@Test
+	void cadastroPublicoDeResponsavelEhAnonimoERetornaRespostaSegura() throws Exception {
+		when(authService.registrarResponsavel(any())).thenReturn(new RegistroResponsavelResponse(
+				91L, 81L, "Maria Tutor", "maria@arkive.com", TipoUsuario.RESPONSAVEL, "S", false));
+
+		mockMvc.perform(post("/api/auth/register/responsavel")
+					.contentType(MediaType.APPLICATION_JSON)
+					.content("""
+							{"nome":"Maria Tutor","documento":"12345678900","email":"maria@arkive.com",
+							 "telefone":"11999999999","senha":"SenhaSegura1","confirmacaoSenha":"SenhaSegura1"}
+							"""))
+				.andExpect(status().isCreated())
+				.andExpect(jsonPath("$.usuarioId").value(91))
+				.andExpect(jsonPath("$.responsavelId").value(81))
+				.andExpect(jsonPath("$.tipo").value("RESPONSAVEL"))
+				.andExpect(jsonPath("$.ativo").value("S"))
+				.andExpect(jsonPath("$.trocaSenhaObrigatoria").value(false))
+				.andExpect(jsonPath("$.senha").doesNotExist())
+				.andExpect(jsonPath("$.senhaHash").doesNotExist());
+	}
+
+	@Test
+	void camposArbitrariosDePerfilNaoSaoParteDoContratoPublico() throws Exception {
+		when(authService.registrarResponsavel(any())).thenReturn(new RegistroResponsavelResponse(
+				91L, 81L, "Maria Tutor", "maria@arkive.com", TipoUsuario.RESPONSAVEL, "S", false));
+
+		mockMvc.perform(post("/api/auth/register/responsavel")
+					.contentType(MediaType.APPLICATION_JSON)
+					.content("""
+							{"nome":"Maria Tutor","documento":"12345678900","email":"maria@arkive.com",
+							 "senha":"SenhaSegura1","confirmacaoSenha":"SenhaSegura1",
+							 "tipo":"SYSADMIN","role":"ADMIN_CLINICA","clinicaId":99,"veterinarioId":88}
+							"""))
+				.andExpect(status().isCreated())
+				.andExpect(jsonPath("$.tipo").value("RESPONSAVEL"));
+	}
+
+	@Test
+	void cadastroPublicoDeResponsavelValidaPayload() throws Exception {
+		mockMvc.perform(post("/api/auth/register/responsavel")
+					.contentType(MediaType.APPLICATION_JSON)
+					.content("{\"nome\":\"\",\"documento\":\"\",\"email\":\"invalido\",\"senha\":\"curta\"}"))
+				.andExpect(status().isBadRequest());
+	}
+
+	@Test
+	void cadastroPublicoDeResponsavelRejeitaJsonMalformadoComoErroDoCliente() throws Exception {
+		mockMvc.perform(post("/api/auth/register/responsavel")
+					.contentType(MediaType.APPLICATION_JSON)
+					.content("{\"nome\":\"Maria\""))
+				.andExpect(status().isBadRequest())
+				.andExpect(jsonPath("$.message").value("Corpo da requisicao invalido."));
 	}
 
 	private UsuarioPrincipal veterinarioComTrocaObrigatoria() {

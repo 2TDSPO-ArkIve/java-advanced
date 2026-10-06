@@ -5,6 +5,7 @@ import java.time.LocalDate;
 
 public record AnimalResponse(
 		Long id,
+		String arkivePatientId,
 		String nome,
 		Long especieId,
 		String especieNome,
@@ -19,7 +20,13 @@ public record AnimalResponse(
 ) {
 	public AnimalResponse(Long id, String nome, Long especieId, String especieNome, Long racaId,
 			String racaNome, String sexo, String castrado, Long clinicaId, String clinicaNome, String ativo) {
-		this(id, nome, especieId, especieNome, racaId, racaNome, sexo, castrado, clinicaId, clinicaNome, ativo, null);
+		this(id, null, nome, especieId, especieNome, racaId, racaNome, sexo, castrado, clinicaId, clinicaNome, ativo, null);
+	}
+
+	public AnimalResponse(Long id, String nome, Long especieId, String especieNome, Long racaId,
+			String racaNome, String sexo, String castrado, Long clinicaId, String clinicaNome, String ativo,
+			LocalDate dataNascimento) {
+		this(id, null, nome, especieId, especieNome, racaId, racaNome, sexo, castrado, clinicaId, clinicaNome, ativo, dataNascimento);
 	}
 	public static AnimalResponse fromEntity(Animal animal) {
 		Long racaId = animal.getRaca() == null ? null : animal.getRaca().getId();
@@ -28,6 +35,7 @@ public record AnimalResponse(
 		String clinicaNome = animal.getClinica() == null ? null : animal.getClinica().getNome();
 		return new AnimalResponse(
 				animal.getId(),
+				animal.getArkivePatientId(),
 				animal.getNome(),
 				animal.getEspecie().getId(),
 				animal.getEspecie().getNome(),

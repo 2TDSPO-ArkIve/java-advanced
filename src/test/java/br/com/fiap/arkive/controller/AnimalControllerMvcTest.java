@@ -20,6 +20,7 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
 import java.util.List;
+import java.time.LocalDate;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.ArgumentMatchers.any;
@@ -98,6 +99,22 @@ class AnimalControllerMvcTest {
 
 	private UsuarioPrincipal veterinario() {
 		return new UsuarioPrincipal(1L, "Dra Vera", "vera@arkive.com", "$2a$10$hash", TipoUsuario.VETERINARIO, "S", false, null, 10L, null);
+	}
+
+	@Test
+	void lookupByPublicPatientIdStillDelegatesWithAuthenticatedPrincipal() throws Exception {
+		var principal = veterinario();
+		String patientId = "ARK-PET-22222-33333-44444-55555-666666";
+		when(animalService.buscarPorArkivePatientIdAutorizado(patientId, principal)).thenReturn(new AnimalResponse(
+				50L, patientId, "Nina", 1L, "Canino", null, null, "F", "N",
+				null, null, "S", LocalDate.of(2021, 4, 17)));
+
+		mockMvc.perform(get("/api/animais/arkive/{arkivePatientId}", patientId).with(user(principal)))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.id").value(50))
+				.andExpect(jsonPath("$.arkivePatientId").value(patientId));
+
+		verify(animalService).buscarPorArkivePatientIdAutorizado(patientId, principal);
 	}
 
 	@Test

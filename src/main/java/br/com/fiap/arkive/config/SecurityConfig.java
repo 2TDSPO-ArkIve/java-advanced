@@ -136,12 +136,17 @@ public class SecurityConfig {
 								"/login"
 						).permitAll()
 
-						// The one deliberate public exception on /api/**: a veterinarian
-						// self-registration endpoint. Method-specific on purpose — this
-						// must never accidentally open GET/PUT/DELETE on /api/auth/register
-						// (there are none today, but a future addition to this controller
-						// must not silently inherit this permitAll).
+						// Deliberate public self-registration endpoints. Method-specific on
+						// purpose so future auth-controller operations never inherit permitAll.
 						.requestMatchers(HttpMethod.POST, "/api/auth/register")
+						.permitAll()
+						.requestMatchers(HttpMethod.POST, "/api/auth/register/responsavel")
+						.permitAll()
+
+						// A bearer invitation may be previewed before account creation. This
+						// exact endpoint returns only minimal patient/inviter metadata and
+						// never consumes the token; redemption remains authenticated below.
+						.requestMatchers(HttpMethod.POST, "/api/compartilhamentos/preview")
 						.permitAll()
 
 						.requestMatchers("/sysadmin/**")

@@ -80,6 +80,14 @@ public class AnimalController {
 		return animalService.buscarPorIdAutorizado(id, principal);
 	}
 
+	@GetMapping("/arkive/{arkivePatientId}")
+	public AnimalResponse buscarPorArkivePatientId(
+			@PathVariable String arkivePatientId,
+			@AuthenticationPrincipal UsuarioPrincipal principal
+	) {
+		return animalService.buscarPorArkivePatientIdAutorizado(arkivePatientId, principal);
+	}
+
 	@PutMapping("/{id}")
 	public AnimalResponse atualizar(
 			@PathVariable Long id,

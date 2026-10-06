@@ -11,6 +11,7 @@ import br.com.fiap.arkive.entity.TipoUsuario;
 import br.com.fiap.arkive.entity.Veterinario;
 import br.com.fiap.arkive.repository.AnimalResponsavelRepository;
 import br.com.fiap.arkive.repository.ConsultaRepository;
+import br.com.fiap.arkive.repository.PatientAccessRepository;
 import br.com.fiap.arkive.security.UsuarioPrincipal;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -30,6 +31,7 @@ class ClinicalAccessServiceTest {
 	private AnimalResponsavelRepository animalResponsavelRepository;
 	private ConsultaRepository consultaRepository;
 	private VeterinarioService veterinarioService;
+	private PatientAccessRepository patientAccessRepository;
 	private ClinicalAccessService clinicalAccessService;
 
 	@BeforeEach
@@ -37,7 +39,9 @@ class ClinicalAccessServiceTest {
 		animalResponsavelRepository = mock(AnimalResponsavelRepository.class);
 		consultaRepository = mock(ConsultaRepository.class);
 		veterinarioService = mock(VeterinarioService.class);
-		clinicalAccessService = new ClinicalAccessService(animalResponsavelRepository, consultaRepository, veterinarioService);
+		patientAccessRepository = mock(PatientAccessRepository.class);
+		clinicalAccessService = new ClinicalAccessService(animalResponsavelRepository, consultaRepository,
+				veterinarioService, patientAccessRepository);
 	}
 
 	@Test
@@ -48,6 +52,18 @@ class ClinicalAccessServiceTest {
 	@Test
 	void veterinarioNaoEscreveEmConsultaDeOutroVeterinario() {
 		assertThrows(AccessDeniedException.class, () -> clinicalAccessService.exigirEscritaClinicaVeterinario(veterinario(10L), consulta(22L, 30L)));
+	}
+
+	@Test
+	void acessoExplicitoPermiteLeituraMasNaoEscritaNaConsultaDeOutroVeterinario() {
+		Consulta consulta = consulta(22L, 30L);
+		when(patientAccessRepository.existsEffective(eq(50L), eq(1L),
+				eq(br.com.fiap.arkive.entity.PatientAccessRole.VETERINARIO), any(java.time.LocalDateTime.class)))
+				.thenReturn(true);
+
+		assertDoesNotThrow(() -> clinicalAccessService.exigirLeituraConsulta(veterinario(10L), consulta));
+		assertThrows(AccessDeniedException.class,
+				() -> clinicalAccessService.exigirEscritaClinicaVeterinario(veterinario(10L), consulta));
 	}
 
 	@Test
@@ -90,6 +106,21 @@ class ClinicalAccessServiceTest {
 
 		assertDoesNotThrow(() -> clinicalAccessService.exigirLeituraAnimal(veterinario(10L), animal(50L, 30L)));
 		assertThrows(AccessDeniedException.class, () -> clinicalAccessService.exigirLeituraAnimal(veterinario(22L), animal(50L, 30L)));
+	}
+
+	@Test
+	void somenteVeterinarioOuResponsavelPodemOriginarCompartilhamento() {
+		Animal animal = animal(50L, 30L);
+		when(animalResponsavelRepository.existsVinculoAtivoVigente(eq(50L), eq(40L), any(LocalDate.class)))
+				.thenReturn(true);
+		when(veterinarioService.buscarClinicaId(10L)).thenReturn(30L);
+
+		assertDoesNotThrow(() -> clinicalAccessService.exigirCriacaoCompartilhamentoAnimal(veterinario(10L), animal));
+		assertDoesNotThrow(() -> clinicalAccessService.exigirCriacaoCompartilhamentoAnimal(responsavel(40L), animal));
+		assertThrows(AccessDeniedException.class,
+				() -> clinicalAccessService.exigirCriacaoCompartilhamentoAnimal(adminClinica(30L), animal));
+		assertThrows(AccessDeniedException.class,
+				() -> clinicalAccessService.exigirCriacaoCompartilhamentoAnimal(sysadmin(), animal));
 	}
 
 	@Test

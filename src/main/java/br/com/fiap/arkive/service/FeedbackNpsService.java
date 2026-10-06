@@ -8,6 +8,8 @@ import br.com.fiap.arkive.entity.Consulta;
 import br.com.fiap.arkive.entity.FeedbackNps;
 import br.com.fiap.arkive.entity.Responsavel;
 import br.com.fiap.arkive.entity.Veterinario;
+import br.com.fiap.arkive.entity.TipoUsuario;
+import br.com.fiap.arkive.security.UsuarioPrincipal;
 import br.com.fiap.arkive.exception.BusinessException;
 import br.com.fiap.arkive.exception.ResourceNotFoundException;
 import br.com.fiap.arkive.repository.AnimalRepository;
@@ -36,6 +38,7 @@ public class FeedbackNpsService {
 	private final VeterinarioRepository veterinarioRepository;
 	private final ConsultaService consultaService;
 	private final EventoJornadaService eventoJornadaService;
+	private final ClinicalAccessService clinicalAccessService;
 
 	public FeedbackNpsService(
 			FeedbackNpsRepository feedbackRepository,
@@ -44,7 +47,8 @@ public class FeedbackNpsService {
 			ClinicaRepository clinicaRepository,
 			VeterinarioRepository veterinarioRepository,
 			ConsultaService consultaService,
-			EventoJornadaService eventoJornadaService
+			EventoJornadaService eventoJornadaService,
+			ClinicalAccessService clinicalAccessService
 	) {
 		this.feedbackRepository = feedbackRepository;
 		this.responsavelRepository = responsavelRepository;
@@ -53,10 +57,12 @@ public class FeedbackNpsService {
 		this.veterinarioRepository = veterinarioRepository;
 		this.consultaService = consultaService;
 		this.eventoJornadaService = eventoJornadaService;
+		this.clinicalAccessService = clinicalAccessService;
 	}
 
 	@Transactional
-	public FeedbackNpsResponse criar(FeedbackNpsRequest request) {
+	public FeedbackNpsResponse criar(FeedbackNpsRequest request, UsuarioPrincipal principal) {
+		if (request.animalId() != null) authorizeAnimal(request.animalId(), principal);
 		FeedbackNps feedback = new FeedbackNps();
 		aplicarDados(feedback, request, true);
 		FeedbackNps salvo = feedbackRepository.save(feedback);
@@ -78,26 +84,32 @@ public class FeedbackNpsService {
 	}
 
 	@Transactional(readOnly = true)
-	public Page<FeedbackNpsResponse> listar(Long responsavelId, Long animalId, Long clinicaId, Long veterinarioId, Long consultaId, Integer nota, Pageable pageable) {
+	public Page<FeedbackNpsResponse> listar(Long responsavelId, Long animalId, Long clinicaId, Long veterinarioId, Long consultaId, Integer nota, Pageable pageable, UsuarioPrincipal principal) {
+		authorizeList(animalId, principal);
 		return feedbackRepository.buscar(responsavelId, animalId, clinicaId, veterinarioId, consultaId, nota, pageable)
 				.map(FeedbackNpsResponse::fromEntity);
 	}
 
 	@Transactional(readOnly = true)
-	public FeedbackNpsResponse buscarPorId(Long id) {
-		return FeedbackNpsResponse.fromEntity(buscarEntidade(id));
+	public FeedbackNpsResponse buscarPorId(Long id, UsuarioPrincipal principal) {
+		FeedbackNps entity = buscarEntidade(id);
+		if (entity.getAnimal() != null) clinicalAccessService.exigirLeituraAnimal(principal, entity.getAnimal());
+		return FeedbackNpsResponse.fromEntity(entity);
 	}
 
 	@Transactional
-	public FeedbackNpsResponse atualizar(Long id, FeedbackNpsRequest request) {
+	public FeedbackNpsResponse atualizar(Long id, FeedbackNpsRequest request, UsuarioPrincipal principal) {
 		FeedbackNps feedback = buscarEntidade(id);
+		if (feedback.getAnimal() != null) clinicalAccessService.exigirLeituraAnimal(principal, feedback.getAnimal());
+		if (request.animalId() != null) authorizeAnimal(request.animalId(), principal);
 		aplicarDados(feedback, request, false);
 		return FeedbackNpsResponse.fromEntity(feedbackRepository.save(feedback));
 	}
 
 	@Transactional
-	public void excluir(Long id) {
+	public void excluir(Long id, UsuarioPrincipal principal) {
 		FeedbackNps feedback = buscarEntidade(id);
+		if (feedback.getAnimal() != null) clinicalAccessService.exigirLeituraAnimal(principal, feedback.getAnimal());
 		try {
 			feedbackRepository.delete(feedback);
 			feedbackRepository.flush();
@@ -157,6 +169,17 @@ public class FeedbackNpsService {
 			return "CLINICA";
 		}
 		return "SISTEMA";
+	}
+
+	private void authorizeAnimal(Long animalId, UsuarioPrincipal principal) {
+		clinicalAccessService.exigirLeituraAnimal(principal, buscarAnimal(animalId));
+	}
+
+	private void authorizeList(Long animalId, UsuarioPrincipal principal) {
+		if (animalId != null) { authorizeAnimal(animalId, principal); return; }
+		if (principal == null || !TipoUsuario.SYSADMIN.equals(principal.getTipoUsuario())) {
+			throw new BusinessException("Informe animalId para consultar feedbacks do paciente.");
+		}
 	}
 
 }
