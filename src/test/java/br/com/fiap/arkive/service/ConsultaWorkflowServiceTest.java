@@ -37,6 +37,7 @@ class ConsultaWorkflowServiceTest {
 	private DiagnosticoService diagnosticoService;
 	private EventoJornadaService eventoJornadaService;
 	private ClinicalAccessService clinicalAccessService;
+	private NotificacaoService notificacaoService;
 	private ConsultaWorkflowService workflowService;
 
 	@BeforeEach
@@ -46,12 +47,14 @@ class ConsultaWorkflowServiceTest {
 		diagnosticoService = mock(DiagnosticoService.class);
 		eventoJornadaService = mock(EventoJornadaService.class);
 		clinicalAccessService = mock(ClinicalAccessService.class);
+		notificacaoService = mock(NotificacaoService.class);
 		workflowService = new ConsultaWorkflowService(
 				consultaService,
 				consultaRepository,
 				diagnosticoService,
 				eventoJornadaService,
-				clinicalAccessService
+				clinicalAccessService,
+				notificacaoService
 		);
 		when(consultaRepository.save(any(Consulta.class))).thenAnswer(invocation -> invocation.getArgument(0));
 		when(eventoJornadaService.criarPayload(any(), any(), any())).thenReturn("{\"entity\":\"Consulta\"}");
@@ -156,6 +159,7 @@ class ConsultaWorkflowServiceTest {
 				eq("Consulta finalizada com diagnostico confirmado pelo veterinario."),
 				any()
 		);
+		verify(notificacaoService).criarParaConsultaFinalizada(consulta);
 	}
 
 	@Test
@@ -194,6 +198,7 @@ class ConsultaWorkflowServiceTest {
 		assertThrows(ResourceNotFoundException.class, () -> workflowService.finalizar(2L, new FinalizarConsultaRequest("Diagnostico", null, 99L, null)));
 		assertEquals("EP", outraConsulta.getStatus());
 		verify(eventoJornadaService, never()).registrarEvento(eq("CONSULTA_FINALIZADA"), any(), any(), any(), any(), any(), any(), any());
+		verify(notificacaoService, never()).criarParaConsultaFinalizada(outraConsulta);
 	}
 
 	@Test
