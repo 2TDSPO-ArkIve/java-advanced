@@ -77,7 +77,7 @@ public class DiagnosticoService {
 		diagnostico.setDiagnostico(diagnosticoTexto);
 		diagnostico.setSeveridade(severidade);
 		diagnostico.setConfirmado("S");
-		diagnostico.setValidacaoVet("S");
+		diagnostico.setValidacaoVet(null);
 		diagnostico.setConsulta(consulta);
 		diagnostico.setDoenca(doenca);
 		return diagnosticoRepository.save(diagnostico);
@@ -90,7 +90,7 @@ public class DiagnosticoService {
 			String insightIa,
 			Integer confianca
 	) {
-		return criarSuporteClinicoIa(consulta, diagnosticoTexto, severidade, insightIa, confianca, null);
+		return criarSuporteClinicoIa(consulta, diagnosticoTexto, severidade, insightIa, confianca, null, null);
 	}
 
 	public Diagnostico criarSuporteClinicoIa(
@@ -100,6 +100,19 @@ public class DiagnosticoService {
 			String insightIa,
 			Integer confianca,
 			String fontesIaJson
+	) {
+		return criarSuporteClinicoIa(
+				consulta, diagnosticoTexto, severidade, insightIa, confianca, fontesIaJson, null);
+	}
+
+	public Diagnostico criarSuporteClinicoIa(
+			Consulta consulta,
+			String diagnosticoTexto,
+			String severidade,
+			String insightIa,
+			Integer confianca,
+			String fontesIaJson,
+			String referenciasRagJson
 	) {
 		if (diagnosticoTexto == null || diagnosticoTexto.isBlank()) {
 			throw new BusinessException("Resposta invalida do motor clinico.", HttpStatus.BAD_GATEWAY);
@@ -116,9 +129,10 @@ public class DiagnosticoService {
 		diagnostico.setSeveridade(severidade);
 		diagnostico.setInsightIa(insightIa);
 		diagnostico.setFontesIaJson(fontesIaJson);
+		diagnostico.setReferenciasRagJson(referenciasRagJson);
 		diagnostico.setConfianca(BigDecimal.valueOf(confianca));
 		diagnostico.setConfirmado("N");
-		diagnostico.setValidacaoVet("N");
+		diagnostico.setValidacaoVet(null);
 		diagnostico.setConsulta(consulta);
 		diagnostico.setDoenca(null);
 		return diagnosticoRepository.save(diagnostico);
@@ -212,6 +226,17 @@ public class DiagnosticoService {
 	}
 
 	@Transactional
+	public DiagnosticoResponse atualizarValidacaoVeterinaria(Long id, boolean util, UsuarioPrincipal principal) {
+		Diagnostico diagnostico = buscarEntidade(id);
+		clinicalAccessService.exigirEscritaDiagnosticoVeterinario(principal, diagnostico);
+		if (!ehSuporteClinicoIa(diagnostico)) {
+			throw new BusinessException("A validacao veterinaria e permitida apenas para suporte clinico gerado por IA.", HttpStatus.UNPROCESSABLE_ENTITY);
+		}
+		diagnostico.setValidacaoVet(util ? "S" : "N");
+		return DiagnosticoResponse.fromEntity(diagnosticoRepository.save(diagnostico));
+	}
+
+	@Transactional
 	public void excluir(Long id) {
 		Diagnostico diagnostico = buscarEntidade(id);
 		try {
@@ -248,10 +273,17 @@ public class DiagnosticoService {
 		diagnostico.setSeveridade(request.severidade());
 		if (criando) {
 			diagnostico.setConfirmado("N");
-			diagnostico.setValidacaoVet("N");
+			diagnostico.setValidacaoVet(null);
 		}
 		diagnostico.setConsulta(consulta);
 		diagnostico.setDoenca(doenca);
+	}
+
+	private boolean ehSuporteClinicoIa(Diagnostico diagnostico) {
+		return "N".equals(diagnostico.getConfirmado())
+				&& diagnostico.getInsightIa() != null
+				&& !diagnostico.getInsightIa().isBlank()
+				&& diagnostico.getConfianca() != null;
 	}
 
 	private void validarCamposControladosPeloServidor(DiagnosticoRequest request) {

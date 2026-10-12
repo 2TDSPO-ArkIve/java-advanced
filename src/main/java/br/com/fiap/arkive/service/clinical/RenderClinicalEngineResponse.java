@@ -4,6 +4,7 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.LinkedHashSet;
 import java.util.List;
 
 public record RenderClinicalEngineResponse(
@@ -20,15 +21,39 @@ public record RenderClinicalEngineResponse(
 		Integer confianca,
 
 		@JsonProperty("fontes_pesquisadas")
-		List<String> fontesPesquisadas
+		List<String> fontesPesquisadas,
+
+		@JsonProperty("fontes_rag")
+		List<RagReference> fontesRag
 ) {
 	public RenderClinicalEngineResponse {
 		fontesPesquisadas = fontesPesquisadas == null
 				? List.of()
 				: Collections.unmodifiableList(new ArrayList<>(fontesPesquisadas));
+		fontesRag = fontesRag == null
+				? List.of()
+				: Collections.unmodifiableList(new ArrayList<>(fontesRag));
 	}
 
 	public ClinicalSupportProviderResult toProviderResult() {
-		return new ClinicalSupportProviderResult(diagnostico, severidade, insightIa, confianca, fontesPesquisadas);
+		return new ClinicalSupportProviderResult(
+				diagnostico,
+				severidade,
+				insightIa,
+				confianca,
+				fontesPesquisadas,
+				extrairTitulosRag()
+		);
+	}
+
+	private List<String> extrairTitulosRag() {
+		LinkedHashSet<String> titulos = new LinkedHashSet<>();
+		for (RagReference referencia : fontesRag) {
+			if (referencia == null || referencia.titulo() == null || referencia.titulo().isBlank()) {
+				continue;
+			}
+			titulos.add(referencia.titulo().strip());
+		}
+		return List.copyOf(titulos);
 	}
 }

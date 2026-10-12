@@ -64,7 +64,7 @@ public class ConsultaWorkflowController {
 	}
 
 	@PostMapping("/{id}/finalizar")
-	@Operation(summary = "Finaliza uma consulta", description = "Cria a conclusao confirmada pelo veterinario, marca confirmado = S e validacaoVet = S, e faz EP/AP -> FI.")
+	@Operation(summary = "Finaliza uma consulta", description = "Cria a conclusao confirmada pelo veterinario, marca confirmado = S e faz EP/AP -> FI.")
 	public ConsultaWorkflowResponse finalizar(
 			@PathVariable Long id,
 			@Valid @RequestBody FinalizarConsultaRequest request,

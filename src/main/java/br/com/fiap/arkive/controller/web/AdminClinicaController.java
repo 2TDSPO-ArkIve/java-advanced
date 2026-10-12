@@ -199,13 +199,13 @@ public class AdminClinicaController {
 
 	private boolean apoioClinicoIa(DiagnosticoResponse diagnostico) {
 		return "N".equals(diagnostico.confirmado())
-				&& "N".equals(diagnostico.validacaoVet())
 				&& diagnostico.insightIa() != null
-				&& !diagnostico.insightIa().isBlank();
+				&& !diagnostico.insightIa().isBlank()
+				&& diagnostico.confianca() != null;
 	}
 
 	private boolean parecerVeterinario(DiagnosticoResponse diagnostico) {
-		return "S".equals(diagnostico.confirmado()) && "S".equals(diagnostico.validacaoVet());
+		return "S".equals(diagnostico.confirmado());
 	}
 
 	private List<StatusStep> statusSteps(String statusAtual) {

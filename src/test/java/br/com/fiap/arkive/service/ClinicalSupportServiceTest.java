@@ -229,7 +229,7 @@ class ClinicalSupportServiceTest {
 		diagnostico.setInsightIa("Insight clinico");
 		diagnostico.setConfianca(BigDecimal.valueOf(65));
 		diagnostico.setConfirmado("N");
-		diagnostico.setValidacaoVet("N");
+		diagnostico.setValidacaoVet(null);
 		diagnostico.setConsulta(consulta);
 		return diagnostico;
 	}

@@ -42,6 +42,7 @@ import java.util.concurrent.atomic.AtomicLong;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
@@ -124,7 +125,8 @@ class ClinicalWorkflowEndToEndServiceTest {
 				"LEVE",
 				"Avaliar apoio, dor e amplitude articular.",
 				72,
-				List.of("https://source-one.example", "https://source-two.example")
+				List.of("https://source-one.example", "https://source-two.example"),
+				List.of("Feline calicivirus infection", "Cryptococcosis")
 		));
 
 		when(consultaRepository.save(any(Consulta.class))).thenAnswer(invocation -> {
@@ -147,8 +149,8 @@ class ClinicalWorkflowEndToEndServiceTest {
 		});
 		when(diagnosticoRepository.buscarSuportesClinicos(eq(100L), any(Pageable.class))).thenAnswer(invocation -> diagnosticos.stream()
 				.filter(diagnostico -> diagnostico.getConsulta() != null && Long.valueOf(100L).equals(diagnostico.getConsulta().getId()))
-				.filter(diagnostico -> "N".equals(diagnostico.getConfirmado()) && "N".equals(diagnostico.getValidacaoVet()))
-				.filter(diagnostico -> diagnostico.getInsightIa() != null)
+				.filter(diagnostico -> "N".equals(diagnostico.getConfirmado()))
+				.filter(diagnostico -> diagnostico.getInsightIa() != null && diagnostico.getConfianca() != null)
 				.sorted(Comparator.comparing(Diagnostico::getId).reversed())
 				.toList());
 
@@ -194,13 +196,18 @@ class ClinicalWorkflowEndToEndServiceTest {
 		assertEquals("Entorse leve", suporteGerado.hipoteseDiagnostica());
 		assertEquals("LEVE", suporteGerado.severidadeSugerida());
 		assertEquals(72, suporteGerado.confianca());
+		assertNotNull(suporteGerado.diagnosticoId());
+		assertNull(suporteGerado.validacaoVet());
+		assertEquals(List.of("Feline calicivirus infection", "Cryptococcosis"), suporteGerado.referenciasRag());
 		assertEquals(List.of("https://source-one.example", "https://source-two.example"), suporteGerado.fontesPesquisadas());
 		assertEquals("AP", consultaAtual.getStatus());
 
 		Diagnostico suporteIa = diagnosticos.get(0);
+		assertEquals(suporteIa.getId(), suporteGerado.diagnosticoId());
 		assertEquals("N", suporteIa.getConfirmado());
-		assertEquals("N", suporteIa.getValidacaoVet());
+		assertNull(suporteIa.getValidacaoVet());
 		assertEquals("[\"https://source-one.example\",\"https://source-two.example\"]", suporteIa.getFontesIaJson());
+		assertEquals("[\"Feline calicivirus infection\",\"Cryptococcosis\"]", suporteIa.getReferenciasRagJson());
 
 		clinicalSupportService.gerarSuporte(consultaCriada.id(), principalVeterinario);
 		clinicalSupportService.buscarSuporte(consultaCriada.id(), principalVeterinario);
@@ -214,9 +221,9 @@ class ClinicalWorkflowEndToEndServiceTest {
 		assertEquals("FI", finalizada.status());
 		Diagnostico diagnosticoVeterinario = diagnosticos.get(diagnosticos.size() - 1);
 		assertEquals("S", diagnosticoVeterinario.getConfirmado());
-		assertEquals("S", diagnosticoVeterinario.getValidacaoVet());
+		assertNull(diagnosticoVeterinario.getValidacaoVet());
 		assertEquals("N", suporteIa.getConfirmado());
-		assertEquals("N", suporteIa.getValidacaoVet());
+		assertNull(suporteIa.getValidacaoVet());
 
 		var prescricao = prescricaoService.criar(prescricaoRequest(consultaCriada.id()), principalVeterinario);
 		assertEquals(300L, prescricao.id());

@@ -19,6 +19,7 @@ import java.math.BigDecimal;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doThrow;
@@ -58,18 +59,21 @@ class ClinicalSupportPersistenceServiceTest {
 		UsuarioPrincipal principal = veterinario(10L);
 		ClinicalSupportProviderResult result = result();
 		when(consultaService.buscarEntidade(6L)).thenReturn(consulta);
-		when(diagnosticoService.criarSuporteClinicoIa(consulta, result.diagnostico(), result.severidade(), result.insightIa(), result.confianca(), "[\"https://source-one.example\",\"https://source-two.example\"]"))
+		when(diagnosticoService.criarSuporteClinicoIa(consulta, result.diagnostico(), result.severidade(), result.insightIa(), result.confianca(), "[\"https://source-one.example\",\"https://source-two.example\"]", "[\"Feline calicivirus infection\",\"Cryptococcosis\"]"))
 				.thenReturn(diagnostico);
 
 		ClinicalSupportResponse response = persistenceService.persistirSuporte(6L, result, principal);
 
 		verify(clinicalAccessService).exigirEscritaClinicaVeterinario(principal, consulta);
-		verify(diagnosticoService).criarSuporteClinicoIa(consulta, result.diagnostico(), result.severidade(), result.insightIa(), result.confianca(), "[\"https://source-one.example\",\"https://source-two.example\"]");
+		verify(diagnosticoService).criarSuporteClinicoIa(consulta, result.diagnostico(), result.severidade(), result.insightIa(), result.confianca(), "[\"https://source-one.example\",\"https://source-two.example\"]", "[\"Feline calicivirus infection\",\"Cryptococcosis\"]");
 		verify(consultaRepository).save(consulta);
 		assertEquals("AP", consulta.getStatus());
 		assertEquals("AP", response.statusConsulta());
 		assertEquals("Aguardando Parecer", response.statusDescricao());
 		assertEquals("Hipotese", response.hipoteseDiagnostica());
+		assertEquals(50L, response.diagnosticoId());
+		assertNull(response.validacaoVet());
+		assertEquals(List.of("Feline calicivirus infection", "Cryptococcosis"), response.referenciasRag());
 		assertEquals(List.of("https://source-one.example", "https://source-two.example"), response.fontesPesquisadas());
 	}
 
@@ -79,12 +83,12 @@ class ClinicalSupportPersistenceServiceTest {
 		Diagnostico diagnostico = diagnosticoIa(consulta);
 		ClinicalSupportProviderResult result = new ClinicalSupportProviderResult("Hipotese", "MODERADA", "Insight clinico", 65, List.of());
 		when(consultaService.buscarEntidade(6L)).thenReturn(consulta);
-		when(diagnosticoService.criarSuporteClinicoIa(consulta, result.diagnostico(), result.severidade(), result.insightIa(), result.confianca(), null))
+		when(diagnosticoService.criarSuporteClinicoIa(consulta, result.diagnostico(), result.severidade(), result.insightIa(), result.confianca(), null, null))
 				.thenReturn(diagnostico);
 
 		persistenceService.persistirSuporte(6L, result, veterinario(10L));
 
-		verify(diagnosticoService).criarSuporteClinicoIa(consulta, result.diagnostico(), result.severidade(), result.insightIa(), result.confianca(), null);
+		verify(diagnosticoService).criarSuporteClinicoIa(consulta, result.diagnostico(), result.severidade(), result.insightIa(), result.confianca(), null, null);
 	}
 
 	@Test
@@ -94,7 +98,7 @@ class ClinicalSupportPersistenceServiceTest {
 
 		assertThrows(BusinessException.class, () -> persistenceService.persistirSuporte(6L, result(), veterinario(10L)));
 
-		verify(diagnosticoService, never()).criarSuporteClinicoIa(any(), any(), any(), any(), any(), any());
+		verify(diagnosticoService, never()).criarSuporteClinicoIa(any(), any(), any(), any(), any(), any(), any());
 		verify(consultaRepository, never()).save(any());
 	}
 
@@ -108,7 +112,7 @@ class ClinicalSupportPersistenceServiceTest {
 
 		assertThrows(AccessDeniedException.class, () -> persistenceService.persistirSuporte(6L, result(), principal));
 
-		verify(diagnosticoService, never()).criarSuporteClinicoIa(any(), any(), any(), any(), any(), any());
+		verify(diagnosticoService, never()).criarSuporteClinicoIa(any(), any(), any(), any(), any(), any(), any());
 		verify(consultaRepository, never()).save(any());
 	}
 
@@ -118,7 +122,8 @@ class ClinicalSupportPersistenceServiceTest {
 				"MODERADA",
 				"Insight clinico",
 				65,
-				List.of("https://source-one.example", "https://source-two.example")
+				List.of("https://source-one.example", "https://source-two.example"),
+				java.util.Arrays.asList(" Feline calicivirus infection ", null, "Feline calicivirus infection", "Cryptococcosis")
 		);
 	}
 
@@ -129,9 +134,10 @@ class ClinicalSupportPersistenceServiceTest {
 		diagnostico.setSeveridade("MODERADA");
 		diagnostico.setInsightIa("Insight clinico");
 		diagnostico.setFontesIaJson("[\"https://source-one.example\",\"https://source-two.example\"]");
+		diagnostico.setReferenciasRagJson("[\"Feline calicivirus infection\",\"Cryptococcosis\"]");
 		diagnostico.setConfianca(BigDecimal.valueOf(65));
 		diagnostico.setConfirmado("N");
-		diagnostico.setValidacaoVet("N");
+		diagnostico.setValidacaoVet(null);
 		diagnostico.setConsulta(consulta);
 		return diagnostico;
 	}

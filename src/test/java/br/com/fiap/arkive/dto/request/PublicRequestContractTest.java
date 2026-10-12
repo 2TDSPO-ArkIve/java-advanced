@@ -26,6 +26,15 @@ class PublicRequestContractTest {
 	}
 
 	@Test
+	void validacaoVeterinariaExpoeSomenteDecisaoDeUtilidade() {
+		Set<String> campos = campos(ValidacaoVeterinariaRequest.class);
+
+		assertTrue(campos.contains("util"));
+		assertFalse(campos.contains("validacaoVet"));
+		assertFalse(campos.contains("confirmado"));
+	}
+
+	@Test
 	void adesaoPublicaNaoExpoeIdentidadeOuTimestampControladosPeloServidor() {
 		Set<String> campos = campos(RegistrarAdesaoPrescricaoRequest.class);
 

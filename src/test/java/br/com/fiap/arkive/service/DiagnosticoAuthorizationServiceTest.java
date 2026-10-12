@@ -69,6 +69,18 @@ class DiagnosticoAuthorizationServiceTest {
 	}
 
 	@Test
+	void atualizacaoGenericaNaoAceitaValidacaoVeterinaria() {
+		Diagnostico diagnostico = diagnostico(consulta(10L));
+		when(diagnosticoRepository.findById(5L)).thenReturn(Optional.of(diagnostico));
+		DiagnosticoRequest request = new DiagnosticoRequest("Diagnostico", "LEVE", null, null, null, "S", 1L, null);
+
+		BusinessException exception = assertThrows(BusinessException.class,
+				() -> diagnosticoService.atualizar(5L, request, veterinario(10L)));
+
+		assertEquals("Campos de IA, confianca, confirmacao e validacao veterinaria sao controlados pelo servidor.", exception.getMessage());
+	}
+
+	@Test
 	void diagnosticoGenericoCriadoPeloClientePermaneceNaoConfirmado() {
 		Consulta consulta = consulta(10L);
 		when(consultaService.buscarEntidade(1L)).thenReturn(consulta);
@@ -77,7 +89,7 @@ class DiagnosticoAuthorizationServiceTest {
 
 		verify(diagnosticoRepository).save(org.mockito.ArgumentMatchers.argThat(diagnostico ->
 				"N".equals(diagnostico.getConfirmado())
-						&& "N".equals(diagnostico.getValidacaoVet())
+						&& diagnostico.getValidacaoVet() == null
 						&& diagnostico.getInsightIa() == null
 						&& diagnostico.getConfianca() == null
 		));
@@ -95,8 +107,21 @@ class DiagnosticoAuthorizationServiceTest {
 		assertEquals("65", diagnostico.getConfianca().toPlainString());
 		assertNull(diagnostico.getFontesIaJson());
 		assertEquals("N", diagnostico.getConfirmado());
-		assertEquals("N", diagnostico.getValidacaoVet());
+		assertNull(diagnostico.getValidacaoVet());
 		assertEquals(consulta, diagnostico.getConsulta());
+	}
+
+	@Test
+	void diagnosticoConfirmadoPeloVeterinarioNaoEhAvaliacaoDeInsightIa() {
+		Consulta consulta = consulta(10L);
+
+		Diagnostico diagnostico = diagnosticoService.criarConfirmadoPeloVeterinario(
+				consulta, "Diagnostico final", "LEVE", null);
+
+		assertEquals("S", diagnostico.getConfirmado());
+		assertNull(diagnostico.getValidacaoVet());
+		assertNull(diagnostico.getInsightIa());
+		assertNull(diagnostico.getConfianca());
 	}
 
 	@Test
