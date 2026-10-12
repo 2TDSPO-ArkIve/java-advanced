@@ -2,8 +2,10 @@ package br.com.fiap.arkive.controller;
 
 import br.com.fiap.arkive.dto.request.AlterarSenhaApiRequest;
 import br.com.fiap.arkive.dto.request.RegistroVeterinarioRequest;
+import br.com.fiap.arkive.dto.request.RegistroResponsavelRequest;
 import br.com.fiap.arkive.dto.response.AuthMeResponse;
 import br.com.fiap.arkive.dto.response.VeterinarioResponse;
+import br.com.fiap.arkive.dto.response.RegistroResponsavelResponse;
 import br.com.fiap.arkive.security.UsuarioPrincipal;
 import br.com.fiap.arkive.service.AuthService;
 import jakarta.validation.Valid;
@@ -43,13 +45,17 @@ public class AuthController {
 	}
 
 	/**
-	 * The only unauthenticated endpoint on `/api/**` — see SecurityConfig's
-	 * matcher for this exact method+path. No `@AuthenticationPrincipal` here
-	 * on purpose: this is how an unauthenticated veterinarian gets an account
-	 * in the first place.
+	 * Public veterinarian self-registration. SecurityConfig exposes only this
+	 * exact method+path; the caller cannot choose a role or clinic.
 	 */
 	@PostMapping("/register")
 	public ResponseEntity<VeterinarioResponse> registrar(@Valid @RequestBody RegistroVeterinarioRequest request) {
 		return ResponseEntity.status(HttpStatus.CREATED).body(authService.registrarVeterinario(request));
+	}
+
+	@PostMapping("/register/responsavel")
+	public ResponseEntity<RegistroResponsavelResponse> registrarResponsavel(
+			@Valid @RequestBody RegistroResponsavelRequest request) {
+		return ResponseEntity.status(HttpStatus.CREATED).body(authService.registrarResponsavel(request));
 	}
 }

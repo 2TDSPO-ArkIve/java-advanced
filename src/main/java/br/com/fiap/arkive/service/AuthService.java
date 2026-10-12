@@ -1,9 +1,11 @@
 package br.com.fiap.arkive.service;
 
 import br.com.fiap.arkive.dto.request.RegistroVeterinarioRequest;
+import br.com.fiap.arkive.dto.request.RegistroResponsavelRequest;
 import br.com.fiap.arkive.dto.request.VeterinarioRequest;
 import br.com.fiap.arkive.dto.response.AuthMeResponse;
 import br.com.fiap.arkive.dto.response.VeterinarioResponse;
+import br.com.fiap.arkive.dto.response.RegistroResponsavelResponse;
 import br.com.fiap.arkive.entity.Usuario;
 import br.com.fiap.arkive.exception.BusinessException;
 import br.com.fiap.arkive.exception.ResourceNotFoundException;
@@ -20,15 +22,18 @@ public class AuthService {
 	private final UsuarioRepository usuarioRepository;
 	private final PasswordLifecycleService passwordLifecycleService;
 	private final VeterinarioService veterinarioService;
+	private final ResponsavelRegistrationService responsavelRegistrationService;
 
 	public AuthService(
 			UsuarioRepository usuarioRepository,
 			PasswordLifecycleService passwordLifecycleService,
-			VeterinarioService veterinarioService
+			VeterinarioService veterinarioService,
+			ResponsavelRegistrationService responsavelRegistrationService
 	) {
 		this.usuarioRepository = usuarioRepository;
 		this.passwordLifecycleService = passwordLifecycleService;
 		this.veterinarioService = veterinarioService;
+		this.responsavelRegistrationService = responsavelRegistrationService;
 	}
 
 	@Transactional(readOnly = true)
@@ -42,8 +47,7 @@ public class AuthService {
 	}
 
 	/**
-	 * Public self-registration entry point (`POST /api/auth/register`, the
-	 * only unauthenticated exception carved into `/api/**` for this feature —
+	 * Public veterinarian self-registration entry point (`POST /api/auth/register`;
 	 * see SecurityConfig). The caller can never choose a role or a clinic:
 	 * this delegates to the exact same transactional
 	 * `VeterinarioService.criar` path the SysAdmin veterinarian-management
@@ -64,6 +68,11 @@ public class AuthService {
 				null,
 				null
 		));
+	}
+
+	@Transactional
+	public RegistroResponsavelResponse registrarResponsavel(RegistroResponsavelRequest request) {
+		return responsavelRegistrationService.registrar(request);
 	}
 
 	private Usuario buscarUsuario(UsuarioPrincipal principal) {

@@ -25,19 +25,22 @@ public class ConsultaWorkflowService {
 	private final DiagnosticoService diagnosticoService;
 	private final EventoJornadaService eventoJornadaService;
 	private final ClinicalAccessService clinicalAccessService;
+	private final NotificacaoService notificacaoService;
 
 	public ConsultaWorkflowService(
 			ConsultaService consultaService,
 			ConsultaRepository consultaRepository,
 			DiagnosticoService diagnosticoService,
 			EventoJornadaService eventoJornadaService,
-			ClinicalAccessService clinicalAccessService
+			ClinicalAccessService clinicalAccessService,
+			NotificacaoService notificacaoService
 	) {
 		this.consultaService = consultaService;
 		this.consultaRepository = consultaRepository;
 		this.diagnosticoService = diagnosticoService;
 		this.eventoJornadaService = eventoJornadaService;
 		this.clinicalAccessService = clinicalAccessService;
+		this.notificacaoService = notificacaoService;
 	}
 
 	@Transactional
@@ -118,6 +121,7 @@ public class ConsultaWorkflowService {
 		consulta.setStatus(StatusConsulta.FI.getCodigo());
 		consultaRepository.save(consulta);
 		registrarEvento(consulta, "CONSULTA_FINALIZADA", "Consulta finalizada com diagnostico confirmado pelo veterinario.");
+		notificacaoService.criarParaConsultaFinalizada(consulta);
 		return ConsultaWorkflowResponse.fromEntity(consulta, diagnostico.getId());
 	}
 

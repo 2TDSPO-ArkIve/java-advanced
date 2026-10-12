@@ -2,6 +2,7 @@ package br.com.fiap.arkive.entity;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EntityListeners;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
@@ -13,6 +14,7 @@ import java.time.LocalDate;
 
 @Entity
 @Table(name = "TB_ARKIVE_ANIMAL")
+@EntityListeners(AnimalPatientIdEntityListener.class)
 public class Animal {
 
 	@Column(name = "DT_NASCIMENTO")
@@ -30,6 +32,9 @@ public class Animal {
 	@GeneratedValue(strategy = GenerationType.IDENTITY)
 	@Column(name = "ID_ANIMAL")
 	private Long id;
+
+	@Column(name = "DS_ARKIVE_PATIENT_ID", nullable = false, length = 40, unique = true, updatable = false)
+	private String arkivePatientId;
 
 	@Column(name = "NM_ANIMAL", nullable = false, length = 50)
 	private String nome;
@@ -65,6 +70,17 @@ public class Animal {
 
 	public void setId(Long id) {
 		this.id = id;
+	}
+
+	public String getArkivePatientId() {
+		return arkivePatientId;
+	}
+
+	public void assignArkivePatientId(String arkivePatientId) {
+		if (this.arkivePatientId != null && !this.arkivePatientId.equals(arkivePatientId)) {
+			throw new IllegalStateException("ArkIve patient ID is immutable.");
+		}
+		this.arkivePatientId = arkivePatientId;
 	}
 
 	public String getNome() {

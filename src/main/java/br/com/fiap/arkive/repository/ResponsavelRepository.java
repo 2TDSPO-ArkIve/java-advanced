@@ -13,6 +13,8 @@ import java.util.List;
 @Profile("!local-nodb")
 public interface ResponsavelRepository extends JpaRepository<Responsavel, Long> {
 
+	boolean existsByDocumento(String documento);
+
 	@Query("""
 			select r from Responsavel r where r.ativo = 'S'
 			and (locate(lower(:busca), lower(r.nome)) > 0 or lower(r.email) = lower(:busca))

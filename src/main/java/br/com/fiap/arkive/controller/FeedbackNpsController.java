@@ -3,6 +3,8 @@ package br.com.fiap.arkive.controller;
 import br.com.fiap.arkive.dto.request.FeedbackNpsRequest;
 import br.com.fiap.arkive.dto.response.FeedbackNpsResponse;
 import br.com.fiap.arkive.service.FeedbackNpsService;
+import br.com.fiap.arkive.security.UsuarioPrincipal;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import jakarta.validation.Valid;
 import org.springframework.context.annotation.Profile;
 import org.springframework.data.domain.Page;
@@ -31,8 +33,8 @@ public class FeedbackNpsController {
 	}
 
 	@PostMapping
-	public ResponseEntity<FeedbackNpsResponse> criar(@Valid @RequestBody FeedbackNpsRequest request) {
-		return ResponseEntity.status(HttpStatus.CREATED).body(feedbackService.criar(request));
+	public ResponseEntity<FeedbackNpsResponse> criar(@Valid @RequestBody FeedbackNpsRequest request, @AuthenticationPrincipal UsuarioPrincipal principal) {
+		return ResponseEntity.status(HttpStatus.CREATED).body(feedbackService.criar(request, principal));
 	}
 
 	@GetMapping
@@ -43,24 +45,24 @@ public class FeedbackNpsController {
 			@RequestParam(required = false) Long veterinarioId,
 			@RequestParam(required = false) Long consultaId,
 			@RequestParam(required = false) Integer nota,
-			Pageable pageable
+			Pageable pageable, @AuthenticationPrincipal UsuarioPrincipal principal
 	) {
-		return feedbackService.listar(responsavelId, animalId, clinicaId, veterinarioId, consultaId, nota, pageable);
+		return feedbackService.listar(responsavelId, animalId, clinicaId, veterinarioId, consultaId, nota, pageable, principal);
 	}
 
 	@GetMapping("/{id}")
-	public FeedbackNpsResponse buscarPorId(@PathVariable Long id) {
-		return feedbackService.buscarPorId(id);
+	public FeedbackNpsResponse buscarPorId(@PathVariable Long id, @AuthenticationPrincipal UsuarioPrincipal principal) {
+		return feedbackService.buscarPorId(id, principal);
 	}
 
 	@PutMapping("/{id}")
-	public FeedbackNpsResponse atualizar(@PathVariable Long id, @Valid @RequestBody FeedbackNpsRequest request) {
-		return feedbackService.atualizar(id, request);
+	public FeedbackNpsResponse atualizar(@PathVariable Long id, @Valid @RequestBody FeedbackNpsRequest request, @AuthenticationPrincipal UsuarioPrincipal principal) {
+		return feedbackService.atualizar(id, request, principal);
 	}
 
 	@DeleteMapping("/{id}")
-	public ResponseEntity<Void> excluir(@PathVariable Long id) {
-		feedbackService.excluir(id);
+	public ResponseEntity<Void> excluir(@PathVariable Long id, @AuthenticationPrincipal UsuarioPrincipal principal) {
+		feedbackService.excluir(id, principal);
 		return ResponseEntity.noContent().build();
 	}
 

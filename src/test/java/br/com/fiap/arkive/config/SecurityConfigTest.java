@@ -80,6 +80,25 @@ class SecurityConfigTest {
 	}
 
 	@Test
+	void somentePreviewDoConviteEhPublico() throws Exception {
+		mockMvc.perform(post("/api/compartilhamentos/preview"))
+				.andExpect(status().isOk());
+		mockMvc.perform(post("/api/compartilhamentos/redeem"))
+				.andExpect(status().isUnauthorized());
+		mockMvc.perform(post("/api/animais/1/compartilhamentos"))
+				.andExpect(status().isUnauthorized());
+	}
+
+	@Test
+	void somenteRotasExatasDeCadastroPublicoSaoAnonimas() throws Exception {
+		mockMvc.perform(post("/api/auth/register")).andExpect(status().isOk());
+		mockMvc.perform(post("/api/auth/register/responsavel")).andExpect(status().isOk());
+		mockMvc.perform(get("/api/auth/register/responsavel")).andExpect(status().isUnauthorized());
+		mockMvc.perform(post("/api/auth/register/sysadmin")).andExpect(status().isUnauthorized());
+		mockMvc.perform(post("/api/usuarios")).andExpect(status().isUnauthorized());
+	}
+
+	@Test
 	void corsApiIncluiOrigemDeProducaoSemRemoverDesenvolvimento() {
 		MockHttpServletRequest request =
 				new MockHttpServletRequest("GET", "/api/consultas");
@@ -282,6 +301,33 @@ class SecurityConfigTest {
 				.andExpect(status().isOk());
 	}
 
+	@Test
+	void notificacoesEDispositivosExigemAutenticacao() throws Exception {
+		mockMvc.perform(get("/api/notificacoes")).andExpect(status().isUnauthorized());
+		mockMvc.perform(post("/api/notificacoes/dispositivos")).andExpect(status().isUnauthorized());
+		mockMvc.perform(delete("/api/notificacoes/dispositivos/1")).andExpect(status().isUnauthorized());
+	}
+
+	@ParameterizedTest
+	@ValueSource(strings = { "VETERINARIO", "RESPONSAVEL" })
+	void usuariosMoveisAcessamSuaCaixaEDispositivos(String role) throws Exception {
+		mockMvc.perform(get("/api/notificacoes").with(user("mobile").roles(role)))
+				.andExpect(status().isOk());
+		mockMvc.perform(post("/api/notificacoes/dispositivos").with(user("mobile").roles(role)))
+				.andExpect(status().isOk());
+		mockMvc.perform(delete("/api/notificacoes/dispositivos/1").with(user("mobile").roles(role)))
+				.andExpect(status().isOk());
+	}
+
+	@ParameterizedTest
+	@ValueSource(strings = { "SYSADMIN", "ADMIN_CLINICA" })
+	void papeisAdministrativosNaoRecebemAcessoGlobalACaixaPrivada(String role) throws Exception {
+		mockMvc.perform(get("/api/notificacoes").with(user("admin").roles(role)))
+				.andExpect(status().isForbidden());
+		mockMvc.perform(post("/api/notificacoes/dispositivos").with(user("admin").roles(role)))
+				.andExpect(status().isForbidden());
+	}
+
 	@TestConfiguration
 	static class TestEndpointConfig {
 
@@ -380,8 +426,48 @@ class SecurityConfigTest {
 			return "ok";
 		}
 
+		@org.springframework.web.bind.annotation.PostMapping("/api/compartilhamentos/preview")
+		String previewCompartilhamento() {
+			return "ok";
+		}
+
+		@org.springframework.web.bind.annotation.PostMapping("/api/compartilhamentos/redeem")
+		String resgatarCompartilhamento() {
+			return "ok";
+		}
+
+		@org.springframework.web.bind.annotation.PostMapping("/api/animais/{animalId}/compartilhamentos")
+		String criarCompartilhamento(@org.springframework.web.bind.annotation.PathVariable Long animalId) {
+			return "ok";
+		}
+
+		@org.springframework.web.bind.annotation.PostMapping("/api/auth/register")
+		String registrarVeterinario() {
+			return "ok";
+		}
+
+		@org.springframework.web.bind.annotation.PostMapping("/api/auth/register/responsavel")
+		String registrarResponsavel() {
+			return "ok";
+		}
+
 		@GetMapping("/api/adesoes-prescricao/{id}")
 		String buscarAdesao(@org.springframework.web.bind.annotation.PathVariable Long id) {
+			return "ok";
+		}
+
+		@GetMapping("/api/notificacoes")
+		String listarNotificacoes() {
+			return "ok";
+		}
+
+		@org.springframework.web.bind.annotation.PostMapping("/api/notificacoes/dispositivos")
+		String registrarDispositivo() {
+			return "ok";
+		}
+
+		@org.springframework.web.bind.annotation.DeleteMapping("/api/notificacoes/dispositivos/{id}")
+		String removerDispositivo(@org.springframework.web.bind.annotation.PathVariable Long id) {
 			return "ok";
 		}
 

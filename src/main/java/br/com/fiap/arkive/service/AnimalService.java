@@ -34,6 +34,7 @@ public class AnimalService {
 	private final EventoJornadaService eventoJornadaService;
 	private final ClinicalAccessService clinicalAccessService;
 	private final VeterinarioService veterinarioService;
+	private final ArkivePatientIdGenerator patientIdGenerator;
 	private final Clock clock;
 
 	@Autowired
@@ -47,12 +48,20 @@ public class AnimalService {
 			VeterinarioService veterinarioService
 	) {
 		this(animalRepository, especieService, racaService, clinicaService, eventoJornadaService,
-				clinicalAccessService, veterinarioService, Clock.systemDefaultZone());
+				clinicalAccessService, veterinarioService, new ArkivePatientIdGenerator(), Clock.systemDefaultZone());
 	}
 
 	AnimalService(AnimalRepository animalRepository, EspecieService especieService, RacaService racaService,
 			ClinicaService clinicaService, EventoJornadaService eventoJornadaService,
 			ClinicalAccessService clinicalAccessService, VeterinarioService veterinarioService, Clock clock) {
+		this(animalRepository, especieService, racaService, clinicaService, eventoJornadaService,
+				clinicalAccessService, veterinarioService, new ArkivePatientIdGenerator(), clock);
+	}
+
+	AnimalService(AnimalRepository animalRepository, EspecieService especieService, RacaService racaService,
+			ClinicaService clinicaService, EventoJornadaService eventoJornadaService,
+			ClinicalAccessService clinicalAccessService, VeterinarioService veterinarioService,
+			ArkivePatientIdGenerator patientIdGenerator, Clock clock) {
 		this.clock = clock;
 		this.animalRepository = animalRepository;
 		this.especieService = especieService;
@@ -61,6 +70,7 @@ public class AnimalService {
 		this.eventoJornadaService = eventoJornadaService;
 		this.clinicalAccessService = clinicalAccessService;
 		this.veterinarioService = veterinarioService;
+		this.patientIdGenerator = patientIdGenerator;
 	}
 
 	@Transactional
@@ -72,6 +82,7 @@ public class AnimalService {
 	public AnimalResponse criar(AnimalRequest request, UsuarioPrincipal principal) {
 		AnimalRequest requestAutorizado = requestAutorizadoParaCriacao(request, principal);
 		Animal animal = new Animal();
+		animal.assignArkivePatientId(gerarPatientIdUnico());
 		aplicarDados(animal, requestAutorizado, true);
 		if (TipoUsuario.VETERINARIO.equals(principal.getTipoUsuario())) {
 			animal.setVeterinarioCadastro(veterinarioService.buscarEntidadeAtiva(principal.getVeterinarioId()));
@@ -299,6 +310,24 @@ public class AnimalService {
 			}
 			case RESPONSAVEL -> throw new AccessDeniedException("Operacao permitida apenas a SYSADMIN, ADMIN_CLINICA ou VETERINARIO.");
 		};
+	}
+
+	@Transactional(readOnly = true)
+	public AnimalResponse buscarPorArkivePatientIdAutorizado(String arkivePatientId, UsuarioPrincipal principal) {
+		Animal animal = animalRepository.findByArkivePatientId(arkivePatientId)
+				.orElseThrow(() -> new ResourceNotFoundException("Animal nao encontrado."));
+		clinicalAccessService.exigirLeituraAnimal(principal, animal);
+		return AnimalResponse.fromEntity(animal);
+	}
+
+	private String gerarPatientIdUnico() {
+		for (int attempt = 0; attempt < 10; attempt++) {
+			String candidate = patientIdGenerator.generate();
+			if (!animalRepository.existsByArkivePatientId(candidate)) {
+				return candidate;
+			}
+		}
+		throw new BusinessException("Nao foi possivel gerar o identificador ArkIve do paciente.", org.springframework.http.HttpStatus.CONFLICT);
 	}
 
 	private void exigirPermissaoAdministrativaAnimal(UsuarioPrincipal principal, Animal animal) {

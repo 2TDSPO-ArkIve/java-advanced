@@ -3,6 +3,8 @@ package br.com.fiap.arkive.controller;
 import br.com.fiap.arkive.dto.request.AlertaRequest;
 import br.com.fiap.arkive.dto.response.AlertaResponse;
 import br.com.fiap.arkive.service.AlertaService;
+import br.com.fiap.arkive.security.UsuarioPrincipal;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import jakarta.validation.Valid;
 import org.springframework.context.annotation.Profile;
 import org.springframework.data.domain.Page;
@@ -32,8 +34,8 @@ public class AlertaController {
 	}
 
 	@PostMapping
-	public ResponseEntity<AlertaResponse> criar(@Valid @RequestBody AlertaRequest request) {
-		return ResponseEntity.status(HttpStatus.CREATED).body(alertaService.criar(request));
+	public ResponseEntity<AlertaResponse> criar(@Valid @RequestBody AlertaRequest request, @AuthenticationPrincipal UsuarioPrincipal principal) {
+		return ResponseEntity.status(HttpStatus.CREATED).body(alertaService.criar(request, principal));
 	}
 
 	@GetMapping
@@ -45,29 +47,29 @@ public class AlertaController {
 			@RequestParam(required = false) String tipo,
 			@RequestParam(required = false) String status,
 			@RequestParam(required = false) String canal,
-			Pageable pageable
+			Pageable pageable, @AuthenticationPrincipal UsuarioPrincipal principal
 	) {
-		return alertaService.listar(animalId, responsavelId, clinicaId, eventoPreventivoId, tipo, status, canal, pageable);
+		return alertaService.listar(animalId, responsavelId, clinicaId, eventoPreventivoId, tipo, status, canal, pageable, principal);
 	}
 
 	@GetMapping("/{id}")
-	public AlertaResponse buscarPorId(@PathVariable Long id) {
-		return alertaService.buscarPorId(id);
+	public AlertaResponse buscarPorId(@PathVariable Long id, @AuthenticationPrincipal UsuarioPrincipal principal) {
+		return alertaService.buscarPorId(id, principal);
 	}
 
 	@PutMapping("/{id}")
-	public AlertaResponse atualizar(@PathVariable Long id, @Valid @RequestBody AlertaRequest request) {
-		return alertaService.atualizar(id, request);
+	public AlertaResponse atualizar(@PathVariable Long id, @Valid @RequestBody AlertaRequest request, @AuthenticationPrincipal UsuarioPrincipal principal) {
+		return alertaService.atualizar(id, request, principal);
 	}
 
 	@PatchMapping("/{id}/ler")
-	public AlertaResponse marcarComoLido(@PathVariable Long id) {
-		return alertaService.marcarComoLido(id);
+	public AlertaResponse marcarComoLido(@PathVariable Long id, @AuthenticationPrincipal UsuarioPrincipal principal) {
+		return alertaService.marcarComoLido(id, principal);
 	}
 
 	@DeleteMapping("/{id}")
-	public ResponseEntity<Void> excluir(@PathVariable Long id) {
-		alertaService.excluir(id);
+	public ResponseEntity<Void> excluir(@PathVariable Long id, @AuthenticationPrincipal UsuarioPrincipal principal) {
+		alertaService.excluir(id, principal);
 		return ResponseEntity.noContent().build();
 	}
 

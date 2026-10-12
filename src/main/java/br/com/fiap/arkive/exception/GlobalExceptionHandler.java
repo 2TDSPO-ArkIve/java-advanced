@@ -8,6 +8,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.data.mapping.PropertyReferenceException;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.web.HttpRequestMethodNotSupportedException;
+import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
@@ -38,6 +39,12 @@ public class GlobalExceptionHandler {
 				.map(entry -> entry.getKey() + ": " + entry.getValue())
 				.collect(Collectors.joining("; "));
 		return buildResponse(HttpStatus.BAD_REQUEST, message.isBlank() ? "Dados da requisicao invalidos." : message, request.getRequestURI(), fields);
+	}
+
+	@ExceptionHandler(HttpMessageNotReadableException.class)
+	public ResponseEntity<ErrorResponse> handleUnreadableMessage(HttpMessageNotReadableException ex,
+			HttpServletRequest request) {
+		return buildResponse(HttpStatus.BAD_REQUEST, "Corpo da requisicao invalido.", request.getRequestURI());
 	}
 
 	@ExceptionHandler(ConstraintViolationException.class)
