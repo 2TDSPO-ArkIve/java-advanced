@@ -249,6 +249,7 @@ public class ConsultaService {
 		consulta.setSintomas(request.sintomas());
 		consulta.setObservacao(request.observacao());
 		consulta.setPeso(request.peso());
+		consulta.setValorConsulta(request.valorConsulta());
 		consulta.setTranscricao(request.transcricao());
 		consulta.setStatus(status == null ? consulta.getStatus() : status);
 		consulta.setAnimal(animal);
@@ -269,7 +270,8 @@ public class ConsultaService {
 				request.animalId(),
 				veterinarioId,
 				request.clinicaId(),
-				request.endereco()
+				request.endereco(),
+				request.valorConsulta()
 		);
 	}
 

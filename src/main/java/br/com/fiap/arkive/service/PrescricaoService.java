@@ -174,6 +174,7 @@ public class PrescricaoService {
 		prescricao.setDataInicio(request.dataInicio());
 		prescricao.setDataFim(request.dataFim());
 		prescricao.setInstrucoes(request.instrucoes());
+		prescricao.setValorMedicamento(request.valorMedicamento());
 		prescricao.setConsulta(consulta);
 	}
 
@@ -187,6 +188,7 @@ public class PrescricaoService {
 		prescricao.setDataInicio(request.dataInicio());
 		prescricao.setDataFim(request.dataFim());
 		prescricao.setInstrucoes(request.instrucoes());
+		prescricao.setValorMedicamento(request.valorMedicamento());
 	}
 
 	private void exigirConsultaFinalizada(Consulta consulta) {
@@ -196,7 +198,7 @@ public class PrescricaoService {
 	}
 
 	private void exigirMesmaConsulta(Prescricao prescricao, Long consultaIdRequest) {
-		if (consultaIdRequest == null || !prescricao.getConsulta().getId().equals(consultaIdRequest)) {
+		if (!prescricao.getConsulta().getId().equals(consultaIdRequest)) {
 			throw new BusinessException("Consulta da prescricao nao pode ser alterada.", HttpStatus.CONFLICT);
 		}
 	}

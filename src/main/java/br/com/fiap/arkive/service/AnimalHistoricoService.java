@@ -78,6 +78,6 @@ public class AnimalHistoricoService {
 				consulta.getClinica() == null ? null : consulta.getClinica().getNome(),
 				diagnostico == null ? null : diagnostico.getDiagnostico(),
 				diagnostico == null ? null : diagnostico.getSeveridade(),
-				finalizada ? consulta.getObservacao() : null, medicamentos);
+				finalizada ? consulta.getObservacao() : null, medicamentos, consulta.getValorConsulta());
 	}
 }

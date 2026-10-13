@@ -23,14 +23,24 @@ public record ConsultaResponse(
 		String veterinarioNome,
 		Long clinicaId,
 		String clinicaNome,
-		String endereco
+		String endereco,
+		BigDecimal valorConsulta
 ) {
 	public ConsultaResponse(Long id, LocalDateTime dataHora, String modalidade, String motivo,
 			String sintomas, String observacao, BigDecimal peso, String transcricao, String status,
 			String statusDescricao, Long animalId, String animalNome, Long veterinarioId,
 			String veterinarioNome, Long clinicaId, String clinicaNome) {
 		this(id, dataHora, modalidade, motivo, sintomas, observacao, peso, transcricao, status,
-				statusDescricao, animalId, animalNome, veterinarioId, veterinarioNome, clinicaId, clinicaNome, null);
+				statusDescricao, animalId, animalNome, veterinarioId, veterinarioNome, clinicaId, clinicaNome, null, null);
+	}
+
+	public ConsultaResponse(Long id, LocalDateTime dataHora, String modalidade, String motivo,
+			String sintomas, String observacao, BigDecimal peso, String transcricao, String status,
+			String statusDescricao, Long animalId, String animalNome, Long veterinarioId,
+			String veterinarioNome, Long clinicaId, String clinicaNome, String endereco) {
+		this(id, dataHora, modalidade, motivo, sintomas, observacao, peso, transcricao, status,
+				statusDescricao, animalId, animalNome, veterinarioId, veterinarioNome, clinicaId, clinicaNome,
+				endereco, null);
 	}
 	public static ConsultaResponse fromEntity(Consulta consulta) {
 		Long clinicaId = consulta.getClinica() == null ? null : consulta.getClinica().getId();
@@ -53,7 +63,8 @@ public record ConsultaResponse(
 				consulta.getVeterinario().getNome(),
 				clinicaId,
 				clinicaNome,
-				consulta.getEndereco()
+				consulta.getEndereco(),
+				consulta.getValorConsulta()
 		);
 	}
 }

@@ -16,6 +16,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.access.AccessDeniedException;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.Optional;
 
@@ -33,10 +34,7 @@ import static org.mockito.Mockito.doThrow;
 class ConsultaServiceTest {
 
 	private ConsultaRepository consultaRepository;
-	private AnimalRepository animalRepository;
 	private VeterinarioRepository veterinarioRepository;
-	private ClinicaRepository clinicaRepository;
-	private EventoJornadaService eventoJornadaService;
 	private ClinicalAccessService clinicalAccessService;
 	private ConsultaService consultaService;
 	private final java.time.Clock clock = java.time.Clock.fixed(java.time.Instant.parse("2026-09-08T12:00:00Z"), java.time.ZoneId.of("America/Sao_Paulo"));
@@ -44,10 +42,10 @@ class ConsultaServiceTest {
 	@BeforeEach
 	void setUp() {
 		consultaRepository = mock(ConsultaRepository.class);
-		animalRepository = mock(AnimalRepository.class);
+		AnimalRepository animalRepository = mock(AnimalRepository.class);
 		veterinarioRepository = mock(VeterinarioRepository.class);
-		clinicaRepository = mock(ClinicaRepository.class);
-		eventoJornadaService = mock(EventoJornadaService.class);
+		ClinicaRepository clinicaRepository = mock(ClinicaRepository.class);
+		EventoJornadaService eventoJornadaService = mock(EventoJornadaService.class);
 		clinicalAccessService = mock(ClinicalAccessService.class);
 		consultaService = new ConsultaService(
 				consultaRepository,
@@ -83,7 +81,7 @@ class ConsultaServiceTest {
 
 	@Test
 	void criaConsultaSemVeterinarioNoRequestUsaVeterinarioAutenticado() {
-		consultaService.criar(requestSemVeterinario("AG"), veterinarioPrincipal(20L));
+		consultaService.criar(requestSemVeterinario(), veterinarioPrincipal(20L));
 
 		verify(consultaRepository).save(argThat(consulta ->
 				consulta.getVeterinario().getId().equals(20L)
@@ -119,7 +117,7 @@ class ConsultaServiceTest {
 	void veterinarioSemClinicaCriaConsultaSemClinica() {
 		when(veterinarioRepository.findById(20L)).thenReturn(Optional.of(veterinarioSemClinica()));
 
-		consultaService.criar(requestSemVeterinarioEClinica("AG"), veterinarioPrincipal(20L));
+		consultaService.criar(requestSemVeterinarioEClinica(), veterinarioPrincipal(20L));
 
 		verify(consultaRepository).save(argThat(consulta ->
 				consulta.getVeterinario().getId().equals(20L)
@@ -163,7 +161,9 @@ class ConsultaServiceTest {
 				"EP",
 				10L,
 				20L,
-				30L
+				30L,
+				null,
+				new BigDecimal("150.00")
 		);
 		var principal = veterinarioPrincipal(20L);
 
@@ -172,6 +172,7 @@ class ConsultaServiceTest {
 		assertEquals("EP", consulta.getStatus());
 		assertEquals("REMOTA", consulta.getModalidade());
 		assertEquals("Narrativa atualizada", consulta.getTranscricao());
+		assertEquals(new BigDecimal("150.00"), consulta.getValorConsulta());
 		verify(clinicalAccessService).exigirEscritaClinicaVeterinario(principal, consulta);
 		verify(consultaRepository).save(consulta);
 	}
@@ -320,7 +321,7 @@ class ConsultaServiceTest {
 		Veterinario vet = veterinario();
 		vet.getClinica().setEndereco("Rua da Clinica, 10");
 		when(veterinarioRepository.findById(20L)).thenReturn(Optional.of(vet));
-		var response = consultaService.criar(requestSemVeterinarioEClinica("AG"), veterinarioPrincipal(20L));
+		var response = consultaService.criar(requestSemVeterinarioEClinica(), veterinarioPrincipal(20L));
 		var captor = org.mockito.ArgumentCaptor.forClass(Consulta.class);
 		verify(consultaRepository).save(captor.capture());
 		vet.getClinica().setEndereco("Novo endereco");
@@ -346,7 +347,7 @@ class ConsultaServiceTest {
 	@Test
 	void presencialSemClinicaAceitaEnderecoNulo() {
 		when(veterinarioRepository.findById(20L)).thenReturn(Optional.of(veterinarioSemClinica()));
-		org.junit.jupiter.api.Assertions.assertNull(consultaService.criar(requestSemVeterinarioEClinica("AG"), veterinarioPrincipal(20L)).endereco());
+		org.junit.jupiter.api.Assertions.assertNull(consultaService.criar(requestSemVeterinarioEClinica(), veterinarioPrincipal(20L)).endereco());
 	}
 
 	@Test
@@ -387,7 +388,7 @@ class ConsultaServiceTest {
 		);
 	}
 
-	private ConsultaRequest requestSemVeterinario(String status) {
+	private ConsultaRequest requestSemVeterinario() {
 		return new ConsultaRequest(
 				LocalDateTime.now(clock),
 				"PRESENCIAL",
@@ -396,14 +397,14 @@ class ConsultaServiceTest {
 				null,
 				null,
 				null,
-				status,
+				"AG",
 				10L,
 				null,
 				30L
 		);
 	}
 
-	private ConsultaRequest requestSemVeterinarioEClinica(String status) {
+	private ConsultaRequest requestSemVeterinarioEClinica() {
 		return new ConsultaRequest(
 				LocalDateTime.now(clock),
 				"PRESENCIAL",
@@ -412,7 +413,7 @@ class ConsultaServiceTest {
 				null,
 				null,
 				null,
-				status,
+				"AG",
 				10L,
 				null,
 				null

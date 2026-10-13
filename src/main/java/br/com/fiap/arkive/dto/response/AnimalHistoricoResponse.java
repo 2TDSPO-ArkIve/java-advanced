@@ -1,5 +1,6 @@
 package br.com.fiap.arkive.dto.response;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -12,6 +13,13 @@ public record AnimalHistoricoResponse(Paciente paciente, List<ConsultaHistorico>
 	public record ConsultaHistorico(LocalDateTime dataHora, String modalidade, String endereco,
 			String motivo, String status, String statusDescricao, String veterinarioNome, String crmv,
 			String clinicaNome, String diagnosticoConfirmado, String severidadeFinal, String conclusao,
-			List<PrescricaoResumoResponse> prescricoes) {
+			List<PrescricaoResumoResponse> prescricoes, BigDecimal valorConsulta) {
+		public ConsultaHistorico(LocalDateTime dataHora, String modalidade, String endereco,
+				String motivo, String status, String statusDescricao, String veterinarioNome, String crmv,
+				String clinicaNome, String diagnosticoConfirmado, String severidadeFinal, String conclusao,
+				List<PrescricaoResumoResponse> prescricoes) {
+			this(dataHora, modalidade, endereco, motivo, status, statusDescricao, veterinarioNome, crmv,
+					clinicaNome, diagnosticoConfirmado, severidadeFinal, conclusao, prescricoes, null);
+		}
 	}
 }

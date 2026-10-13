@@ -55,6 +55,9 @@ public class Consulta {
 	@Column(name = "KG_PESO", precision = 6, scale = 2)
 	private BigDecimal peso;
 
+	@Column(name = "VL_CONSULTA", precision = 10, scale = 2)
+	private BigDecimal valorConsulta;
+
 	@Lob
 	@Column(name = "DS_TRANSCRICAO")
 	private String transcricao;
@@ -128,6 +131,14 @@ public class Consulta {
 
 	public void setPeso(BigDecimal peso) {
 		this.peso = peso;
+	}
+
+	public BigDecimal getValorConsulta() {
+		return valorConsulta;
+	}
+
+	public void setValorConsulta(BigDecimal valorConsulta) {
+		this.valorConsulta = valorConsulta;
 	}
 
 	public String getTranscricao() {

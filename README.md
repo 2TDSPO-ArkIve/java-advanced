@@ -168,7 +168,7 @@ consulta FI → prescrição veterinária → adesão do responsável → histó
 ```
 
 1. A consulta precisa estar finalizada (`FI`).
-2. O veterinário responsável cria a prescrição com medicamento, dosagem, frequência, via, período e instruções.
+2. O veterinário responsável cria a prescrição com medicamento, dosagem, frequência, via, período, instruções e, opcionalmente, o custo total estimado ou registrado do tratamento. Esse valor não representa preço unitário nem controle de estoque.
 3. O sistema valida a autoria clínica, o estado da consulta, a via de administração e as datas do tratamento.
 4. O responsável autenticado e vinculado ao animal registra se houve adesão, informando a prescrição, `S` ou `N` e uma observação opcional.
 5. O servidor deriva o responsável e o animal da identidade autenticada e da prescrição, valida o vínculo e confirma que o registro está dentro do período do tratamento.
@@ -185,6 +185,12 @@ GET  /api/adesoes-prescricao
 ```
 
 Esse fluxo não é CRUD simples porque depende do encerramento de outro processo, impõe autoria e vínculo, valida a janela terapêutica, completa dados pelo contexto autenticado, produz evento de jornada e preserva um histórico imutável.
+
+### Fluxo 3 — Custos assistenciais do paciente
+
+Consultas e prescrições podem registrar, opcionalmente, `valorConsulta` e `valorMedicamento`. Esses dados são custos informativos associados ao cuidado do paciente; não representam faturamento, pagamento, estoque ou contabilidade. `valorMedicamento` é o custo total estimado ou registrado daquela prescrição/tratamento, e não um preço unitário.
+
+O endpoint `GET /api/animais/{animalId}/custos` reutiliza as regras clínicas de leitura do paciente e retorna somente consultas finalizadas (`FI`) visíveis ao usuário, em ordem da mais recente para a mais antiga. A resposta separa total de consultas, total de medicamentos e total geral, além do detalhamento por consulta. Valores `NULL` significam que nenhum custo foi registrado; eles permanecem nulos no detalhe da consulta e são tratados como zero exclusivamente na agregação.
 
 ## Validações
 
@@ -210,6 +216,13 @@ O **Flyway controla o versionamento do schema Oracle**. As migrations ficam em `
 | V4 | `V4__add_diagnostico_fontes_ia.sql` | Adiciona as fontes consultadas pelo motor clínico ao diagnóstico |
 | V5 | `V5__add_animal_veterinario_cadastro.sql` | Registra o veterinário que cadastrou o animal, com chave estrangeira e índice |
 | V6 | `V6__add_animal_birth_date_and_consulta_address.sql` | Adiciona data de nascimento do animal e endereço da consulta |
+| V7 | `V7__add_patient_identity_and_sharing.sql` | Adiciona a identidade ArkIve do paciente e o compartilhamento de acesso |
+| V8 | `V8__backfill_arkive_patient_ids.java` | Preenche identificadores ArkIve para pacientes existentes |
+| V9 | `V9__enforce_arkive_patient_id.sql` | Torna obrigatório e único o identificador ArkIve após o preenchimento |
+| V10 | `V10__add_notifications.sql` | Adiciona notificações persistidas da jornada do paciente |
+| V11 | `V11__correct_ai_diagnosis_validation_semantics.sql` | Corrige a semântica histórica da avaliação veterinária de insights de IA |
+| V12 | `V12__add_diagnostico_referencias_rag.sql` | Persiste separadamente os títulos das referências RAG |
+| V13 | `V13__add_patient_care_costs.sql` | Adiciona custos assistenciais opcionais de consultas e prescrições |
 
 No perfil Oracle:
 
