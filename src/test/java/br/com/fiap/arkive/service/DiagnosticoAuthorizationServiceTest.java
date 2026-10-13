@@ -49,11 +49,11 @@ class DiagnosticoAuthorizationServiceTest {
 
 	@Test
 	void veterinarioCriaDiagnosticoSomenteAposValidarConsulta() {
-		Consulta consulta = consulta(10L);
-		UsuarioPrincipal principal = veterinario(10L);
+		Consulta consulta = consulta();
+		UsuarioPrincipal principal = veterinario();
 		when(consultaService.buscarEntidade(1L)).thenReturn(consulta);
 
-		diagnosticoService.criar(request(1L), principal);
+		diagnosticoService.criar(request(), principal);
 
 		verify(clinicalAccessService).exigirEscritaDiagnosticoVeterinario(eq(principal), any(Diagnostico.class));
 		verify(diagnosticoRepository).save(any(Diagnostico.class));
@@ -63,29 +63,29 @@ class DiagnosticoAuthorizationServiceTest {
 	void diagnosticoGenericoNaoAceitaCamposControladosPeloServidor() {
 		DiagnosticoRequest request = new DiagnosticoRequest("Diagnostico", "LEVE", "S", "Insight", null, "S", 1L, null);
 
-		BusinessException exception = assertThrows(BusinessException.class, () -> diagnosticoService.criar(request, veterinario(10L)));
+		BusinessException exception = assertThrows(BusinessException.class, () -> diagnosticoService.criar(request, veterinario()));
 
 		assertEquals("Campos de IA, confianca, confirmacao e validacao veterinaria sao controlados pelo servidor.", exception.getMessage());
 	}
 
 	@Test
 	void atualizacaoGenericaNaoAceitaValidacaoVeterinaria() {
-		Diagnostico diagnostico = diagnostico(consulta(10L));
+		Diagnostico diagnostico = diagnostico(consulta());
 		when(diagnosticoRepository.findById(5L)).thenReturn(Optional.of(diagnostico));
 		DiagnosticoRequest request = new DiagnosticoRequest("Diagnostico", "LEVE", null, null, null, "S", 1L, null);
 
 		BusinessException exception = assertThrows(BusinessException.class,
-				() -> diagnosticoService.atualizar(5L, request, veterinario(10L)));
+				() -> diagnosticoService.atualizar(5L, request, veterinario()));
 
 		assertEquals("Campos de IA, confianca, confirmacao e validacao veterinaria sao controlados pelo servidor.", exception.getMessage());
 	}
 
 	@Test
 	void diagnosticoGenericoCriadoPeloClientePermaneceNaoConfirmado() {
-		Consulta consulta = consulta(10L);
+		Consulta consulta = consulta();
 		when(consultaService.buscarEntidade(1L)).thenReturn(consulta);
 
-		diagnosticoService.criar(request(1L), veterinario(10L));
+		diagnosticoService.criar(request(), veterinario());
 
 		verify(diagnosticoRepository).save(org.mockito.ArgumentMatchers.argThat(diagnostico ->
 				"N".equals(diagnostico.getConfirmado())
@@ -97,7 +97,7 @@ class DiagnosticoAuthorizationServiceTest {
 
 	@Test
 	void criaSuporteClinicoIaComoProvisorioNaoConfirmado() {
-		Consulta consulta = consulta(10L);
+		Consulta consulta = consulta();
 
 		Diagnostico diagnostico = diagnosticoService.criarSuporteClinicoIa(consulta, "Hipotese", "MODERADA", "Insight", 65);
 
@@ -113,7 +113,7 @@ class DiagnosticoAuthorizationServiceTest {
 
 	@Test
 	void diagnosticoConfirmadoPeloVeterinarioNaoEhAvaliacaoDeInsightIa() {
-		Consulta consulta = consulta(10L);
+		Consulta consulta = consulta();
 
 		Diagnostico diagnostico = diagnosticoService.criarConfirmadoPeloVeterinario(
 				consulta, "Diagnostico final", "LEVE", null);
@@ -126,7 +126,7 @@ class DiagnosticoAuthorizationServiceTest {
 
 	@Test
 	void criaSuporteClinicoIaPersisteJsonDeFontesQuandoInformado() {
-		Consulta consulta = consulta(10L);
+		Consulta consulta = consulta();
 
 		Diagnostico diagnostico = diagnosticoService.criarSuporteClinicoIa(
 				consulta,
@@ -142,12 +142,12 @@ class DiagnosticoAuthorizationServiceTest {
 
 	@Test
 	void atualizacaoDeDiagnosticoValidaConsultaResultante() {
-		Diagnostico diagnostico = diagnostico(consulta(10L));
-		UsuarioPrincipal principal = veterinario(10L);
+		Diagnostico diagnostico = diagnostico(consulta());
+		UsuarioPrincipal principal = veterinario();
 		when(diagnosticoRepository.findById(5L)).thenReturn(Optional.of(diagnostico));
 		when(consultaService.buscarEntidade(1L)).thenReturn(diagnostico.getConsulta());
 
-		diagnosticoService.atualizar(5L, request(1L), principal);
+		diagnosticoService.atualizar(5L, request(), principal);
 
 		verify(clinicalAccessService).exigirEscritaDiagnosticoVeterinario(principal, diagnostico);
 		verify(diagnosticoRepository).save(diagnostico);
@@ -155,8 +155,8 @@ class DiagnosticoAuthorizationServiceTest {
 
 	@Test
 	void leituraPorIdValidaEscopoDaConsulta() {
-		Diagnostico diagnostico = diagnostico(consulta(10L));
-		UsuarioPrincipal principal = veterinario(10L);
+		Diagnostico diagnostico = diagnostico(consulta());
+		UsuarioPrincipal principal = veterinario();
 		when(diagnosticoRepository.findById(5L)).thenReturn(Optional.of(diagnostico));
 
 		diagnosticoService.buscarPorIdAutorizado(5L, principal);
@@ -166,7 +166,7 @@ class DiagnosticoAuthorizationServiceTest {
 
 	@Test
 	void listagemDeVeterinarioUsaConsultaDoVeterinarioAutenticado() {
-		UsuarioPrincipal principal = veterinario(10L);
+		UsuarioPrincipal principal = veterinario();
 		when(diagnosticoRepository.buscarParaVeterinario(eq(10L), eq(null), eq(null), eq(null), eq(null), any(Pageable.class)))
 				.thenReturn(Page.empty());
 
@@ -175,8 +175,8 @@ class DiagnosticoAuthorizationServiceTest {
 		verify(diagnosticoRepository).buscarParaVeterinario(eq(10L), eq(null), eq(null), eq(null), eq(null), any(Pageable.class));
 	}
 
-	private DiagnosticoRequest request(Long consultaId) {
-		return new DiagnosticoRequest("Diagnostico", "LEVE", null, null, null, null, consultaId, null);
+	private DiagnosticoRequest request() {
+		return new DiagnosticoRequest("Diagnostico", "LEVE", null, null, null, null, 1L, null);
 	}
 
 	private Diagnostico diagnostico(Consulta consulta) {
@@ -187,11 +187,11 @@ class DiagnosticoAuthorizationServiceTest {
 		return diagnostico;
 	}
 
-	private Consulta consulta(Long veterinarioId) {
+	private Consulta consulta() {
 		Animal animal = new Animal();
 		animal.setId(50L);
 		Veterinario veterinario = new Veterinario();
-		veterinario.setId(veterinarioId);
+		veterinario.setId(10L);
 		Consulta consulta = new Consulta();
 		consulta.setId(1L);
 		consulta.setAnimal(animal);
@@ -199,8 +199,8 @@ class DiagnosticoAuthorizationServiceTest {
 		return consulta;
 	}
 
-	private UsuarioPrincipal veterinario(Long veterinarioId) {
-		return new UsuarioPrincipal(1L, "Dra", "vet@arkive.com", "$2a$10$hash", TipoUsuario.VETERINARIO, "S", false, null, veterinarioId, null);
+	private UsuarioPrincipal veterinario() {
+		return new UsuarioPrincipal(1L, "Dra", "vet@arkive.com", "$2a$10$hash", TipoUsuario.VETERINARIO, "S", false, null, 10L, null);
 	}
 
 }

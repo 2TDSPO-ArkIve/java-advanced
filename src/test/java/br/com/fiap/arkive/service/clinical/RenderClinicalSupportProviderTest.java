@@ -10,6 +10,7 @@ import org.springframework.web.client.RestClient;
 
 import java.nio.charset.StandardCharsets;
 import java.util.List;
+import java.util.Objects;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -247,7 +248,10 @@ class RenderClinicalSupportProviderTest {
 	}
 
 	private String fixture() {
-		try (var inputStream = getClass().getResourceAsStream("/fixtures/clinical-engine/diagnostico-success.json")) {
+		try (var inputStream = Objects.requireNonNull(
+				getClass().getResourceAsStream("/fixtures/clinical-engine/diagnostico-success.json"),
+				"Fixture de suporte clinico nao encontrada."
+		)) {
 			return new String(inputStream.readAllBytes(), StandardCharsets.UTF_8);
 		} catch (Exception ex) {
 			throw new IllegalStateException("Fixture de suporte clinico indisponivel.", ex);

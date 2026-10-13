@@ -52,7 +52,7 @@ class DiagnosticoValidacaoVeterinariaServiceTest {
 
 	@Test
 	void veterinarioResponsavelMarcaInsightComoUtilERespostaRetornaS() {
-		Diagnostico diagnostico = suporteIa(10L);
+		Diagnostico diagnostico = suporteIa();
 		when(diagnosticoRepository.findById(50L)).thenReturn(Optional.of(diagnostico));
 
 		DiagnosticoResponse response = diagnosticoService.atualizarValidacaoVeterinaria(50L, true, veterinario(10L));
@@ -65,7 +65,7 @@ class DiagnosticoValidacaoVeterinariaServiceTest {
 
 	@Test
 	void veterinarioResponsavelMarcaInsightComoNaoUtil() {
-		Diagnostico diagnostico = suporteIa(10L);
+		Diagnostico diagnostico = suporteIa();
 		when(diagnosticoRepository.findById(50L)).thenReturn(Optional.of(diagnostico));
 
 		diagnosticoService.atualizarValidacaoVeterinaria(50L, false, veterinario(10L));
@@ -76,7 +76,7 @@ class DiagnosticoValidacaoVeterinariaServiceTest {
 
 	@Test
 	void veterinarioPodeMudarAvaliacaoNosDoisSentidos() {
-		Diagnostico diagnostico = suporteIa(10L);
+		Diagnostico diagnostico = suporteIa();
 		diagnostico.setValidacaoVet("S");
 		when(diagnosticoRepository.findById(50L)).thenReturn(Optional.of(diagnostico));
 
@@ -89,7 +89,7 @@ class DiagnosticoValidacaoVeterinariaServiceTest {
 
 	@Test
 	void repetirMesmaAvaliacaoEhIdempotente() {
-		Diagnostico diagnostico = suporteIa(10L);
+		Diagnostico diagnostico = suporteIa();
 		diagnostico.setValidacaoVet("S");
 		when(diagnosticoRepository.findById(50L)).thenReturn(Optional.of(diagnostico));
 
@@ -101,7 +101,7 @@ class DiagnosticoValidacaoVeterinariaServiceTest {
 
 	@Test
 	void veterinarioNaoRelacionadoEhRejeitado() {
-		when(diagnosticoRepository.findById(50L)).thenReturn(Optional.of(suporteIa(10L)));
+		when(diagnosticoRepository.findById(50L)).thenReturn(Optional.of(suporteIa()));
 
 		assertThrows(AccessDeniedException.class,
 				() -> diagnosticoService.atualizarValidacaoVeterinaria(50L, true, veterinario(22L)));
@@ -111,7 +111,7 @@ class DiagnosticoValidacaoVeterinariaServiceTest {
 
 	@Test
 	void responsavelEhRejeitado() {
-		when(diagnosticoRepository.findById(50L)).thenReturn(Optional.of(suporteIa(10L)));
+		when(diagnosticoRepository.findById(50L)).thenReturn(Optional.of(suporteIa()));
 
 		assertThrows(AccessDeniedException.class,
 				() -> diagnosticoService.atualizarValidacaoVeterinaria(50L, true, responsavel()));
@@ -121,7 +121,7 @@ class DiagnosticoValidacaoVeterinariaServiceTest {
 
 	@Test
 	void diagnosticoNaoGeradoPorIaEhRejeitadoCom422() {
-		Diagnostico diagnostico = suporteIa(10L);
+		Diagnostico diagnostico = suporteIa();
 		diagnostico.setConfirmado("S");
 		diagnostico.setInsightIa(null);
 		diagnostico.setConfianca(null);
@@ -134,11 +134,11 @@ class DiagnosticoValidacaoVeterinariaServiceTest {
 		verify(diagnosticoRepository, never()).save(any());
 	}
 
-	private Diagnostico suporteIa(Long veterinarioId) {
+	private Diagnostico suporteIa() {
 		Animal animal = new Animal();
 		animal.setId(90L);
 		Veterinario veterinario = new Veterinario();
-		veterinario.setId(veterinarioId);
+		veterinario.setId(10L);
 		Consulta consulta = new Consulta();
 		consulta.setId(60L);
 		consulta.setAnimal(animal);

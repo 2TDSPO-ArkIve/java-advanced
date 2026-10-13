@@ -5,7 +5,6 @@ import br.com.fiap.arkive.dto.request.AtualizarNarrativaConsultaRequest;
 import br.com.fiap.arkive.dto.request.ConsultaRequest;
 import br.com.fiap.arkive.dto.response.ClinicalSupportResponse;
 import br.com.fiap.arkive.dto.response.ConsultaResponse;
-import br.com.fiap.arkive.dto.response.ConsultaWorkflowResponse;
 import br.com.fiap.arkive.entity.TipoUsuario;
 import br.com.fiap.arkive.exception.BusinessException;
 import br.com.fiap.arkive.exception.GlobalExceptionHandler;

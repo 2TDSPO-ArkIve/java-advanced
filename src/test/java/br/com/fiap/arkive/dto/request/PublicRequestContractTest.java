@@ -2,6 +2,7 @@ package br.com.fiap.arkive.dto.request;
 
 import org.junit.jupiter.api.Test;
 
+import java.lang.reflect.RecordComponent;
 import java.util.Arrays;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -48,7 +49,7 @@ class PublicRequestContractTest {
 
 	private Set<String> campos(Class<? extends Record> tipo) {
 		return Arrays.stream(tipo.getRecordComponents())
-				.map(component -> component.getName())
+				.map(RecordComponent::getName)
 				.collect(Collectors.toSet());
 	}
 

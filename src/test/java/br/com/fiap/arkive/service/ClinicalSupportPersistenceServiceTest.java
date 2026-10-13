@@ -54,7 +54,7 @@ class ClinicalSupportPersistenceServiceTest {
 
 	@Test
 	void persisteDiagnosticoIaEMoveConsultaParaApNaMesmaOperacaoTransacional() {
-		Consulta consulta = consulta("EP", 10L);
+		Consulta consulta = consulta("EP");
 		Diagnostico diagnostico = diagnosticoIa(consulta);
 		UsuarioPrincipal principal = veterinario(10L);
 		ClinicalSupportProviderResult result = result();
@@ -79,7 +79,7 @@ class ClinicalSupportPersistenceServiceTest {
 
 	@Test
 	void fontesVaziasSaoPersistidasComoNulo() {
-		Consulta consulta = consulta("EP", 10L);
+		Consulta consulta = consulta("EP");
 		Diagnostico diagnostico = diagnosticoIa(consulta);
 		ClinicalSupportProviderResult result = new ClinicalSupportProviderResult("Hipotese", "MODERADA", "Insight clinico", 65, List.of());
 		when(consultaService.buscarEntidade(6L)).thenReturn(consulta);
@@ -93,7 +93,7 @@ class ClinicalSupportPersistenceServiceTest {
 
 	@Test
 	void revalidaEstadoAntesDePersistir() {
-		Consulta consulta = consulta("FI", 10L);
+		Consulta consulta = consulta("FI");
 		when(consultaService.buscarEntidade(6L)).thenReturn(consulta);
 
 		assertThrows(BusinessException.class, () -> persistenceService.persistirSuporte(6L, result(), veterinario(10L)));
@@ -104,7 +104,7 @@ class ClinicalSupportPersistenceServiceTest {
 
 	@Test
 	void revalidaAutorizacaoAntesDePersistir() {
-		Consulta consulta = consulta("EP", 10L);
+		Consulta consulta = consulta("EP");
 		UsuarioPrincipal principal = veterinario(22L);
 		when(consultaService.buscarEntidade(6L)).thenReturn(consulta);
 		doThrow(new AccessDeniedException("Veterinario nao autorizado para esta consulta."))
@@ -142,12 +142,12 @@ class ClinicalSupportPersistenceServiceTest {
 		return diagnostico;
 	}
 
-	private Consulta consulta(String status, Long veterinarioId) {
+	private Consulta consulta(String status) {
 		Animal animal = new Animal();
 		animal.setId(99L);
 		animal.setNome("Bilu");
 		Veterinario veterinario = new Veterinario();
-		veterinario.setId(veterinarioId);
+		veterinario.setId(10L);
 		veterinario.setNome("Dra Vera");
 		Consulta consulta = new Consulta();
 		consulta.setId(6L);

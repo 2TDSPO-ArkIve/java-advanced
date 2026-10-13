@@ -148,7 +148,7 @@ public class DiagnosticoService {
 	@Transactional(readOnly = true)
 	public Page<DiagnosticoResponse> listar(Long consultaId, Long doencaId, String severidade, String confirmado, Pageable pageable) {
 		validarSeveridadeQuandoInformada(severidade);
-		validarSNQuandoInformado(confirmado, "Confirmado");
+		validarConfirmadoQuandoInformado(confirmado);
 		return diagnosticoRepository.buscar(consultaId, doencaId, vazioParaNulo(severidade), vazioParaNulo(confirmado), pageable)
 				.map(DiagnosticoResponse::fromEntity);
 	}
@@ -166,7 +166,7 @@ public class DiagnosticoService {
 			throw new AccessDeniedException("Usuario autenticado invalido.");
 		}
 		validarSeveridadeQuandoInformada(severidade);
-		validarSNQuandoInformado(confirmado, "Confirmado");
+		validarConfirmadoQuandoInformado(confirmado);
 		return switch (principal.getTipoUsuario()) {
 			case SYSADMIN -> diagnosticoRepository.buscar(consultaId, doencaId, vazioParaNulo(severidade), vazioParaNulo(confirmado), pageable)
 					.map(DiagnosticoResponse::fromEntity);
@@ -304,15 +304,9 @@ public class DiagnosticoService {
 		}
 	}
 
-	private void validarSNQuandoInformado(String valor, String campo) {
+	private void validarConfirmadoQuandoInformado(String valor) {
 		if (valor != null && !valor.isBlank() && !"S".equals(valor) && !"N".equals(valor)) {
-			throw new BusinessException(campo + " deve ser S ou N.");
-		}
-	}
-
-	private void validarConfianca(BigDecimal confianca) {
-		if (confianca != null && (confianca.compareTo(BigDecimal.ZERO) < 0 || confianca.compareTo(BigDecimal.valueOf(100)) > 0)) {
-			throw new BusinessException("Confianca deve estar entre 0 e 100.");
+			throw new BusinessException("Confirmado deve ser S ou N.");
 		}
 	}
 

@@ -16,7 +16,7 @@ class ClinicalSupportResponseTest {
 	void leJsonPersistidoDeFontesComoLista() {
 		Diagnostico diagnostico = diagnostico("[\"https://source-one.example\",\"https://source-two.example\"]");
 
-		ClinicalSupportResponse response = ClinicalSupportResponse.fromEntities(consulta("AP"), diagnostico);
+		ClinicalSupportResponse response = ClinicalSupportResponse.fromEntities(consulta(), diagnostico);
 
 		assertEquals(50L, response.diagnosticoId());
 		assertNull(response.validacaoVet());
@@ -29,7 +29,7 @@ class ClinicalSupportResponseTest {
 		Diagnostico diagnostico = diagnostico(null);
 		diagnostico.setValidacaoVet("S");
 
-		ClinicalSupportResponse response = ClinicalSupportResponse.fromEntities(consulta("AP"), diagnostico);
+		ClinicalSupportResponse response = ClinicalSupportResponse.fromEntities(consulta(), diagnostico);
 
 		assertEquals(50L, response.diagnosticoId());
 		assertEquals("S", response.validacaoVet());
@@ -40,7 +40,7 @@ class ClinicalSupportResponseTest {
 		Diagnostico diagnostico = diagnostico(null);
 		diagnostico.setValidacaoVet("N");
 
-		ClinicalSupportResponse response = ClinicalSupportResponse.fromEntities(consulta("AP"), diagnostico);
+		ClinicalSupportResponse response = ClinicalSupportResponse.fromEntities(consulta(), diagnostico);
 
 		assertEquals(50L, response.diagnosticoId());
 		assertEquals("N", response.validacaoVet());
@@ -53,7 +53,7 @@ class ClinicalSupportResponseTest {
 				"[\"Feline calicivirus infection\",\"Cryptococcosis\"]"
 		);
 
-		ClinicalSupportResponse response = ClinicalSupportResponse.fromEntities(consulta("AP"), diagnostico);
+		ClinicalSupportResponse response = ClinicalSupportResponse.fromEntities(consulta(), diagnostico);
 
 		assertEquals(List.of("Feline calicivirus infection", "Cryptococcosis"), response.referenciasRag());
 		assertEquals(List.of("https://pubmed.ncbi.nlm.nih.gov/31325462/"), response.fontesPesquisadas());
@@ -66,22 +66,22 @@ class ClinicalSupportResponseTest {
 				"[null,\" Feline calicivirus infection \",\"\",\"Feline calicivirus infection\",\"Cryptococcosis\"]"
 		);
 
-		ClinicalSupportResponse response = ClinicalSupportResponse.fromEntities(consulta("AP"), diagnostico);
+		ClinicalSupportResponse response = ClinicalSupportResponse.fromEntities(consulta(), diagnostico);
 
 		assertEquals(List.of("Feline calicivirus infection", "Cryptococcosis"), response.referenciasRag());
 	}
 
 	@Test
 	void fontesNulasOuEmBrancoRetornamListaVazia() {
-		assertEquals(List.of(), ClinicalSupportResponse.fromEntities(consulta("AP"), diagnostico(null)).fontesPesquisadas());
-		assertEquals(List.of(), ClinicalSupportResponse.fromEntities(consulta("AP"), diagnostico("")).fontesPesquisadas());
-		assertEquals(List.of(), ClinicalSupportResponse.fromEntities(consulta("AP"), diagnostico("   ")).fontesPesquisadas());
+		assertEquals(List.of(), ClinicalSupportResponse.fromEntities(consulta(), diagnostico(null)).fontesPesquisadas());
+		assertEquals(List.of(), ClinicalSupportResponse.fromEntities(consulta(), diagnostico("")).fontesPesquisadas());
+		assertEquals(List.of(), ClinicalSupportResponse.fromEntities(consulta(), diagnostico("   ")).fontesPesquisadas());
 	}
 
 	@Test
 	void registroLegadoSemPersistenciaRagRetornaListaVazia() {
 		ClinicalSupportResponse response = ClinicalSupportResponse.fromEntities(
-				consulta("AP"), diagnostico("[\"https://source.example\"]", null));
+				consulta(), diagnostico("[\"https://source.example\"]", null));
 
 		assertEquals(List.of(), response.referenciasRag());
 		assertEquals(List.of("https://source.example"), response.fontesPesquisadas());
@@ -89,15 +89,15 @@ class ClinicalSupportResponseTest {
 
 	@Test
 	void jsonPersistidoMalformadoRetornaListaVazia() {
-		ClinicalSupportResponse response = ClinicalSupportResponse.fromEntities(consulta("AP"), diagnostico("{"));
+		ClinicalSupportResponse response = ClinicalSupportResponse.fromEntities(consulta(), diagnostico("{"));
 
 		assertEquals(List.of(), response.fontesPesquisadas());
 	}
 
-	private Consulta consulta(String status) {
+	private Consulta consulta() {
 		Consulta consulta = new Consulta();
 		consulta.setId(63L);
-		consulta.setStatus(status);
+		consulta.setStatus("AP");
 		return consulta;
 	}
 
