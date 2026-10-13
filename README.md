@@ -143,7 +143,7 @@ AG (Agendada)
 2. O veterinário responsável inicia o atendimento; o service valida o vínculo, os recursos ativos e a transição `AG → EP`.
 3. A narrativa clínica é registrada e pode ser corrigida enquanto a consulta está em `EP` ou `AP`.
 4. Em `EP`, o veterinário solicita suporte clínico. A aplicação consulta o motor externo e valida a resposta.
-5. A hipótese, severidade, confiança, insight e fontes retornadas são persistidas como apoio provisório, com `confirmado=N` e `validacaoVet=N`; a consulta avança para `AP`.
+5. A hipótese, severidade, confiança e insight são persistidos como apoio provisório; URLs externas e títulos das referências RAG permanecem separados. O registro nasce com `confirmado=N` e `validacaoVet=NULL`, e a consulta avança para `AP`.
 6. O veterinário informa seu próprio diagnóstico e conclusão. Esse parecer é persistido como confirmado e validado pelo profissional.
 7. A consulta muda para `FI`, e eventos relevantes da jornada são registrados.
 

@@ -11,6 +11,7 @@ import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
 import org.springframework.boot.test.autoconfigure.orm.jpa.TestEntityManager;
 import org.springframework.data.domain.PageRequest;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
 
@@ -42,20 +43,34 @@ class AnimalHistoricoRepositoryTest {
 	}
 
 	@Test
-	void diagnosticoExigeAmbasConfirmacoesENuncaEscolheHipoteseIaMaisRecente() {
+	void diagnosticoConfirmadoNaoDependeDeValidacaoDeInsightIa() {
 		Consulta consulta = consulta(animal("Paciente"), "2026-01-01T09:00:00", "FI");
-		diagnostico(consulta, "Anterior aprovado", "S", "S");
-		Diagnostico aprovado = diagnostico(consulta, "Diagnostico final", "S", "S");
-		diagnostico(consulta, "SECRET_AI", "N", "N");
-		diagnostico(consulta, "SECRET_SEM_VALIDACAO", "S", "N");
+		diagnostico(consulta, "Anterior aprovado", "S", null);
+		Diagnostico aprovado = diagnostico(consulta, "Diagnostico final", "S", null);
+		diagnostico(consulta, "SECRET_AI", "N", null);
 		diagnostico(consulta, "SECRET_SEM_CONFIRMACAO", "N", "S");
 		Consulta outra = consulta(animal("Outro"), "2026-01-01T09:00:00", "FI");
-		diagnostico(outra, "SECRET_OUTRO_PACIENTE", "S", "S");
+		diagnostico(outra, "SECRET_OUTRO_PACIENTE", "S", null);
 		em.flush(); em.clear();
 		var resultado = diagnosticos.buscarDiagnosticosConfirmadosVeterinario(consulta.getId(), PageRequest.of(0, 1));
 		assertEquals(1, resultado.size());
 		assertEquals(aprovado.getId(), resultado.get(0).getId());
 		assertEquals("Diagnostico final", resultado.get(0).getDiagnostico());
+	}
+
+	@Test
+	void suporteClinicoIaContinuaDisponivelAntesEDepoisDaAvaliacao() {
+		Consulta consulta = consulta(animal("Paciente"), "2026-01-01T09:00:00", "AP");
+		Diagnostico naoAvaliado = suporteIa(consulta, "Nao avaliado", null);
+		Diagnostico util = suporteIa(consulta, "Util", "S");
+		Diagnostico naoUtil = suporteIa(consulta, "Nao util", "N");
+		diagnostico(consulta, "Manual", "N", null);
+		em.flush(); em.clear();
+
+		var resultado = diagnosticos.buscarSuportesClinicos(consulta.getId(), PageRequest.of(0, 10));
+
+		assertEquals(List.of(naoUtil.getId(), util.getId(), naoAvaliado.getId()),
+				resultado.stream().map(Diagnostico::getId).toList());
 	}
 
 	private Animal animal(String nome) {
@@ -76,5 +91,12 @@ class AnimalHistoricoRepositoryTest {
 		Diagnostico diagnostico = new Diagnostico(); diagnostico.setConsulta(consulta); diagnostico.setDiagnostico(texto);
 		diagnostico.setConfirmado(confirmado); diagnostico.setValidacaoVet(validacao);
 		return em.persist(diagnostico);
+	}
+
+	private Diagnostico suporteIa(Consulta consulta, String texto, String validacao) {
+		Diagnostico diagnostico = diagnostico(consulta, texto, "N", validacao);
+		diagnostico.setInsightIa("Insight " + texto);
+		diagnostico.setConfianca(BigDecimal.valueOf(70));
+		return diagnostico;
 	}
 }

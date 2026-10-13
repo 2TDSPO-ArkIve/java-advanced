@@ -5,7 +5,6 @@ import br.com.fiap.arkive.dto.request.AtualizarNarrativaConsultaRequest;
 import br.com.fiap.arkive.dto.request.ConsultaRequest;
 import br.com.fiap.arkive.dto.response.ClinicalSupportResponse;
 import br.com.fiap.arkive.dto.response.ConsultaResponse;
-import br.com.fiap.arkive.dto.response.ConsultaWorkflowResponse;
 import br.com.fiap.arkive.entity.TipoUsuario;
 import br.com.fiap.arkive.exception.BusinessException;
 import br.com.fiap.arkive.exception.GlobalExceptionHandler;
@@ -223,6 +222,7 @@ class ClinicalWorkflowApiMvcTest {
 	@Test
 	void suporteClinicoBemSucedidoRetornaApSemExporContratoBrutoDoProvider() throws Exception {
 		when(clinicalSupportService.gerarSuporte(eq(100L), any(UsuarioPrincipal.class))).thenReturn(new ClinicalSupportResponse(
+				501L,
 				100L,
 				"AP",
 				"Aguardando Parecer",
@@ -230,14 +230,20 @@ class ClinicalWorkflowApiMvcTest {
 				"LEVE",
 				"Avaliar apoio, dor e amplitude articular.",
 				72,
+				null,
+				List.of("Feline calicivirus infection", "Cryptococcosis"),
 				List.of("https://source-one.example", "https://source-two.example")
 		));
 
 		mockMvc.perform(post("/api/consultas/100/suporte-clinico").with(user(veterinario())))
 				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.diagnosticoId").value(501))
 				.andExpect(jsonPath("$.statusConsulta").value("AP"))
 				.andExpect(jsonPath("$.hipoteseDiagnostica").value("Entorse leve"))
 				.andExpect(jsonPath("$.confianca").value(72))
+				.andExpect(jsonPath("$.validacaoVet").isEmpty())
+				.andExpect(jsonPath("$.referenciasRag[0]").value("Feline calicivirus infection"))
+				.andExpect(jsonPath("$.referenciasRag[1]").value("Cryptococcosis"))
 				.andExpect(jsonPath("$.fontesPesquisadas[0]").value("https://source-one.example"))
 				.andExpect(jsonPath("$.fontesPesquisadas[1]").value("https://source-two.example"));
 	}
@@ -245,6 +251,7 @@ class ClinicalWorkflowApiMvcTest {
 	@Test
 	void buscaSuporteClinicoPersistidoExpoeFontesPesquisadas() throws Exception {
 		when(clinicalSupportService.buscarSuporte(eq(100L), any(UsuarioPrincipal.class))).thenReturn(new ClinicalSupportResponse(
+				501L,
 				100L,
 				"AP",
 				"Aguardando Parecer",
@@ -252,11 +259,17 @@ class ClinicalWorkflowApiMvcTest {
 				"LEVE",
 				"Avaliar apoio, dor e amplitude articular.",
 				72,
+				"S",
+				List.of("Feline calicivirus infection", "Cryptococcosis"),
 				List.of("https://source-one.example", "https://source-two.example")
 		));
 
 		mockMvc.perform(get("/api/consultas/100/suporte-clinico").with(user(veterinario())))
 				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.diagnosticoId").value(501))
+				.andExpect(jsonPath("$.validacaoVet").value("S"))
+				.andExpect(jsonPath("$.referenciasRag[0]").value("Feline calicivirus infection"))
+				.andExpect(jsonPath("$.referenciasRag[1]").value("Cryptococcosis"))
 				.andExpect(jsonPath("$.fontesPesquisadas[0]").value("https://source-one.example"))
 				.andExpect(jsonPath("$.fontesPesquisadas[1]").value("https://source-two.example"));
 	}

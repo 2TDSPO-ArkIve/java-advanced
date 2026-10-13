@@ -355,6 +355,8 @@ CREATE TABLE TB_ARKIVE_DIAGNOSTICO (
     TP_SEVERIDADE VARCHAR2(20),
     ST_CONFIRMADO CHAR(1) DEFAULT 'S' NOT NULL,
     DS_INSIGHT_IA CLOB,
+    DS_FONTES_IA CLOB,
+    DS_REFERENCIAS_RAG CLOB,
     PC_CONFIANCA NUMBER(5,2),
     ST_VALIDACAO_VET CHAR(1),
     ID_CONSULTA NUMBER NOT NULL,
@@ -377,8 +379,10 @@ COMMENT ON COLUMN TB_ARKIVE_DIAGNOSTICO.DS_DIAGNOSTICO IS 'Descrição do diagno
 COMMENT ON COLUMN TB_ARKIVE_DIAGNOSTICO.TP_SEVERIDADE IS 'Severidade do diagnostico.';
 COMMENT ON COLUMN TB_ARKIVE_DIAGNOSTICO.ST_CONFIRMADO IS 'Indica se o diagnostico esta confirmado: S ou N.';
 COMMENT ON COLUMN TB_ARKIVE_DIAGNOSTICO.DS_INSIGHT_IA IS 'Sugestão diagnostica gerada pelo motor de regras ou IA.';
+COMMENT ON COLUMN TB_ARKIVE_DIAGNOSTICO.DS_FONTES_IA IS 'Fontes externas consultadas pelo motor clinico, serializadas como JSON.';
+COMMENT ON COLUMN TB_ARKIVE_DIAGNOSTICO.DS_REFERENCIAS_RAG IS 'Titulos legiveis das referencias recuperadas da base RAG, serializados como JSON.';
 COMMENT ON COLUMN TB_ARKIVE_DIAGNOSTICO.PC_CONFIANCA IS 'Score de confiança do insight, entre 0 e 100.';
-COMMENT ON COLUMN TB_ARKIVE_DIAGNOSTICO.ST_VALIDACAO_VET IS 'Aceite do veterinário sobre o insight: S ou N.';
+COMMENT ON COLUMN TB_ARKIVE_DIAGNOSTICO.ST_VALIDACAO_VET IS 'Avaliação do veterinário sobre insight de IA: NULL não avaliado, S útil, N não útil.';
 COMMENT ON COLUMN TB_ARKIVE_DIAGNOSTICO.ID_CONSULTA IS 'Consulta associada ao diagnostico.';
 COMMENT ON COLUMN TB_ARKIVE_DIAGNOSTICO.ID_DOENCA IS 'Doença catalogada associada ao diagnostico.';
 

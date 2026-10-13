@@ -499,7 +499,7 @@ class AdminClinicaControllerTest {
 				"N",
 				"Correlacionar histórico de esforço, dor à palpação e resposta ao repouso antes de confirmar conduta.",
 				new BigDecimal("82"),
-				"N",
+				null,
 				10L,
 				null
 		);
@@ -513,7 +513,7 @@ class AdminClinicaControllerTest {
 				"S",
 				null,
 				null,
-				"S",
+				null,
 				10L,
 				99L
 		);

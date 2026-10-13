@@ -42,6 +42,7 @@ import java.util.concurrent.atomic.AtomicLong;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
@@ -55,9 +56,6 @@ class ClinicalWorkflowEndToEndServiceTest {
 	private final AtomicLong ids = new AtomicLong(100);
 	private final List<Diagnostico> diagnosticos = new ArrayList<>();
 
-	private ConsultaRepository consultaRepository;
-	private PrescricaoRepository prescricaoRepository;
-	private AdesaoPrescricaoRepository adesaoPrescricaoRepository;
 	private ClinicalSupportProvider clinicalSupportProvider;
 	private EventoJornadaService eventoJornadaService;
 	private ConsultaService consultaService;
@@ -69,31 +67,26 @@ class ClinicalWorkflowEndToEndServiceTest {
 	private Consulta consultaAtual;
 	private Prescricao prescricaoAtual;
 	private AdesaoPrescricao adesaoAtual;
-	private Animal animal;
-	private Veterinario veterinario;
-	private Clinica clinica;
-	private Responsavel responsavel;
-
 	@BeforeEach
 	void setUp() {
-		consultaRepository = mock(ConsultaRepository.class);
+		ConsultaRepository consultaRepository = mock(ConsultaRepository.class);
 		AnimalRepository animalRepository = mock(AnimalRepository.class);
 		VeterinarioRepository veterinarioRepository = mock(VeterinarioRepository.class);
 		ClinicaRepository clinicaRepository = mock(ClinicaRepository.class);
 		DiagnosticoRepository diagnosticoRepository = mock(DiagnosticoRepository.class);
 		DoencaRepository doencaRepository = mock(DoencaRepository.class);
-		prescricaoRepository = mock(PrescricaoRepository.class);
-		adesaoPrescricaoRepository = mock(AdesaoPrescricaoRepository.class);
+		PrescricaoRepository prescricaoRepository = mock(PrescricaoRepository.class);
+		AdesaoPrescricaoRepository adesaoPrescricaoRepository = mock(AdesaoPrescricaoRepository.class);
 		ResponsavelRepository responsavelRepository = mock(ResponsavelRepository.class);
 		AnimalResponsavelRepository animalResponsavelRepository = mock(AnimalResponsavelRepository.class);
 		VeterinarioService veterinarioService = mock(VeterinarioService.class);
 		eventoJornadaService = mock(EventoJornadaService.class);
 		clinicalSupportProvider = mock(ClinicalSupportProvider.class);
 
-		animal = animal();
-		veterinario = veterinario();
-		clinica = clinica();
-		responsavel = responsavel();
+		Animal animal = animal();
+		Veterinario veterinario = veterinario();
+		Clinica clinica = clinica();
+		Responsavel responsavel = responsavel();
 
 		ClinicalAccessService clinicalAccessService = new ClinicalAccessService(animalResponsavelRepository, consultaRepository, veterinarioService);
 		consultaService = new ConsultaService(consultaRepository, animalRepository, veterinarioRepository, clinicaRepository,
@@ -124,7 +117,8 @@ class ClinicalWorkflowEndToEndServiceTest {
 				"LEVE",
 				"Avaliar apoio, dor e amplitude articular.",
 				72,
-				List.of("https://source-one.example", "https://source-two.example")
+				List.of("https://source-one.example", "https://source-two.example"),
+				List.of("Feline calicivirus infection", "Cryptococcosis")
 		));
 
 		when(consultaRepository.save(any(Consulta.class))).thenAnswer(invocation -> {
@@ -147,8 +141,8 @@ class ClinicalWorkflowEndToEndServiceTest {
 		});
 		when(diagnosticoRepository.buscarSuportesClinicos(eq(100L), any(Pageable.class))).thenAnswer(invocation -> diagnosticos.stream()
 				.filter(diagnostico -> diagnostico.getConsulta() != null && Long.valueOf(100L).equals(diagnostico.getConsulta().getId()))
-				.filter(diagnostico -> "N".equals(diagnostico.getConfirmado()) && "N".equals(diagnostico.getValidacaoVet()))
-				.filter(diagnostico -> diagnostico.getInsightIa() != null)
+				.filter(diagnostico -> "N".equals(diagnostico.getConfirmado()))
+				.filter(diagnostico -> diagnostico.getInsightIa() != null && diagnostico.getConfianca() != null)
 				.sorted(Comparator.comparing(Diagnostico::getId).reversed())
 				.toList());
 
@@ -171,8 +165,8 @@ class ClinicalWorkflowEndToEndServiceTest {
 
 	@Test
 	void percorreFluxoClinicoCompletoComProviderMockadoEPersistenciaReutilizada() {
-		UsuarioPrincipal principalVeterinario = veterinarioPrincipal(10L);
-		UsuarioPrincipal principalResponsavel = responsavelPrincipal(40L);
+		UsuarioPrincipal principalVeterinario = veterinarioPrincipal();
+		UsuarioPrincipal principalResponsavel = responsavelPrincipal();
 
 		var consultaCriada = consultaService.criar(consultaRequest(), principalVeterinario);
 		assertEquals(100L, consultaCriada.id());
@@ -194,13 +188,18 @@ class ClinicalWorkflowEndToEndServiceTest {
 		assertEquals("Entorse leve", suporteGerado.hipoteseDiagnostica());
 		assertEquals("LEVE", suporteGerado.severidadeSugerida());
 		assertEquals(72, suporteGerado.confianca());
+		assertNotNull(suporteGerado.diagnosticoId());
+		assertNull(suporteGerado.validacaoVet());
+		assertEquals(List.of("Feline calicivirus infection", "Cryptococcosis"), suporteGerado.referenciasRag());
 		assertEquals(List.of("https://source-one.example", "https://source-two.example"), suporteGerado.fontesPesquisadas());
 		assertEquals("AP", consultaAtual.getStatus());
 
 		Diagnostico suporteIa = diagnosticos.get(0);
+		assertEquals(suporteIa.getId(), suporteGerado.diagnosticoId());
 		assertEquals("N", suporteIa.getConfirmado());
-		assertEquals("N", suporteIa.getValidacaoVet());
+		assertNull(suporteIa.getValidacaoVet());
 		assertEquals("[\"https://source-one.example\",\"https://source-two.example\"]", suporteIa.getFontesIaJson());
+		assertEquals("[\"Feline calicivirus infection\",\"Cryptococcosis\"]", suporteIa.getReferenciasRagJson());
 
 		clinicalSupportService.gerarSuporte(consultaCriada.id(), principalVeterinario);
 		clinicalSupportService.buscarSuporte(consultaCriada.id(), principalVeterinario);
@@ -214,9 +213,9 @@ class ClinicalWorkflowEndToEndServiceTest {
 		assertEquals("FI", finalizada.status());
 		Diagnostico diagnosticoVeterinario = diagnosticos.get(diagnosticos.size() - 1);
 		assertEquals("S", diagnosticoVeterinario.getConfirmado());
-		assertEquals("S", diagnosticoVeterinario.getValidacaoVet());
+		assertNull(diagnosticoVeterinario.getValidacaoVet());
 		assertEquals("N", suporteIa.getConfirmado());
-		assertEquals("N", suporteIa.getValidacaoVet());
+		assertNull(suporteIa.getValidacaoVet());
 
 		var prescricao = prescricaoService.criar(prescricaoRequest(consultaCriada.id()), principalVeterinario);
 		assertEquals(300L, prescricao.id());
@@ -306,11 +305,11 @@ class ClinicalWorkflowEndToEndServiceTest {
 		return responsavel;
 	}
 
-	private UsuarioPrincipal veterinarioPrincipal(Long veterinarioId) {
-		return new UsuarioPrincipal(1L, "Dra Vera", "vera@arkive.com", "$2a$10$hash", TipoUsuario.VETERINARIO, "S", false, null, veterinarioId, null);
+	private UsuarioPrincipal veterinarioPrincipal() {
+		return new UsuarioPrincipal(1L, "Dra Vera", "vera@arkive.com", "$2a$10$hash", TipoUsuario.VETERINARIO, "S", false, null, 10L, null);
 	}
 
-	private UsuarioPrincipal responsavelPrincipal(Long responsavelId) {
-		return new UsuarioPrincipal(2L, "Tutor Teste", "tutor@arkive.com", "$2a$10$hash", TipoUsuario.RESPONSAVEL, "S", false, responsavelId, null, null);
+	private UsuarioPrincipal responsavelPrincipal() {
+		return new UsuarioPrincipal(2L, "Tutor Teste", "tutor@arkive.com", "$2a$10$hash", TipoUsuario.RESPONSAVEL, "S", false, 40L, null, null);
 	}
 }

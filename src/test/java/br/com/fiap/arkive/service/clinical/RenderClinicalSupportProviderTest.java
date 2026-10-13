@@ -10,6 +10,7 @@ import org.springframework.web.client.RestClient;
 
 import java.nio.charset.StandardCharsets;
 import java.util.List;
+import java.util.Objects;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -23,13 +24,18 @@ class RenderClinicalSupportProviderTest {
 	private final ObjectMapper objectMapper = new ObjectMapper();
 
 	@Test
-	void mapeiaContratoSnakeCaseDoRenderComFontesGenericas() throws Exception {
+	void mapeiaContratoSnakeCaseCompletoDoRender() throws Exception {
 		RenderClinicalEngineResponse response = objectMapper.readValue(fixture(), RenderClinicalEngineResponse.class);
 
 		assertEquals("Suspeita de Displasia Coxofemoral em Golden Retriever", response.diagnostico());
 		assertEquals("MODERADA", response.severidade());
 		assertEquals(65, response.confianca());
-		assertEquals(List.of("https://source-one.example", "https://source-two.example"), response.fontesPesquisadas());
+		assertEquals(List.of(
+				new RagReference("ABCD", "Feline calicivirus infection"),
+				new RagReference("AAZV", "Herpesviridae · Alpha · Varicellovirus · Felid alphaherpesvirus 1"),
+				new RagReference("CFSPH", "Cryptococcosis")
+		), response.fontesRag());
+		assertEquals(fontesPesquisadasFixture(), response.fontesPesquisadas());
 	}
 
 	@Test
@@ -38,7 +44,12 @@ class RenderClinicalSupportProviderTest {
 
 		ClinicalSupportProviderResult result = response.toProviderResult();
 
-		assertEquals(List.of("https://source-one.example", "https://source-two.example"), result.fontesPesquisadas());
+		assertEquals(List.of(
+				"Feline calicivirus infection",
+				"Herpesviridae · Alpha · Varicellovirus · Felid alphaherpesvirus 1",
+				"Cryptococcosis"
+		), result.referenciasRag());
+		assertEquals(fontesPesquisadasFixture(), result.fontesPesquisadas());
 	}
 
 	@Test
@@ -82,6 +93,71 @@ class RenderClinicalSupportProviderTest {
 	}
 
 	@Test
+	void fontesRagAusentesOuNulasMapeiamComoListaVazia() throws Exception {
+		RenderClinicalEngineResponse semCampo = objectMapper.readValue("""
+				{
+				  "ds_diagnostico": "Hipotese",
+				  "tp_severidade": "MODERADA",
+				  "ds_insight_ia": "Insight",
+				  "pc_confianca": 65
+				}
+				""", RenderClinicalEngineResponse.class);
+		RenderClinicalEngineResponse campoNulo = objectMapper.readValue("""
+				{
+				  "ds_diagnostico": "Hipotese",
+				  "tp_severidade": "MODERADA",
+				  "ds_insight_ia": "Insight",
+				  "pc_confianca": 65,
+				  "fontes_rag": null
+				}
+				""", RenderClinicalEngineResponse.class);
+		RenderClinicalEngineResponse campoVazio = objectMapper.readValue("""
+				{
+				  "ds_diagnostico": "Hipotese",
+				  "tp_severidade": "MODERADA",
+				  "ds_insight_ia": "Insight",
+				  "pc_confianca": 65,
+				  "fontes_rag": []
+				}
+				""", RenderClinicalEngineResponse.class);
+
+		assertEquals(List.of(), semCampo.fontesRag());
+		assertEquals(List.of(), semCampo.toProviderResult().referenciasRag());
+		assertEquals(List.of(), campoNulo.fontesRag());
+		assertEquals(List.of(), campoNulo.toProviderResult().referenciasRag());
+		assertEquals(List.of(), campoVazio.fontesRag());
+		assertEquals(List.of(), campoVazio.toProviderResult().referenciasRag());
+	}
+
+	@Test
+	void ignoraEntradasRagInvalidasTitulosEmBrancoEDuplicadosPreservandoOrdem() throws Exception {
+		RenderClinicalEngineResponse response = objectMapper.readValue("""
+				{
+				  "ds_diagnostico": "Hipotese",
+				  "tp_severidade": "MODERADA",
+				  "ds_insight_ia": "Insight",
+				  "pc_confianca": 65,
+				  "fontes_rag": [
+				    null,
+				    "entrada-invalida",
+				    {"fonte":"ABCD","titulo":" Feline calicivirus infection "},
+				    {"fonte":"ABCD","titulo":"Feline calicivirus infection"},
+				    {"fonte":"AAZV","titulo":"   "},
+				    {"fonte":"CFSPH"},
+				    {"fonte":"CFSPH","titulo":"Cryptococcosis"},
+				    {"fonte":"INVALIDA","titulo":42}
+				  ],
+				  "fontes_pesquisadas": ["https://pubmed.ncbi.nlm.nih.gov/31325462/"]
+				}
+				""", RenderClinicalEngineResponse.class);
+
+		ClinicalSupportProviderResult result = response.toProviderResult();
+
+		assertEquals(List.of("Feline calicivirus infection", "Cryptococcosis"), result.referenciasRag());
+		assertEquals(List.of("https://pubmed.ncbi.nlm.nih.gov/31325462/"), result.fontesPesquisadas());
+	}
+
+	@Test
 	void chamaEndpointConfiguradoEUsoContratoValido() {
 		RestClient.Builder builder = RestClient.builder().baseUrl("https://engine.test");
 		MockRestServiceServer server = MockRestServiceServer.bindTo(builder).build();
@@ -94,7 +170,12 @@ class RenderClinicalSupportProviderTest {
 		assertEquals("Suspeita de Displasia Coxofemoral em Golden Retriever", result.diagnostico());
 		assertEquals("MODERADA", result.severidade());
 		assertEquals(65, result.confianca());
-		assertEquals(List.of("https://source-one.example", "https://source-two.example"), result.fontesPesquisadas());
+		assertEquals(List.of(
+				"Feline calicivirus infection",
+				"Herpesviridae · Alpha · Varicellovirus · Felid alphaherpesvirus 1",
+				"Cryptococcosis"
+		), result.referenciasRag());
+		assertEquals(fontesPesquisadasFixture(), result.fontesPesquisadas());
 		server.verify();
 	}
 
@@ -158,8 +239,19 @@ class RenderClinicalSupportProviderTest {
 		return new RenderClinicalSupportProvider(builder.build());
 	}
 
+	private List<String> fontesPesquisadasFixture() {
+		return List.of(
+				"https://pubmed.ncbi.nlm.nih.gov/31325462/",
+				"https://pubmed.ncbi.nlm.nih.gov/35232714/",
+				"https://pubmed.ncbi.nlm.nih.gov/35632680/"
+		);
+	}
+
 	private String fixture() {
-		try (var inputStream = getClass().getResourceAsStream("/fixtures/clinical-engine/diagnostico-success.json")) {
+		try (var inputStream = Objects.requireNonNull(
+				getClass().getResourceAsStream("/fixtures/clinical-engine/diagnostico-success.json"),
+				"Fixture de suporte clinico nao encontrada."
+		)) {
 			return new String(inputStream.readAllBytes(), StandardCharsets.UTF_8);
 		} catch (Exception ex) {
 			throw new IllegalStateException("Fixture de suporte clinico indisponivel.", ex);

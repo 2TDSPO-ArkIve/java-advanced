@@ -8,11 +8,14 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.swagger.v3.oas.annotations.media.Schema;
 
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Objects;
 
 @Schema(description = "Suporte clinico persistido em terminologia ArkIve. Nao expõe o contrato bruto do provedor externo.")
 public record ClinicalSupportResponse(
+		@Schema(description = "Identificador do diagnostico de suporte clinico gerado por IA, usado na validacao veterinaria.", example = "123")
+		Long diagnosticoId,
 		@Schema(example = "42")
 		Long consultaId,
 		@Schema(description = "Status atual da consulta.", example = "AP")
@@ -27,6 +30,10 @@ public record ClinicalSupportResponse(
 		String insightClinico,
 		@Schema(description = "Confianca informada pelo motor clinico em percentual.", example = "65")
 		Integer confianca,
+		@Schema(description = "Avaliacao de utilidade feita pelo veterinario: S para util, N para nao util e nulo quando ainda nao avaliado.", example = "S")
+		String validacaoVet,
+		@Schema(description = "Titulos legiveis das referencias recuperadas da base de conhecimento RAG.")
+		List<String> referenciasRag,
 		@Schema(description = "Fontes consultadas pelo motor clinico externo.")
 		List<String> fontesPesquisadas
 ) {
@@ -35,6 +42,7 @@ public record ClinicalSupportResponse(
 	};
 
 	public ClinicalSupportResponse {
+		referenciasRag = normalizarReferenciasRag(referenciasRag);
 		fontesPesquisadas = fontesPesquisadas == null
 				? List.of()
 				: fontesPesquisadas.stream().filter(Objects::nonNull).toList();
@@ -47,15 +55,46 @@ public record ClinicalSupportResponse(
 			String hipoteseDiagnostica,
 			String severidadeSugerida,
 			String insightClinico,
+			Integer confianca,
+			List<String> referenciasRag,
+			List<String> fontesPesquisadas
+	) {
+		this(null, consultaId, statusConsulta, statusDescricao, hipoteseDiagnostica, severidadeSugerida,
+				insightClinico, confianca, null, referenciasRag, fontesPesquisadas);
+	}
+
+	public ClinicalSupportResponse(
+			Long consultaId,
+			String statusConsulta,
+			String statusDescricao,
+			String hipoteseDiagnostica,
+			String severidadeSugerida,
+			String insightClinico,
+			Integer confianca,
+			List<String> fontesPesquisadas
+	) {
+		this(null, consultaId, statusConsulta, statusDescricao, hipoteseDiagnostica, severidadeSugerida,
+				insightClinico, confianca, null, List.of(), fontesPesquisadas);
+	}
+
+	public ClinicalSupportResponse(
+			Long consultaId,
+			String statusConsulta,
+			String statusDescricao,
+			String hipoteseDiagnostica,
+			String severidadeSugerida,
+			String insightClinico,
 			Integer confianca
 	) {
-		this(consultaId, statusConsulta, statusDescricao, hipoteseDiagnostica, severidadeSugerida, insightClinico, confianca, List.of());
+		this(null, consultaId, statusConsulta, statusDescricao, hipoteseDiagnostica, severidadeSugerida,
+				insightClinico, confianca, null, List.of(), List.of());
 	}
 
 	public static ClinicalSupportResponse fromEntities(Consulta consulta, Diagnostico diagnostico) {
 		StatusConsulta status = StatusConsulta.fromCodigo(consulta.getStatus());
 		Integer confianca = diagnostico.getConfianca() == null ? null : diagnostico.getConfianca().intValue();
 		return new ClinicalSupportResponse(
+				diagnostico.getId(),
 				consulta.getId(),
 				consulta.getStatus(),
 				status.getDescricao(),
@@ -63,19 +102,34 @@ public record ClinicalSupportResponse(
 				diagnostico.getSeveridade(),
 				diagnostico.getInsightIa(),
 				confianca,
-				lerFontes(diagnostico.getFontesIaJson())
+				diagnostico.getValidacaoVet(),
+				lerLista(diagnostico.getReferenciasRagJson()),
+				lerLista(diagnostico.getFontesIaJson())
 		);
 	}
 
-	private static List<String> lerFontes(String fontesIaJson) {
-		if (fontesIaJson == null || fontesIaJson.isBlank()) {
+	private static List<String> lerLista(String json) {
+		if (json == null || json.isBlank()) {
 			return List.of();
 		}
 		try {
-			List<String> fontes = OBJECT_MAPPER.readValue(fontesIaJson, FONTES_TYPE);
+			List<String> fontes = OBJECT_MAPPER.readValue(json, FONTES_TYPE);
 			return fontes == null ? List.of() : fontes.stream().filter(Objects::nonNull).toList();
 		} catch (JsonProcessingException | IllegalArgumentException ex) {
 			return List.of();
 		}
+	}
+
+	private static List<String> normalizarReferenciasRag(List<String> referenciasRag) {
+		if (referenciasRag == null || referenciasRag.isEmpty()) {
+			return List.of();
+		}
+		LinkedHashSet<String> titulos = new LinkedHashSet<>();
+		for (String titulo : referenciasRag) {
+			if (titulo != null && !titulo.isBlank()) {
+				titulos.add(titulo.strip());
+			}
+		}
+		return List.copyOf(titulos);
 	}
 }

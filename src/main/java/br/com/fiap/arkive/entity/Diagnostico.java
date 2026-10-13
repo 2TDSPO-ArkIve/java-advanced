@@ -40,6 +40,10 @@ public class Diagnostico {
 	@Column(name = "DS_FONTES_IA")
 	private String fontesIaJson;
 
+	@Lob
+	@Column(name = "DS_REFERENCIAS_RAG")
+	private String referenciasRagJson;
+
 	@Column(name = "PC_CONFIANCA", precision = 5, scale = 2)
 	private BigDecimal confianca;
 
@@ -100,6 +104,14 @@ public class Diagnostico {
 
 	public void setFontesIaJson(String fontesIaJson) {
 		this.fontesIaJson = fontesIaJson;
+	}
+
+	public String getReferenciasRagJson() {
+		return referenciasRagJson;
+	}
+
+	public void setReferenciasRagJson(String referenciasRagJson) {
+		this.referenciasRagJson = referenciasRagJson;
 	}
 
 	public BigDecimal getConfianca() {
