@@ -179,7 +179,7 @@ class AnimalHistoricoControllerMvcTest {
 
 	@Test
 	void pdfLongoPreservaFimDosTextosEConsultasPosteriores() throws Exception {
-		consulta.setObservacao("Acompanhamento semanal e hidrata\u00e7\u00e3o. ".repeat(500) + "FIM_CONCLUSAO");
+		consulta.setObservacao("Acompanhamento semanal e hidratação. ".repeat(500) + "FIM_CONCLUSAO");
 		Consulta antiga = outraConsulta(); antiga.setDataHora(consulta.getDataHora().minusYears(1));
 		antiga.setMotivo("ULTIMA_CONSULTA"); antiga.setVeterinario(consulta.getVeterinario());
 		when(consultas.buscarHistoricoPorAnimal(50L)).thenReturn(List.of(consulta, antiga));

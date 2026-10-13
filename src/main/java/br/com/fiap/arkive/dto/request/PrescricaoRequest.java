@@ -44,7 +44,7 @@ public record PrescricaoRequest(
 		@Schema(description = "Consulta finalizada associada a prescricao. Este vinculo nao pode ser alterado depois da criacao.", example = "42")
 		Long consultaId,
 
-		@DecimalMin(value = "0.00", inclusive = true)
+		@DecimalMin("0.00")
 		@Digits(integer = 8, fraction = 2)
 		@Schema(description = "Custo total estimado ou registrado do medicamento ou tratamento, nao um preco unitario. Nulo significa valor nao informado.", example = "95.50")
 		BigDecimal valorMedicamento

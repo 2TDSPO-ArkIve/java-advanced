@@ -44,7 +44,7 @@ public record ConsultaRequest(
 		@Size(max = 255)
 		String endereco,
 
-		@DecimalMin(value = "0.00", inclusive = true)
+		@DecimalMin("0.00")
 		@Digits(integer = 8, fraction = 2)
 		@Schema(description = "Custo assistencial registrado para a consulta. Nulo significa que nenhum valor foi informado.", example = "180.00")
 		BigDecimal valorConsulta

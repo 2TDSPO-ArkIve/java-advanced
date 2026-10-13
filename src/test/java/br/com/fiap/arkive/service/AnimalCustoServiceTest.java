@@ -26,7 +26,6 @@ import static org.mockito.Mockito.when;
 
 class AnimalCustoServiceTest {
 
-	private AnimalRepository animalRepository;
 	private ConsultaRepository consultaRepository;
 	private PrescricaoRepository prescricaoRepository;
 	private ClinicalAccessService clinicalAccessService;
@@ -36,7 +35,7 @@ class AnimalCustoServiceTest {
 
 	@BeforeEach
 	void setUp() {
-		animalRepository = mock(AnimalRepository.class);
+		AnimalRepository animalRepository = mock(AnimalRepository.class);
 		consultaRepository = mock(ConsultaRepository.class);
 		prescricaoRepository = mock(PrescricaoRepository.class);
 		clinicalAccessService = mock(ClinicalAccessService.class);

@@ -55,20 +55,17 @@ class AnimalCustoControllerMvcTest {
 	@MockitoBean PatientAccessRepository acessosExplicitos;
 	@MockitoBean VeterinarioService veterinarios;
 
-	private Animal animal;
-	private Consulta consulta;
-
 	@BeforeEach
 	void setUp() {
 		Veterinario veterinario = new Veterinario();
 		veterinario.setId(10L);
-		animal = new Animal();
+		Animal animal = new Animal();
 		animal.setId(50L);
 		animal.setNome("Epona");
 		animal.setAtivo("S");
 		animal.setVeterinarioCadastro(veterinario);
 		animal.assignArkivePatientId("ARK-PET-EPONA");
-		consulta = new Consulta();
+		Consulta consulta = new Consulta();
 		consulta.setId(42L);
 		consulta.setAnimal(animal);
 		consulta.setVeterinario(veterinario);
@@ -94,7 +91,7 @@ class AnimalCustoControllerMvcTest {
 	void responsavelComVinculoVisualizaResumo() throws Exception {
 		when(responsaveis.existsVinculoAtivoVigente(eq(50L), eq(40L), any(LocalDate.class))).thenReturn(true);
 
-		mvc.perform(get("/api/animais/50/custos").with(user(principalResponsavel(40L))))
+		mvc.perform(get("/api/animais/50/custos").with(user(principalResponsavel())))
 				.andExpect(status().isOk())
 				.andExpect(jsonPath("$.animalNome").value("Epona"));
 	}
@@ -109,7 +106,7 @@ class AnimalCustoControllerMvcTest {
 
 	@Test
 	void responsavelSemVinculoEhRejeitadoMesmoConhecendoArkivePatientId() throws Exception {
-		mvc.perform(get("/api/animais/50/custos").with(user(principalResponsavel(40L))))
+		mvc.perform(get("/api/animais/50/custos").with(user(principalResponsavel())))
 				.andExpect(status().isForbidden());
 
 		verify(consultas, never()).buscarCustosFinalizadosPorAnimal(50L);
@@ -128,8 +125,8 @@ class AnimalCustoControllerMvcTest {
 				"S", false, null, veterinarioId, null);
 	}
 
-	private UsuarioPrincipal principalResponsavel(Long responsavelId) {
+	private UsuarioPrincipal principalResponsavel() {
 		return new UsuarioPrincipal(2L, "Tutor", "tutor@arkive.com", "hash", TipoUsuario.RESPONSAVEL,
-				"S", false, responsavelId, null, null);
+				"S", false, 40L, null, null);
 	}
 }

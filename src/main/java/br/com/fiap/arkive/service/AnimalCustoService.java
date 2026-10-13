@@ -15,6 +15,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.util.Comparator;
 import java.util.Map;
 import java.util.function.Function;
@@ -109,6 +110,6 @@ public class AnimalCustoService {
 	}
 
 	private BigDecimal monetario(BigDecimal valor) {
-		return valor == null ? ZERO_MONETARIO : valor.setScale(2);
+		return valor == null ? ZERO_MONETARIO : valor.setScale(2, RoundingMode.UNNECESSARY);
 	}
 }

@@ -35,12 +35,13 @@ class AnimalHistoricoRepositoryTest {
 		Consulta recente = consulta(animal, "2026-01-01T09:00:00", "FI");
 		Consulta empate = consulta(animal, "2026-01-01T09:00:00", "CA");
 		Consulta futura = consulta(animal, "2027-01-01T09:00:00", "AG");
-		consulta(animal("Outro paciente"), "2028-01-01T09:00:00", "FI");
+		Consulta outroPaciente = consulta(animal("Outro paciente"), "2028-01-01T09:00:00", "FI");
 		em.flush(); em.clear();
 		var resultado = consultas.buscarHistoricoPorAnimal(animal.getId());
 		assertEquals(List.of(futura.getId(), empate.getId(), recente.getId(), antiga.getId()),
 				resultado.stream().map(Consulta::getId).toList());
 		assertTrue(resultado.stream().allMatch(c -> c.getClinica() == null));
+		assertTrue(resultado.stream().noneMatch(c -> c.getId().equals(outroPaciente.getId())));
 		assertEquals("Vet", resultado.get(0).getVeterinario().getNome());
 		assertTrue(consultas.buscarHistoricoPorAnimal(-1L).isEmpty());
 	}
