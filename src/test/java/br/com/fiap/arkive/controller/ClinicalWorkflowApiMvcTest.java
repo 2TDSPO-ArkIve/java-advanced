@@ -30,6 +30,7 @@ import org.springframework.security.access.AccessDeniedException;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
 
@@ -168,7 +169,8 @@ class ClinicalWorkflowApiMvcTest {
 								  "status": "AG",
 								  "animalId": 50,
 								  "veterinarioId": 10,
-								  "clinicaId": 30
+								  "clinicaId": 30,
+								  "valorConsulta": 0.00
 								}
 								"""))
 				.andExpect(status().isCreated())
@@ -176,9 +178,79 @@ class ClinicalWorkflowApiMvcTest {
 				.andExpect(jsonPath("$.status").value("AG"));
 
 		verify(consultaService).criar(
-				argThat(request -> Long.valueOf(10L).equals(request.veterinarioId())),
+				argThat(request -> Long.valueOf(10L).equals(request.veterinarioId())
+						&& BigDecimal.ZERO.compareTo(request.valorConsulta()) == 0),
 				argThat(principal -> Long.valueOf(10L).equals(principal.getVeterinarioId()))
 		);
+	}
+
+	@Test
+	void valorConsultaNegativoEhRejeitado() throws Exception {
+		mockMvc.perform(post("/api/consultas")
+						.with(user(veterinario()))
+						.contentType(MediaType.APPLICATION_JSON)
+						.content("""
+								{
+								  "dataHora": "2026-09-01T10:00:00",
+								  "modalidade": "PRESENCIAL",
+								  "motivo": "Avaliacao",
+								  "animalId": 50,
+								  "valorConsulta": -0.01
+								}
+								"""))
+				.andExpect(status().isBadRequest())
+				.andExpect(jsonPath("$.fields.valorConsulta").exists());
+	}
+
+	@Test
+	void valoresMonetariosRespeitamPrecisaoEEscala() throws Exception {
+		mockMvc.perform(post("/api/consultas")
+						.with(user(veterinario()))
+						.contentType(MediaType.APPLICATION_JSON)
+						.content("""
+								{
+								  "dataHora": "2026-09-01T10:00:00",
+								  "modalidade": "PRESENCIAL",
+								  "motivo": "Avaliacao",
+								  "animalId": 50,
+								  "valorConsulta": 100000000.00
+								}
+								"""))
+				.andExpect(status().isBadRequest())
+				.andExpect(jsonPath("$.fields.valorConsulta").exists());
+
+		mockMvc.perform(post("/api/prescricoes")
+						.with(user(veterinario()))
+						.contentType(MediaType.APPLICATION_JSON)
+						.content("""
+								{
+								  "medicamento": "Medicamento",
+								  "dosagem": "1 comprimido",
+								  "dataInicio": "2026-09-01",
+								  "consultaId": 100,
+								  "valorMedicamento": 1.001
+								}
+								"""))
+				.andExpect(status().isBadRequest())
+				.andExpect(jsonPath("$.fields.valorMedicamento").exists());
+	}
+
+	@Test
+	void valorMedicamentoNegativoEhRejeitado() throws Exception {
+		mockMvc.perform(post("/api/prescricoes")
+						.with(user(veterinario()))
+						.contentType(MediaType.APPLICATION_JSON)
+						.content("""
+								{
+								  "medicamento": "Medicamento",
+								  "dosagem": "1 comprimido",
+								  "dataInicio": "2026-09-01",
+								  "consultaId": 100,
+								  "valorMedicamento": -0.01
+								}
+								"""))
+				.andExpect(status().isBadRequest())
+				.andExpect(jsonPath("$.fields.valorMedicamento").exists());
 	}
 
 	@Test

@@ -65,6 +65,7 @@ class AnimalHistoricoControllerMvcTest {
 		consulta.setClinica(clinica); consulta.setDataHora(LocalDateTime.parse("2026-09-05T14:30:00"));
 		consulta.setModalidade("PRESENCIAL"); consulta.setEndereco("Rua do Atendimento, 10");
 		consulta.setMotivo("Retorno para acompanhamento"); consulta.setStatus("FI");
+		consulta.setValorConsulta(new BigDecimal("180.00"));
 		consulta.setObservacao("Retorno em sete dias."); consulta.setTranscricao("SECRET_TRANSCRICAO");
 		consulta.setSintomas("SECRET_NARRATIVA");
 		Diagnostico diagnostico = new Diagnostico(); diagnostico.setDiagnostico("Dermatite confirmada");
@@ -75,6 +76,7 @@ class AnimalHistoricoControllerMvcTest {
 		prescricao.setDosagem("5 mg"); prescricao.setFrequencia("12 horas"); prescricao.setViaAdministracao("ORAL");
 		prescricao.setDataInicio(LocalDate.parse("2026-09-05")); prescricao.setDataFim(LocalDate.parse("2026-09-12"));
 		prescricao.setInstrucoes("Administrar com alimento.");
+		prescricao.setValorMedicamento(new BigDecimal("95.50"));
 		Responsavel tutor = new Responsavel(); tutor.setNome("Tutora Ana"); tutor.setDocumento("SECRET_CPF");
 		tutor.setEmail("SECRET_EMAIL");
 		AnimalResponsavel vinculo = new AnimalResponsavel(); vinculo.setResponsavel(tutor);
@@ -100,6 +102,7 @@ class AnimalHistoricoControllerMvcTest {
 				.andExpect(jsonPath("$.consultas[0].veterinarioNome").value("Dra. Vera"))
 				.andExpect(jsonPath("$.consultas[0].crmv").value("SP12345"))
 				.andExpect(jsonPath("$.consultas[0].clinicaNome").value("Clinica ArkIve"))
+				.andExpect(jsonPath("$.consultas[0].valorConsulta").value(180.00))
 				.andExpect(jsonPath("$.consultas[0].diagnosticoConfirmado").value("Dermatite confirmada"))
 				.andExpect(jsonPath("$.consultas[0].severidadeFinal").value("LEVE"))
 				.andExpect(jsonPath("$.consultas[0].conclusao").value("Retorno em sete dias."))
@@ -110,6 +113,7 @@ class AnimalHistoricoControllerMvcTest {
 				.andExpect(jsonPath("$.consultas[0].prescricoes[0].dataInicio").value("2026-09-05"))
 				.andExpect(jsonPath("$.consultas[0].prescricoes[0].dataFim").value("2026-09-12"))
 				.andExpect(jsonPath("$.consultas[0].prescricoes[0].instrucoes").value("Administrar com alimento."))
+				.andExpect(jsonPath("$.consultas[0].prescricoes[0].valorMedicamento").value(95.50))
 				.andExpect(jsonPath("$.consultas[0].id").doesNotExist())
 				.andExpect(content().string(not(containsString("SECRET"))))
 				.andExpect(content().string(not(containsString("confianca"))))

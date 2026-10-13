@@ -18,6 +18,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.access.AccessDeniedException;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.Optional;
 
@@ -82,6 +83,33 @@ class PrescricaoAuthorizationServiceTest {
 				eq("Prescricao criada."),
 				eq("{\"entity\":\"Prescricao\"}")
 		);
+	}
+
+	@Test
+	void veterinarioRegistraEAtualizaCustoTotalDoTratamento() {
+		Consulta consulta = consulta("FI", 10L, 30L);
+		UsuarioPrincipal principal = veterinario(10L);
+		when(consultaService.buscarEntidade(1L)).thenReturn(consulta);
+		PrescricaoRequest criacao = new PrescricaoRequest(
+				"Medicamento", "1 comprimido", "12/12h", "ORAL", LocalDate.now(), null,
+				"Com alimento", 1L, new BigDecimal("95.50")
+		);
+
+		var criada = prescricaoService.criar(criacao, principal);
+
+		assertEquals(new BigDecimal("95.50"), criada.valorMedicamento());
+
+		Prescricao persistida = prescricao(consulta);
+		persistida.setValorMedicamento(new BigDecimal("95.50"));
+		when(prescricaoRepository.findById(9L)).thenReturn(Optional.of(persistida));
+		PrescricaoRequest atualizacao = new PrescricaoRequest(
+				"Medicamento", "1 comprimido", "12/12h", "ORAL", LocalDate.now(), null,
+				"Com alimento", 1L, BigDecimal.ZERO
+		);
+
+		var atualizada = prescricaoService.atualizar(9L, atualizacao, principal);
+
+		assertEquals(BigDecimal.ZERO, atualizada.valorMedicamento());
 	}
 
 	@Test

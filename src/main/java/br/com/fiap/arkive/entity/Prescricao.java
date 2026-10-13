@@ -11,6 +11,7 @@ import jakarta.persistence.Lob;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 
 @Entity
@@ -43,6 +44,9 @@ public class Prescricao {
 	@Lob
 	@Column(name = "DS_INSTRUCOES")
 	private String instrucoes;
+
+	@Column(name = "VL_MEDICAMENTO", precision = 10, scale = 2)
+	private BigDecimal valorMedicamento;
 
 	@ManyToOne(fetch = FetchType.LAZY, optional = false)
 	@JoinColumn(name = "ID_CONSULTA", nullable = false)
@@ -110,6 +114,14 @@ public class Prescricao {
 
 	public void setInstrucoes(String instrucoes) {
 		this.instrucoes = instrucoes;
+	}
+
+	public BigDecimal getValorMedicamento() {
+		return valorMedicamento;
+	}
+
+	public void setValorMedicamento(BigDecimal valorMedicamento) {
+		this.valorMedicamento = valorMedicamento;
 	}
 
 	public Consulta getConsulta() {

@@ -47,6 +47,12 @@ class PublicRequestContractTest {
 		assertFalse(campos.contains("dataRegistro"));
 	}
 
+	@Test
+	void contratosPublicosDeAtendimentoExpoemCustosAssistenciais() {
+		assertTrue(campos(ConsultaRequest.class).contains("valorConsulta"));
+		assertTrue(campos(PrescricaoRequest.class).contains("valorMedicamento"));
+	}
+
 	private Set<String> campos(Class<? extends Record> tipo) {
 		return Arrays.stream(tipo.getRecordComponents())
 				.map(RecordComponent::getName)

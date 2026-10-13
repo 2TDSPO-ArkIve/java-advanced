@@ -16,6 +16,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.access.AccessDeniedException;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.Optional;
 
@@ -163,7 +164,9 @@ class ConsultaServiceTest {
 				"EP",
 				10L,
 				20L,
-				30L
+				30L,
+				null,
+				new BigDecimal("150.00")
 		);
 		var principal = veterinarioPrincipal(20L);
 
@@ -172,6 +175,7 @@ class ConsultaServiceTest {
 		assertEquals("EP", consulta.getStatus());
 		assertEquals("REMOTA", consulta.getModalidade());
 		assertEquals("Narrativa atualizada", consulta.getTranscricao());
+		assertEquals(new BigDecimal("150.00"), consulta.getValorConsulta());
 		verify(clinicalAccessService).exigirEscritaClinicaVeterinario(principal, consulta);
 		verify(consultaRepository).save(consulta);
 	}

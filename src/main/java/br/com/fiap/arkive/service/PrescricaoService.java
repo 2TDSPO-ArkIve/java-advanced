@@ -174,6 +174,7 @@ public class PrescricaoService {
 		prescricao.setDataInicio(request.dataInicio());
 		prescricao.setDataFim(request.dataFim());
 		prescricao.setInstrucoes(request.instrucoes());
+		prescricao.setValorMedicamento(request.valorMedicamento());
 		prescricao.setConsulta(consulta);
 	}
 
@@ -187,6 +188,7 @@ public class PrescricaoService {
 		prescricao.setDataInicio(request.dataInicio());
 		prescricao.setDataFim(request.dataFim());
 		prescricao.setInstrucoes(request.instrucoes());
+		prescricao.setValorMedicamento(request.valorMedicamento());
 	}
 
 	private void exigirConsultaFinalizada(Consulta consulta) {

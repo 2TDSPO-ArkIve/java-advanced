@@ -4,6 +4,7 @@ import br.com.fiap.arkive.entity.Animal;
 import br.com.fiap.arkive.entity.Consulta;
 import br.com.fiap.arkive.entity.Diagnostico;
 import br.com.fiap.arkive.entity.Especie;
+import br.com.fiap.arkive.entity.Prescricao;
 import br.com.fiap.arkive.entity.Veterinario;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -12,6 +13,7 @@ import org.springframework.boot.test.autoconfigure.orm.jpa.TestEntityManager;
 import org.springframework.data.domain.PageRequest;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 
@@ -23,6 +25,7 @@ class AnimalHistoricoRepositoryTest {
 	@Autowired TestEntityManager em;
 	@Autowired ConsultaRepository consultas;
 	@Autowired DiagnosticoRepository diagnosticos;
+	@Autowired PrescricaoRepository prescricoes;
 	private int crmv;
 
 	@Test
@@ -73,6 +76,31 @@ class AnimalHistoricoRepositoryTest {
 				resultado.stream().map(Diagnostico::getId).toList());
 	}
 
+	@Test
+	void custosConsideramSomenteConsultasFinalizadasEAgrupamPrescricoes() {
+		Animal animal = animal("Paciente");
+		Consulta antiga = consulta(animal, "2026-01-01T09:00:00", "FI");
+		antiga.setValorConsulta(new BigDecimal("120.00"));
+		Consulta recente = consulta(animal, "2026-02-01T09:00:00", "FI");
+		Consulta emProgresso = consulta(animal, "2026-03-01T09:00:00", "EP");
+		prescricao(antiga, "10.25");
+		prescricao(antiga, "20.25");
+		prescricao(antiga, null);
+		prescricao(emProgresso, "999.00");
+		em.flush();
+		em.clear();
+
+		var consultasComCusto = consultas.buscarCustosFinalizadosPorAnimal(animal.getId());
+		var agregados = prescricoes.somarCustosMedicamentosFinalizadosPorAnimal(animal.getId());
+
+		assertEquals(List.of(recente.getId(), antiga.getId()),
+				consultasComCusto.stream().map(Consulta::getId).toList());
+		assertEquals(1, agregados.size());
+		assertEquals(antiga.getId(), agregados.get(0).getConsultaId());
+		assertEquals(new BigDecimal("30.50"), agregados.get(0).getValorMedicamentos());
+		assertEquals(2L, agregados.get(0).getQuantidadePrescricoesComValor());
+	}
+
 	private Animal animal(String nome) {
 		Especie especie = new Especie(); especie.setNome(nome + " especie"); em.persist(especie);
 		Animal animal = new Animal(); animal.setNome(nome); animal.setEspecie(especie);
@@ -98,5 +126,15 @@ class AnimalHistoricoRepositoryTest {
 		diagnostico.setInsightIa("Insight " + texto);
 		diagnostico.setConfianca(BigDecimal.valueOf(70));
 		return diagnostico;
+	}
+
+	private Prescricao prescricao(Consulta consulta, String valorMedicamento) {
+		Prescricao prescricao = new Prescricao();
+		prescricao.setConsulta(consulta);
+		prescricao.setMedicamento("Medicamento");
+		prescricao.setDosagem("1 comprimido");
+		prescricao.setDataInicio(LocalDate.parse("2026-01-01"));
+		prescricao.setValorMedicamento(valorMedicamento == null ? null : new BigDecimal(valorMedicamento));
+		return em.persist(prescricao);
 	}
 }
