@@ -19,6 +19,20 @@ public interface ConsultaRepository extends JpaRepository<Consulta, Long> {
 			select c from Consulta c
 			join fetch c.animal
 			join fetch c.veterinario
+			where c.status = 'AG'
+			and c.dataHora >= :inicio
+			and c.dataHora <= :fim
+			order by c.dataHora asc, c.id asc
+			""")
+	List<Consulta> buscarAgendadasParaLembrete(
+			@Param("inicio") LocalDateTime inicio,
+			@Param("fim") LocalDateTime fim
+	);
+
+	@Query("""
+			select c from Consulta c
+			join fetch c.animal
+			join fetch c.veterinario
 			left join fetch c.clinica
 			where c.animal.id = :animalId
 			and c.status = 'FI'

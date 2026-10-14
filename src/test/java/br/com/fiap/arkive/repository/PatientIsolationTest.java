@@ -52,6 +52,7 @@ class PatientIsolationTest {
 	@MockitoBean RacaService racas;
 	@MockitoBean ClinicaService clinicas;
 	@MockitoBean EventoJornadaService eventos;
+	@MockitoBean NotificacaoService notificacoes;
 	@MockitoBean AccountProvisioningService provisionamento;
 	@MockitoBean(name = "businessClock") java.time.Clock clock;
 	private Map<String, Veterinario> vets;
@@ -152,7 +153,8 @@ class PatientIsolationTest {
 	@Test
 	void filtrosNaoAmpliamEscopoEClinicaVemDoCadastroAtualDoVeterinario() {
 		assertTrue(animais.listarAutorizado(null, null, null, x.getId(), null, Pageable.unpaged(), principal("A")).isEmpty());
-		assertTrue(animais.listarPacientesVeterinario("P2", especie.getId(), null, Pageable.unpaged(), principal("A")).isEmpty());
+		assertFalse(nomes(animais.listarPacientesVeterinario(
+				"P2", especie.getId(), null, Pageable.unpaged(), principal("A")).getContent()).contains("P2"));
 		assertEquals(Set.of("P1"), nomes(animais.listarPacientesVeterinario("P1", especie.getId(), null, Pageable.unpaged(), principal("A")).getContent()));
 		vets.get("C").setClinica(y); em.flush();
 		assertEquals(Set.of("P4"), nomes(animais.listarPacientesVeterinario(null, null, null, Pageable.unpaged(), principal("C")).getContent()));

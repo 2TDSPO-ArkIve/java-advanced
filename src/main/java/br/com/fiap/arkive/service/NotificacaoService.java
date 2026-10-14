@@ -23,12 +23,17 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 
 @Service
 @Profile("!local-nodb")
 public class NotificacaoService {
 
 	private static final String TITULO_ATUALIZACAO = "Atualização no ArkIve";
+	private static final String TITULO_CONSULTA_AGENDADA = "Consulta agendada";
+	private static final String TITULO_LEMBRETE_CONSULTA = "Lembrete de consulta";
+	private static final String CHAVE_CONSULTA_AGENDADA = "CONSULTA_AGENDADA:";
+	private static final String CHAVE_LEMBRETE_CONSULTA = "LEMBRETE_CONSULTA:";
 	private static final String CHAVE_CONSULTA_FINALIZADA = "CONSULTA_FINALIZADA:";
 
 	private final NotificacaoRepository notificacaoRepository;
@@ -44,29 +49,89 @@ public class NotificacaoService {
 
 	@Transactional
 	public List<Notificacao> criarParaConsultaFinalizada(Consulta consulta) {
-		String chaveEvento = CHAVE_CONSULTA_FINALIZADA + consulta.getId();
+		return criarParaResponsaveis(
+				consulta,
+				TipoNotificacao.CONSULTA_FINALIZADA,
+				TITULO_ATUALIZACAO,
+				"Há uma nova atualização no acompanhamento de " + consulta.getAnimal().getNome() + ".",
+				CHAVE_CONSULTA_FINALIZADA + consulta.getId()
+		);
+	}
+
+	@Transactional
+	public List<Notificacao> criarParaConsultaAgendada(Consulta consulta) {
+		return criarParaResponsaveis(
+				consulta,
+				TipoNotificacao.CONSULTA_AGENDADA,
+				TITULO_CONSULTA_AGENDADA,
+				"Uma consulta foi agendada para " + identificacaoAnimal(consulta) + ".",
+				CHAVE_CONSULTA_AGENDADA + consulta.getId()
+		);
+	}
+
+	@Transactional
+	public Optional<Notificacao> criarLembreteConsulta(Consulta consulta, Usuario destinatario) {
+		String chaveEvento = CHAVE_LEMBRETE_CONSULTA + consulta.getId() + ":" + consulta.getDataHora();
+		Optional<Notificacao> criada = criarSeAusente(
+				destinatario,
+				consulta,
+				TipoNotificacao.LEMBRETE_CONSULTA,
+				TITULO_LEMBRETE_CONSULTA,
+				"Consulta de " + identificacaoAnimal(consulta) + " em breve.",
+				chaveEvento
+		);
+		criada.ifPresent(notificacao -> publicarCriadas(List.of(notificacao)));
+		return criada;
+	}
+
+	private List<Notificacao> criarParaResponsaveis(
+			Consulta consulta,
+			TipoNotificacao tipo,
+			String titulo,
+			String mensagem,
+			String chaveEvento
+	) {
 		List<Notificacao> criadas = new ArrayList<>();
 		for (Usuario destinatario : recipientService.responsaveisAtivosVigentes(consulta.getAnimal())) {
-			if (notificacaoRepository.findByUsuarioIdAndChaveEvento(destinatario.getId(), chaveEvento).isPresent()) {
-				continue;
-			}
-			Notificacao notificacao = new Notificacao();
-			notificacao.setUsuario(destinatario);
-			notificacao.setTipo(TipoNotificacao.CONSULTA_FINALIZADA);
-			notificacao.setTitulo(TITULO_ATUALIZACAO);
-			notificacao.setMensagem("Há uma nova atualização no acompanhamento de "
-					+ consulta.getAnimal().getNome() + ".");
-			notificacao.setAnimal(consulta.getAnimal());
-			notificacao.setTipoRecurso(TipoRecursoNotificacao.CONSULTA);
-			notificacao.setRecursoId(consulta.getId());
-			notificacao.setChaveEvento(chaveEvento);
-			criadas.add(notificacaoRepository.save(notificacao));
+			criarSeAusente(destinatario, consulta, tipo, titulo, mensagem, chaveEvento)
+					.ifPresent(criadas::add);
 		}
+		publicarCriadas(criadas);
+		return List.copyOf(criadas);
+	}
+
+	private Optional<Notificacao> criarSeAusente(
+			Usuario destinatario,
+			Consulta consulta,
+			TipoNotificacao tipo,
+			String titulo,
+			String mensagem,
+			String chaveEvento
+	) {
+		if (notificacaoRepository.findByUsuarioIdAndChaveEvento(destinatario.getId(), chaveEvento).isPresent()) {
+			return Optional.empty();
+		}
+		Notificacao notificacao = new Notificacao();
+		notificacao.setUsuario(destinatario);
+		notificacao.setTipo(tipo);
+		notificacao.setTitulo(titulo);
+		notificacao.setMensagem(mensagem);
+		notificacao.setAnimal(consulta.getAnimal());
+		notificacao.setTipoRecurso(TipoRecursoNotificacao.CONSULTA);
+		notificacao.setRecursoId(consulta.getId());
+		notificacao.setChaveEvento(chaveEvento);
+		return Optional.of(notificacaoRepository.save(notificacao));
+	}
+
+	private void publicarCriadas(List<Notificacao> criadas) {
 		List<Long> ids = criadas.stream().map(Notificacao::getId).toList();
 		if (!ids.isEmpty()) {
 			eventPublisher.publishEvent(new NotificacoesCriadasEvent(ids));
 		}
-		return List.copyOf(criadas);
+	}
+
+	private String identificacaoAnimal(Consulta consulta) {
+		return consulta.getAnimal().getNome() + " (" + consulta.getAnimal().getArkivePatientId() + ")";
 	}
 
 	@Transactional(readOnly = true)
@@ -110,4 +175,3 @@ public class NotificacaoService {
 		return principal.getUsuarioId();
 	}
 }
-

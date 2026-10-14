@@ -44,6 +44,7 @@ public class ConsultaService {
 	private final ClinicaRepository clinicaRepository;
 	private final EventoJornadaService eventoJornadaService;
 	private final ClinicalAccessService clinicalAccessService;
+	private final NotificacaoService notificacaoService;
 	private final Clock clock;
 
 	public ConsultaService(
@@ -53,6 +54,7 @@ public class ConsultaService {
 			ClinicaRepository clinicaRepository,
 			EventoJornadaService eventoJornadaService,
 			ClinicalAccessService clinicalAccessService,
+			NotificacaoService notificacaoService,
 			@Qualifier("businessClock") Clock clock
 	) {
 		this.clock = clock;
@@ -62,6 +64,7 @@ public class ConsultaService {
 		this.clinicaRepository = clinicaRepository;
 		this.eventoJornadaService = eventoJornadaService;
 		this.clinicalAccessService = clinicalAccessService;
+		this.notificacaoService = notificacaoService;
 	}
 
 	@Transactional
@@ -91,6 +94,7 @@ public class ConsultaService {
 				"Consulta criada.",
 				eventoJornadaService.criarPayload("Consulta", salva.getId(), "CONSULTA_CRIADA")
 		);
+		notificacaoService.criarParaConsultaAgendada(salva);
 		return ConsultaResponse.fromEntity(salva);
 	}
 

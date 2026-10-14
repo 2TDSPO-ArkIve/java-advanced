@@ -75,7 +75,7 @@ class NotificacaoTransactionIntegrationTest {
 		TransactionTemplate transaction = new TransactionTemplate(transactionManager);
 
 		transaction.executeWithoutResult(status -> {
-			notificacaoService.criarParaConsultaFinalizada(consulta);
+			notificacaoService.criarParaConsultaAgendada(consulta);
 			status.setRollbackOnly();
 		});
 

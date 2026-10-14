@@ -36,6 +36,7 @@ class ConsultaServiceTest {
 	private ConsultaRepository consultaRepository;
 	private VeterinarioRepository veterinarioRepository;
 	private ClinicalAccessService clinicalAccessService;
+	private NotificacaoService notificacaoService;
 	private ConsultaService consultaService;
 	private final java.time.Clock clock = java.time.Clock.fixed(java.time.Instant.parse("2026-09-08T12:00:00Z"), java.time.ZoneId.of("America/Sao_Paulo"));
 
@@ -47,6 +48,7 @@ class ConsultaServiceTest {
 		ClinicaRepository clinicaRepository = mock(ClinicaRepository.class);
 		EventoJornadaService eventoJornadaService = mock(EventoJornadaService.class);
 		clinicalAccessService = mock(ClinicalAccessService.class);
+		notificacaoService = mock(NotificacaoService.class);
 		consultaService = new ConsultaService(
 				consultaRepository,
 				animalRepository,
@@ -54,6 +56,7 @@ class ConsultaServiceTest {
 				clinicaRepository,
 				eventoJornadaService,
 				clinicalAccessService,
+				notificacaoService,
 				clock
 		);
 		when(consultaRepository.save(any(Consulta.class))).thenAnswer(invocation -> invocation.getArgument(0));
@@ -77,6 +80,7 @@ class ConsultaServiceTest {
 
 		verify(consultaRepository).save(any(Consulta.class));
 		verify(clinicalAccessService).exigirLeituraAnimal(any(), any());
+		verify(notificacaoService).criarParaConsultaAgendada(any(Consulta.class));
 	}
 
 	@Test

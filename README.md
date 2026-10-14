@@ -22,7 +22,7 @@ Esta aplicação Spring Boot foi preparada para os requisitos da **FIAP Java Adv
 | Requisito da Sprint | Evidência no projeto |
 | --- | --- |
 | Frontend | Controllers MVC, templates Thymeleaf, dashboards, formulários e páginas de consulta de dados |
-| Flyway | Migrations Oracle `V1` a `V14` em `src/main/resources/db/migration` |
+| Flyway | Migrations Oracle `V1` a `V16` em `src/main/resources/db/migration` |
 | Spring Security | Usuários persistidos, BCrypt, form login, HTTP Basic, quatro perfis e proteção de rotas |
 | Fluxos além de CRUD | Consulta clínica assistida e prescrição com registro de adesão |
 | Validação | Bean Validation, `BindingResult`, regras nos services e constraints Oracle |
@@ -208,6 +208,14 @@ O primeiro responsável também pode ser estabelecido pelo resgate de um convite
 
 `GET` e `PATCH /api/animais/{animalId}/observacao-responsavel` permitem que somente um responsável atualmente vinculado leia ou altere uma observação pendente de até 2000 caracteres. A observação é copiada para a primeira consulta que efetivamente transicionar de agendada para em progresso e então removida do animal; consultas posteriores não a repetem. O snapshot permanece na consulta histórica.
 
+### Fluxo 5 — Notificações de consultas
+
+Ao criar uma consulta com sucesso, o backend persiste uma notificação `CONSULTA_AGENDADA` para cada usuário `RESPONSAVEL` ativo com vínculo ativo e vigente com o animal. A mensagem identifica o paciente pelo nome e pelo ArkIve ID. Se ainda não existir responsável vigente, nenhuma notificação órfã ou retroativa é criada.
+
+Um agendador consulta, a cada 60 segundos por padrão, somente consultas `AG` compreendidas entre o instante atual e o limite configurado. Para cada resultado, o usuário `VETERINARIO` ativo vinculado ao profissional da consulta recebe `LEMBRETE_CONSULTA`. A antecedência padrão é de 30 minutos e pode ser alterada por `arkive.notifications.consultation-reminder.minutes-before`; a cadência usa `arkive.notifications.consultation-reminder.poll-ms`.
+
+As chaves `CONSULTA_AGENDADA:<consultaId>` e `LEMBRETE_CONSULTA:<consultaId>:<dataHora>` tornam a criação idempotente por destinatário. Assim, varreduras repetidas não duplicam lembretes, enquanto um reagendamento para outro horário pode gerar um novo lembrete quando entrar na janela. A caixa de notificações persistidas permanece a fonte autoritativa; a preferência `ST_NOTIFICACAO=N` suprime apenas o push do responsável. O envio push continua opcional e ocorre somente após o commit da transação.
+
 ## Validações
 
 A aplicação valida dados em camadas complementares:
@@ -241,6 +249,7 @@ O **Flyway controla o versionamento do schema Oracle**. As migrations ficam em `
 | V13 | `V13__add_patient_care_costs.sql` | Adiciona custos assistenciais opcionais de consultas e prescrições |
 | V14 | `V14__normalize_responsavel_identity.sql` | Substitui o tipo normal por `RESPONSAVEL`, preserva registros e adiciona o tipo opcional de documento CPF/RG |
 | V15 | `V15__add_responsavel_pending_observation.sql` | Adiciona a observação pendente do responsável no animal e seu snapshot consumido pela próxima consulta iniciada |
+| V16 | `V16__expand_consulta_notifications.sql` | Expande os tipos de notificação de consulta para agendamento, lembrete e finalização |
 
 No perfil Oracle:
 

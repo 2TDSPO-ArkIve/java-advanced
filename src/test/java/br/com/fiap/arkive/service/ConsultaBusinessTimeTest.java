@@ -92,6 +92,7 @@ class ConsultaBusinessTimeTest {
 				context.registerBean(ClinicaRepository.class, () -> mock(ClinicaRepository.class));
 				context.registerBean(EventoJornadaService.class, () -> mock(EventoJornadaService.class));
 				context.registerBean(ClinicalAccessService.class, () -> mock(ClinicalAccessService.class));
+				context.registerBean(NotificacaoService.class, () -> mock(NotificacaoService.class));
 				context.refresh();
 				Clock clock = context.getBean("businessClock", Clock.class);
 				assertEquals(ZoneId.of("America/Sao_Paulo"), clock.getZone());
@@ -121,7 +122,7 @@ class ConsultaBusinessTimeTest {
 			when(consultas.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
 			var acesso = new ClinicalAccessService(mock(AnimalResponsavelRepository.class), consultas, mock(VeterinarioService.class));
 			service = new ConsultaService(consultas, animais, veterinarios, mock(ClinicaRepository.class),
-					mock(EventoJornadaService.class), acesso, clock);
+					mock(EventoJornadaService.class), acesso, mock(NotificacaoService.class), clock);
 		}
 	}
 }

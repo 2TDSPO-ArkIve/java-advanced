@@ -16,6 +16,8 @@ import br.com.fiap.arkive.security.UsuarioPrincipal;
 import br.com.fiap.arkive.service.NotificacaoService;
 import br.com.fiap.arkive.service.UsuarioDispositivoService;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.EnumSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.context.annotation.Import;
@@ -72,6 +74,18 @@ class NotificationControllerMvcTest {
 				.andExpect(status().isOk()).andExpect(jsonPath("$.updated").value(1));
 	}
 
+	@ParameterizedTest
+	@EnumSource(TipoNotificacao.class)
+	void caixaDeEntradaSerializaTodosOsTiposDeNotificacao(TipoNotificacao tipo) throws Exception {
+		UsuarioPrincipal principal = principal();
+		when(notificacaoService.listar(eq(false), any(Pageable.class), same(principal)))
+				.thenReturn(new PageImpl<>(List.of(notificacao(tipo))));
+
+		mockMvc.perform(get("/api/notificacoes").with(user(principal)))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.content[0].type").value(tipo.name()));
+	}
+
 	@Test
 	void registroDeDispositivoIgnoraUsuarioIdExtraEUsaPrincipal() throws Exception {
 		UsuarioPrincipal principal = principal();
@@ -120,7 +134,11 @@ class NotificationControllerMvcTest {
 	}
 
 	private NotificacaoResponse notificacao() {
-		return new NotificacaoResponse(90L, TipoNotificacao.CONSULTA_FINALIZADA,
+		return notificacao(TipoNotificacao.CONSULTA_FINALIZADA);
+	}
+
+	private NotificacaoResponse notificacao(TipoNotificacao tipo) {
+		return new NotificacaoResponse(90L, tipo,
 				"Atualização no ArkIve", "Há uma nova atualização no acompanhamento de Rex.",
 				LocalDateTime.of(2026, 10, 9, 10, 0), null, 12L,
 				"ARK-PET-AAAAA-BBBBB-CCCCC-DDDDD", TipoRecursoNotificacao.CONSULTA, 77L);

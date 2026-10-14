@@ -13,6 +13,8 @@ import br.com.fiap.arkive.repository.NotificacaoRepository;
 import br.com.fiap.arkive.repository.UsuarioDispositivoRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.EnumSource;
 import org.mockito.ArgumentCaptor;
 
 import java.util.List;
@@ -90,6 +92,23 @@ class NotificacaoPushServiceTest {
 		assertEquals(5, message.data().size());
 	}
 
+	@ParameterizedTest
+	@EnumSource(value = TipoNotificacao.class, names = { "CONSULTA_AGENDADA", "LEMBRETE_CONSULTA" })
+	void novosTiposFluemNoMesmoPayloadSemAlterarSchema(TipoNotificacao tipo) {
+		Notificacao notificacao = notificacao("S", tipo);
+		when(notificacaoRepository.findById(1L)).thenReturn(Optional.of(notificacao));
+		when(dispositivoRepository.findByUsuarioIdAndAtivoOrderByIdAsc(10L, "S"))
+				.thenReturn(List.of(dispositivo(notificacao.getUsuario())));
+		when(client.enviar(any())).thenReturn(ExpoPushResult.SUCCESS);
+
+		service.entregar(List.of(1L));
+
+		ArgumentCaptor<ExpoPushMessage> captor = ArgumentCaptor.forClass(ExpoPushMessage.class);
+		verify(client).enviar(captor.capture());
+		assertEquals(tipo.name(), captor.getValue().data().get("type"));
+		assertEquals(5, captor.getValue().data().size());
+	}
+
 	@Test
 	void deviceNotRegisteredDesativaSomenteDispositivoAfetado() {
 		Notificacao notificacao = notificacao("S");
@@ -120,6 +139,10 @@ class NotificacaoPushServiceTest {
 	}
 
 	private Notificacao notificacao(String preferencia) {
+		return notificacao(preferencia, TipoNotificacao.CONSULTA_FINALIZADA);
+	}
+
+	private Notificacao notificacao(String preferencia, TipoNotificacao tipo) {
 		Responsavel responsavel = new Responsavel();
 		responsavel.setNotificacao(preferencia);
 		Usuario usuario = new Usuario();
@@ -131,7 +154,7 @@ class NotificacaoPushServiceTest {
 		Notificacao notificacao = new Notificacao();
 		notificacao.setId(1L);
 		notificacao.setUsuario(usuario);
-		notificacao.setTipo(TipoNotificacao.CONSULTA_FINALIZADA);
+		notificacao.setTipo(tipo);
 		notificacao.setTitulo("Atualização no ArkIve");
 		notificacao.setMensagem("Há uma nova atualização no acompanhamento de Rex.");
 		notificacao.setAnimal(animal);
