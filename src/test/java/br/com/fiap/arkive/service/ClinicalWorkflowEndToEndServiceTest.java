@@ -300,7 +300,7 @@ class ClinicalWorkflowEndToEndServiceTest {
 	private Responsavel responsavel() {
 		Responsavel responsavel = new Responsavel();
 		responsavel.setId(40L);
-		responsavel.setNome("Tutor Teste");
+		responsavel.setNome("Responsável Teste");
 		responsavel.setAtivo("S");
 		return responsavel;
 	}
@@ -310,6 +310,6 @@ class ClinicalWorkflowEndToEndServiceTest {
 	}
 
 	private UsuarioPrincipal responsavelPrincipal() {
-		return new UsuarioPrincipal(2L, "Tutor Teste", "tutor@arkive.com", "$2a$10$hash", TipoUsuario.RESPONSAVEL, "S", false, 40L, null, null);
+		return new UsuarioPrincipal(2L, "Responsável Teste", "responsavel@arkive.com", "$2a$10$hash", TipoUsuario.RESPONSAVEL, "S", false, 40L, null, null);
 	}
 }

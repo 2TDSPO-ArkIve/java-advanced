@@ -201,7 +201,7 @@ class NotificacaoServiceTest {
 	}
 
 	private UsuarioPrincipal principal(Long usuarioId) {
-		return new UsuarioPrincipal(usuarioId, "Tutor", "tutor@example.test", "hash",
+		return new UsuarioPrincipal(usuarioId, "Responsável", "responsavel@example.test", "hash",
 				TipoUsuario.RESPONSAVEL, "S", false, 1L, null, null);
 	}
 }

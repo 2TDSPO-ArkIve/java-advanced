@@ -77,7 +77,7 @@ class AnimalHistoricoControllerMvcTest {
 		prescricao.setDataInicio(LocalDate.parse("2026-09-05")); prescricao.setDataFim(LocalDate.parse("2026-09-12"));
 		prescricao.setInstrucoes("Administrar com alimento.");
 		prescricao.setValorMedicamento(new BigDecimal("95.50"));
-		Responsavel tutor = new Responsavel(); tutor.setNome("Tutora Ana"); tutor.setDocumento("SECRET_CPF");
+		Responsavel tutor = new Responsavel(); tutor.setNome("Responsável Ana"); tutor.setDocumento("SECRET_CPF");
 		tutor.setEmail("SECRET_EMAIL");
 		AnimalResponsavel vinculo = new AnimalResponsavel(); vinculo.setResponsavel(tutor);
 		when(animais.findById(50L)).thenReturn(Optional.of(animal));
@@ -95,7 +95,7 @@ class AnimalHistoricoControllerMvcTest {
 				.andExpect(jsonPath("$.paciente.especie").value("Cachorro")).andExpect(jsonPath("$.paciente.raca").value("Poodle"))
 				.andExpect(jsonPath("$.paciente.sexo").value("M")).andExpect(jsonPath("$.paciente.castrado").value("S"))
 				.andExpect(jsonPath("$.paciente.dataNascimento").value("2021-04-17"))
-				.andExpect(jsonPath("$.paciente.responsavelNome").value("Tutora Ana"))
+				.andExpect(jsonPath("$.paciente.responsavelNome").value("Responsável Ana"))
 				.andExpect(jsonPath("$.consultas[0].dataHora").value("2026-09-05T14:30:00"))
 				.andExpect(jsonPath("$.consultas[0].modalidade").value("PRESENCIAL"))
 				.andExpect(jsonPath("$.consultas[0].endereco").value("Rua do Atendimento, 10"))
@@ -138,7 +138,7 @@ class AnimalHistoricoControllerMvcTest {
 		byte[] bytes = pdf();
 		try (var document = Loader.loadPDF(bytes)) {
 			String text = new PDFTextStripper().getText(document);
-			for (String esperado : List.of("ArkIve", "Bilu", "17/04/2021", "05/09/2026 14:30", "Tutora Ana",
+			for (String esperado : List.of("ArkIve", "Bilu", "17/04/2021", "05/09/2026 14:30", "Responsável Ana",
 					"Dermatite confirmada", "Retorno em sete dias.", "Medicamento registrado", "5 mg", "12 horas",
 					"ORAL", "05/09/2026", "12/09/2026", "Administrar com alimento.", "Rua do Atendimento, 10")) {
 				assertTrue(text.contains(esperado), esperado);

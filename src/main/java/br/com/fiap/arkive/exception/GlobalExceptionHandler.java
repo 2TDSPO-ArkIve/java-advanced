@@ -44,6 +44,9 @@ public class GlobalExceptionHandler {
 	@ExceptionHandler(HttpMessageNotReadableException.class)
 	public ResponseEntity<ErrorResponse> handleUnreadableMessage(HttpMessageNotReadableException ex,
 			HttpServletRequest request) {
+		if ("Tipo de documento inválido.".equals(ex.getMostSpecificCause().getMessage())) {
+			return buildResponse(HttpStatus.BAD_REQUEST, "Tipo de documento inválido.", request.getRequestURI());
+		}
 		return buildResponse(HttpStatus.BAD_REQUEST, "Corpo da requisicao invalido.", request.getRequestURI());
 	}
 

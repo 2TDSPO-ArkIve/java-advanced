@@ -22,7 +22,7 @@ Esta aplicação Spring Boot foi preparada para os requisitos da **FIAP Java Adv
 | Requisito da Sprint | Evidência no projeto |
 | --- | --- |
 | Frontend | Controllers MVC, templates Thymeleaf, dashboards, formulários e páginas de consulta de dados |
-| Flyway | Migrations Oracle `V1` a `V6` em `src/main/resources/db/migration` |
+| Flyway | Migrations Oracle `V1` a `V14` em `src/main/resources/db/migration` |
 | Spring Security | Usuários persistidos, BCrypt, form login, HTTP Basic, quatro perfis e proteção de rotas |
 | Fluxos além de CRUD | Consulta clínica assistida e prescrição com registro de adesão |
 | Validação | Bean Validation, `BindingResult`, regras nos services e constraints Oracle |
@@ -94,11 +94,13 @@ Spring Data Repository ──► JPA/Hibernate ──► Oracle
 
 Os usuários são carregados do banco por um `UserDetailsService` e autenticados por um `DaoAuthenticationProvider`. As senhas são persistidas somente como hashes BCrypt. O navegador usa form login em `/login`, enquanto clientes REST podem usar HTTP Basic.
 
-O `SecurityConfig` restringe rotas por perfil. As áreas `/sysadmin/**` exigem `SYSADMIN`; `/admin/**` aceita `SYSADMIN` ou `ADMIN_CLINICA`. A matriz REST também protege explicitamente recursos administrativos: por exemplo, `/api/clinicas/**` e `/api/veterinarios/**` são exclusivos de `SYSADMIN`, e catálogos podem permitir leitura a outros perfis sem liberar suas mutações.
+O `SecurityConfig` restringe rotas por perfil. As áreas `/sysadmin/**` exigem `SYSADMIN`; `/admin/**` aceita `SYSADMIN` ou `ADMIN_CLINICA`. A matriz REST também protege explicitamente recursos administrativos: por exemplo, `/api/clinicas/**` e o CRUD `/api/veterinarios/**` são exclusivos de `SYSADMIN`. A exceção específica `GET /api/veterinarios/me`, declarada antes da regra administrativa, permite apenas ao `VETERINARIO` autenticado consultar o próprio perfil a partir do vínculo presente no principal, sem aceitar ID do cliente.
 
 Além da proteção de rota, `ClinicalAccessService` e os services clínicos validam propriedade e escopo. Assim, o veterinário só altera consultas e prescrições sob sua responsabilidade, o administrador visualiza dados da própria clínica e o responsável acessa vínculos permitidos.
 
 Contas provisionadas automaticamente para clínica ou veterinário recebem uma credencial inicial temporária e ficam marcadas para troca obrigatória. O `MandatoryPasswordChangeFilter` impede o restante da navegação até a alteração em `/alterar-senha`. A nova senha deve ter de 8 a 72 caracteres, com pelo menos uma letra maiúscula, uma minúscula e um número.
+
+O cadastro público mantém rotas separadas e papéis atribuídos pelo servidor: `POST /api/auth/register` cria veterinários e `POST /api/auth/register/responsavel` cria responsáveis. No cadastro de responsável, `tipoDocumento` é obrigatório e aceita `CPF` ou `RG`. CPF é armazenado sem pontuação após validação dos dois dígitos verificadores; RG é normalizado para maiúsculas, sem pontos, hífens ou espaços, e recebe validação estrutural genérica de 5 a 14 caracteres alfanuméricos, pois não existe um algoritmo nacional único. O telefone é opcional, limitado a 20 caracteres, aparado e preservado em sua forma informada. Registros legados e administrativos podem manter `tipoDocumento=NULL`.
 
 ## Frontend Web com Thymeleaf
 
@@ -223,6 +225,7 @@ O **Flyway controla o versionamento do schema Oracle**. As migrations ficam em `
 | V11 | `V11__correct_ai_diagnosis_validation_semantics.sql` | Corrige a semântica histórica da avaliação veterinária de insights de IA |
 | V12 | `V12__add_diagnostico_referencias_rag.sql` | Persiste separadamente os títulos das referências RAG |
 | V13 | `V13__add_patient_care_costs.sql` | Adiciona custos assistenciais opcionais de consultas e prescrições |
+| V14 | `V14__normalize_responsavel_identity.sql` | Substitui o tipo normal por `RESPONSAVEL`, preserva registros e adiciona o tipo opcional de documento CPF/RG |
 
 No perfil Oracle:
 

@@ -282,7 +282,7 @@ class ConsultaWorkflowServiceTest {
 		UsuarioPrincipal principal = veterinarioPrincipal(20L);
 		when(consultaService.buscarEntidade(1L)).thenReturn(consulta);
 
-		workflowService.cancelar(1L, new CancelarConsultaRequest("Tutor solicitou"), principal);
+		workflowService.cancelar(1L, new CancelarConsultaRequest("Responsável solicitou"), principal);
 
 		verify(clinicalAccessService).exigirEscritaClinicaVeterinario(principal, consulta);
 		assertEquals("CA", consulta.getStatus());
@@ -353,11 +353,11 @@ class ConsultaWorkflowServiceTest {
 		Consulta consulta = consulta(status);
 		when(consultaService.buscarEntidade(1L)).thenReturn(consulta);
 
-		ConsultaWorkflowResponse response = workflowService.cancelar(1L, new CancelarConsultaRequest("Tutor solicitou remarcacao"));
+		ConsultaWorkflowResponse response = workflowService.cancelar(1L, new CancelarConsultaRequest("Responsável solicitou remarcacao"));
 
 		assertEquals("CA", consulta.getStatus());
 		assertEquals("Cancelada", response.statusDescricao());
-		assertEquals("Cancelamento: Tutor solicitou remarcacao", consulta.getObservacao());
+		assertEquals("Cancelamento: Responsável solicitou remarcacao", consulta.getObservacao());
 		verify(eventoJornadaService, atLeastOnce()).registrarEvento(
 				eq("CONSULTA_CANCELADA"),
 				eq("VETERINARIO"),
@@ -374,7 +374,7 @@ class ConsultaWorkflowServiceTest {
 		Consulta consulta = consulta(status);
 		when(consultaService.buscarEntidade(1L)).thenReturn(consulta);
 
-		assertThrows(BusinessException.class, () -> workflowService.cancelar(1L, new CancelarConsultaRequest("Tutor solicitou")));
+		assertThrows(BusinessException.class, () -> workflowService.cancelar(1L, new CancelarConsultaRequest("Responsável solicitou")));
 	}
 
 	private void verifyNoEventoOuDiagnostico() {

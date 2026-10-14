@@ -2,13 +2,16 @@ package br.com.fiap.arkive.controller;
 
 import br.com.fiap.arkive.dto.request.VeterinarioRequest;
 import br.com.fiap.arkive.dto.response.VeterinarioResponse;
+import br.com.fiap.arkive.security.UsuarioPrincipal;
 import br.com.fiap.arkive.service.VeterinarioService;
+import io.swagger.v3.oas.annotations.Operation;
 import jakarta.validation.Valid;
 import org.springframework.context.annotation.Profile;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -44,6 +47,13 @@ public class VeterinarioController {
 			Pageable pageable
 	) {
 		return veterinarioService.listar(nome, crmv, clinicaId, ativo, pageable);
+	}
+
+	@GetMapping("/me")
+	@Operation(summary = "Consulta o perfil do veterinário autenticado",
+			description = "Usa exclusivamente o veterinarioId do principal autenticado; não aceita ID informado pelo cliente.")
+	public VeterinarioResponse buscarPerfilAutenticado(@AuthenticationPrincipal UsuarioPrincipal principal) {
+		return veterinarioService.buscarPerfilAutenticado(principal);
 	}
 
 	@GetMapping("/{id}")

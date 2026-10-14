@@ -115,7 +115,7 @@ class NotificationControllerMvcTest {
 	}
 
 	private UsuarioPrincipal principal() {
-		return new UsuarioPrincipal(10L, "Tutor", "tutor@example.test", "hash",
+		return new UsuarioPrincipal(10L, "Responsável", "responsavel@example.test", "hash",
 				TipoUsuario.RESPONSAVEL, "S", false, 5L, null, null);
 	}
 

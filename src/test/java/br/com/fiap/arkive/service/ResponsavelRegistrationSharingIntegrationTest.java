@@ -2,6 +2,7 @@ package br.com.fiap.arkive.service;
 
 import br.com.fiap.arkive.dto.request.CreatePatientShareRequest;
 import br.com.fiap.arkive.dto.request.RegistroResponsavelRequest;
+import br.com.fiap.arkive.dto.response.ResponsavelResponse;
 import br.com.fiap.arkive.entity.*;
 import br.com.fiap.arkive.repository.*;
 import br.com.fiap.arkive.security.PasswordPolicy;
@@ -53,12 +54,33 @@ class ResponsavelRegistrationSharingIntegrationTest {
 		Responsavel responsavel = responsavelRepository.findById(registration.responsavelId()).orElseThrow();
 		assertEquals(TipoUsuario.RESPONSAVEL, usuario.getTipo());
 		assertEquals(responsavel.getId(), usuario.getResponsavel().getId());
+		assertEquals("RESPONSAVEL", responsavel.getTipo());
+		assertEquals(TipoDocumentoResponsavel.CPF, responsavel.getTipoDocumento());
+		assertEquals("52998224725", responsavel.getDocumento());
 		assertTrue(passwordEncoder.matches("SenhaSegura1", usuario.getSenhaHash()));
 		assertEquals("N", usuario.getTrocaSenha());
 		assertEquals(0, animalRepository.count());
 		assertEquals(0, relationshipRepository.count());
 		assertEquals(0, accessRepository.count());
 		assertEquals(0, tokenRepository.count());
+	}
+
+	@Test
+	void registroLegadoSemTipoDocumentoContinuaLegivel() {
+		Responsavel legado = new Responsavel();
+		legado.setNome("Instituição legada");
+		legado.setDocumento("LEGADO-001");
+		legado.setTipo("INSTITUICAO");
+		legado.setAtivo("S");
+		legado.setNotificacao("S");
+		em.persistAndFlush(legado);
+		em.clear();
+
+		ResponsavelResponse response = ResponsavelResponse.fromEntity(
+				responsavelRepository.findById(legado.getId()).orElseThrow());
+
+		assertNull(response.tipoDocumento());
+		assertEquals("LEGADO-001", response.documento());
 	}
 
 	@Test
@@ -135,7 +157,8 @@ class ResponsavelRegistrationSharingIntegrationTest {
 
 	private RegistroResponsavelRequest registrationRequest() {
 		return new RegistroResponsavelRequest(
-				"Maria Tutor", "12345678900", "maria@arkive.com", "11999999999",
+				"Maria Responsável", TipoDocumentoResponsavel.CPF, "52998224725",
+				"maria@arkive.com", "11999999999",
 				"SenhaSegura1", "SenhaSegura1");
 	}
 

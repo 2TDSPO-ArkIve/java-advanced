@@ -7,6 +7,7 @@ import br.com.fiap.arkive.dto.response.AuthMeResponse;
 import br.com.fiap.arkive.dto.response.VeterinarioResponse;
 import br.com.fiap.arkive.dto.response.RegistroResponsavelResponse;
 import br.com.fiap.arkive.entity.TipoUsuario;
+import br.com.fiap.arkive.entity.TipoDocumentoResponsavel;
 import br.com.fiap.arkive.entity.Usuario;
 import br.com.fiap.arkive.entity.Veterinario;
 import br.com.fiap.arkive.repository.UsuarioRepository;
@@ -96,7 +97,8 @@ class AuthServiceTest {
 		AuthService authService = new AuthService(usuarioRepository, passwordLifecycleService, veterinarioService,
 				registrationService);
 		RegistroResponsavelRequest request = new RegistroResponsavelRequest(
-				"Maria", "12345678900", "maria@arkive.com", "11999999999", "SenhaSegura1", "SenhaSegura1");
+				"Maria", TipoDocumentoResponsavel.CPF, "52998224725", "maria@arkive.com",
+				"11999999999", "SenhaSegura1", "SenhaSegura1");
 		RegistroResponsavelResponse expected = new RegistroResponsavelResponse(
 				10L, 20L, "Maria", "maria@arkive.com", TipoUsuario.RESPONSAVEL, "S", false);
 		when(registrationService.registrar(request)).thenReturn(expected);

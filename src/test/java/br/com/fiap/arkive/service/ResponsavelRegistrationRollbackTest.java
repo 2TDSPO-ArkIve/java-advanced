@@ -2,6 +2,7 @@ package br.com.fiap.arkive.service;
 
 import br.com.fiap.arkive.dto.request.RegistroResponsavelRequest;
 import br.com.fiap.arkive.exception.BusinessException;
+import br.com.fiap.arkive.entity.TipoDocumentoResponsavel;
 import br.com.fiap.arkive.repository.ResponsavelRepository;
 import br.com.fiap.arkive.repository.UsuarioRepository;
 import br.com.fiap.arkive.security.PasswordPolicy;
@@ -33,7 +34,7 @@ class ResponsavelRegistrationRollbackTest {
 	void falhaNaPersistenciaDoUsuarioNaoDeixaResponsavelOrfao() {
 		when(passwordEncoder.encode("SenhaSegura1")).thenReturn(null);
 		RegistroResponsavelRequest request = new RegistroResponsavelRequest(
-				"Maria Tutor", "12345678900", "maria@arkive.com", null,
+				"Maria Responsável", TipoDocumentoResponsavel.CPF, "52998224725", "maria@arkive.com", null,
 				"SenhaSegura1", "SenhaSegura1");
 
 		assertThrows(BusinessException.class, () -> registrationService.registrar(request));

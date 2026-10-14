@@ -56,7 +56,7 @@ class NotificacaoTransactionIntegrationTest {
 
 	@Test
 	void publicaPushSomenteDepoisDoCommitEIdempotenciaEvitaDuplicata() {
-		Consulta consulta = prepararConsultaComTutorAtual("S");
+		Consulta consulta = prepararConsultaComResponsavelAtual("S");
 		TransactionTemplate transaction = new TransactionTemplate(transactionManager);
 
 		transaction.executeWithoutResult(status -> {
@@ -71,7 +71,7 @@ class NotificacaoTransactionIntegrationTest {
 
 	@Test
 	void rollbackRemoveNotificacaoENaoDisparaPush() {
-		Consulta consulta = prepararConsultaComTutorAtual("S");
+		Consulta consulta = prepararConsultaComResponsavelAtual("S");
 		TransactionTemplate transaction = new TransactionTemplate(transactionManager);
 
 		transaction.executeWithoutResult(status -> {
@@ -83,7 +83,7 @@ class NotificacaoTransactionIntegrationTest {
 		verify(pushService, never()).entregar(anyList());
 	}
 
-	private Consulta prepararConsultaComTutorAtual(String preferencia) {
+	private Consulta prepararConsultaComResponsavelAtual(String preferencia) {
 		TransactionTemplate transaction = new TransactionTemplate(transactionManager);
 		return transaction.execute(status -> {
 			Especie especie = new Especie();
@@ -94,16 +94,16 @@ class NotificacaoTransactionIntegrationTest {
 			animal.setEspecie(especie);
 			em.persist(animal);
 			Responsavel responsavel = new Responsavel();
-			responsavel.setNome("Tutor");
+			responsavel.setNome("Responsável");
 			responsavel.setDocumento("doc-" + System.nanoTime());
 			responsavel.setTipo("CUIDADOR");
 			responsavel.setNotificacao(preferencia);
 			em.persist(responsavel);
 			Usuario usuario = new Usuario();
-			usuario.setNome("Tutor");
+			usuario.setNome("Responsável");
 			usuario.setTipo(TipoUsuario.RESPONSAVEL);
 			usuario.setResponsavel(responsavel);
-			usuario.setLogin("tutor-" + System.nanoTime() + "@example.test");
+			usuario.setLogin("responsavel-" + System.nanoTime() + "@example.test");
 			usuario.setSenhaHash("hash");
 			em.persist(usuario);
 			AnimalResponsavelId vinculoId = new AnimalResponsavelId();

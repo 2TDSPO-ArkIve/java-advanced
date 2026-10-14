@@ -198,7 +198,7 @@ class AdminClinicaControllerTest {
 
 		mockMvc.perform(get("/admin/adesoes").with(user(adminPrincipal())))
 				.andExpect(status().isOk())
-				.andExpect(content().string(containsString("Rui Tutor")))
+				.andExpect(content().string(containsString("Rui Responsável")))
 				.andExpect(content().string(containsString("Sim")));
 	}
 
@@ -302,7 +302,7 @@ class AdminClinicaControllerTest {
 		mockMvc.perform(get("/admin/animais/1").with(user(adminPrincipal())))
 				.andExpect(status().isOk())
 				.andExpect(content().string(containsString("Responsável principal")))
-				.andExpect(content().string(containsString("Rui Tutor")))
+				.andExpect(content().string(containsString("Rui Responsável")))
 				.andExpect(content().string(containsString("CUIDADOR")))
 				.andExpect(content().string(containsString("Últimos atendimentos")))
 				.andExpect(content().string(containsString("Dra. Vera")))
@@ -463,7 +463,7 @@ class AdminClinicaControllerTest {
 	}
 
 	private AnimalResponsavelResponse responsavelPrincipal() {
-		return new AnimalResponsavelResponse(1L, "Rex", 3L, "Rui Tutor", "TUTOR_LEGAL", LocalDate.of(2026, 8, 1), null, "S", "S");
+		return new AnimalResponsavelResponse(1L, "Rex", 3L, "Rui Responsável", "TUTOR_LEGAL", LocalDate.of(2026, 8, 1), null, "S", "S");
 	}
 
 	private AnimalResponsavelResponse responsavelSecundario() {
@@ -538,7 +538,7 @@ class AdminClinicaControllerTest {
 				30L,
 				20L,
 				3L,
-				"Rui Tutor",
+				"Rui Responsável",
 				1L,
 				"Rex",
 				LocalDateTime.of(2026, 8, 30, 12, 0),

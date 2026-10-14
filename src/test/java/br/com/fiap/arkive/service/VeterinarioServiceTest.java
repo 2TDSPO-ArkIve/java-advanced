@@ -10,9 +10,11 @@ import br.com.fiap.arkive.repository.ClinicaRepository;
 import br.com.fiap.arkive.repository.ResponsavelRepository;
 import br.com.fiap.arkive.repository.UsuarioRepository;
 import br.com.fiap.arkive.repository.VeterinarioRepository;
+import br.com.fiap.arkive.security.UsuarioPrincipal;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.lang.reflect.Method;
@@ -181,5 +183,48 @@ class VeterinarioServiceTest {
 
 		assertEquals("nova.vera@arkive.com", veterinario.getEmail());
 		verify(provisioningService, never()).provisionar(any());
+	}
+
+	@Test
+	void perfilAutenticadoUsaSomenteVeterinarioIdDoPrincipal() {
+		VeterinarioRepository veterinarioRepository = mock(VeterinarioRepository.class);
+		VeterinarioService service = new VeterinarioService(
+				veterinarioRepository, mock(ClinicaService.class), mock(AccountProvisioningService.class));
+		Veterinario veterinario = new Veterinario();
+		veterinario.setId(45L);
+		veterinario.setNome("Dra Vera");
+		veterinario.setCrmv("CRMV123");
+		veterinario.setEmail("vera@arkive.com");
+		veterinario.setEspecialidade("Felinos");
+		veterinario.setAtivo("S");
+		when(veterinarioRepository.findById(45L)).thenReturn(Optional.of(veterinario));
+		UsuarioPrincipal principal = new UsuarioPrincipal(
+				1L, "Dra Vera", "vera@arkive.com", "hash", TipoUsuario.VETERINARIO, "S", false,
+				null, 45L, null);
+
+		var response = service.buscarPerfilAutenticado(principal);
+
+		assertEquals(45L, response.id());
+		assertEquals("Dra Vera", response.nome());
+		assertEquals("CRMV123", response.crmv());
+		assertEquals("Felinos", response.especialidade());
+		assertEquals("vera@arkive.com", response.email());
+		verify(veterinarioRepository).findById(45L);
+	}
+
+	@Test
+	void perfilAutenticadoFalhaFechadoSemVinculoOuComOutroPapel() {
+		VeterinarioService service = new VeterinarioService(
+				mock(VeterinarioRepository.class), mock(ClinicaService.class), mock(AccountProvisioningService.class));
+		UsuarioPrincipal semVinculo = new UsuarioPrincipal(
+				1L, "Dra Vera", "vera@arkive.com", "hash", TipoUsuario.VETERINARIO, "S", false,
+				null, null, null);
+		UsuarioPrincipal responsavel = new UsuarioPrincipal(
+				2L, "Maria", "maria@arkive.com", "hash", TipoUsuario.RESPONSAVEL, "S", false,
+				20L, null, null);
+
+		assertThrows(AccessDeniedException.class, () -> service.buscarPerfilAutenticado(semVinculo));
+		assertThrows(AccessDeniedException.class, () -> service.buscarPerfilAutenticado(responsavel));
+		assertThrows(AccessDeniedException.class, () -> service.buscarPerfilAutenticado(null));
 	}
 }

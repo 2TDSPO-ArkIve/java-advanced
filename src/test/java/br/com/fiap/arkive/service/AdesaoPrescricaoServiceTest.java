@@ -294,12 +294,12 @@ class AdesaoPrescricaoServiceTest {
 	private Responsavel responsavelEntity(Long id) {
 		Responsavel responsavel = new Responsavel();
 		responsavel.setId(id);
-		responsavel.setNome("Tutor");
+		responsavel.setNome("Responsável");
 		return responsavel;
 	}
 
 	private UsuarioPrincipal responsavel(Long responsavelId) {
-		return new UsuarioPrincipal(2L, "Tutor", "tutor@arkive.com", "$2a$10$hash", TipoUsuario.RESPONSAVEL, "S", false, responsavelId, null, null);
+		return new UsuarioPrincipal(2L, "Responsável", "responsavel@arkive.com", "$2a$10$hash", TipoUsuario.RESPONSAVEL, "S", false, responsavelId, null, null);
 	}
 
 	private UsuarioPrincipal veterinario(Long veterinarioId) {

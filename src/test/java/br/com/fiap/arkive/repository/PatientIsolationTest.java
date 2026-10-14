@@ -192,7 +192,7 @@ class PatientIsolationTest {
 
 	@Test
 	void vinculoFuturoDeTutorNaoConcedeAcessoAntesDaVigencia() {
-		Responsavel tutor = new Responsavel(); tutor.setNome("Tutor"); tutor.setTipo("TUTOR"); tutor.setDocumento("123"); em.persist(tutor);
+		Responsavel tutor = new Responsavel(); tutor.setNome("Responsável"); tutor.setTipo("RESPONSAVEL"); tutor.setDocumento("123"); em.persist(tutor);
 		LocalDate hoje = LocalDate.of(2026, 9, 9);
 		AnimalResponsavelId id = new AnimalResponsavelId(); id.setAnimalId(pacientes.get("P1").getId());
 		id.setResponsavelId(tutor.getId()); id.setDataInicio(hoje.plusDays(1));

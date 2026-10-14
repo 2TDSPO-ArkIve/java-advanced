@@ -75,7 +75,7 @@ class Batch2ApiMvcTest {
 	}
 	@Test void responsavelConsultaSomenteSeuCadastro() throws Exception {
 		var tutor = principal(TipoUsuario.RESPONSAVEL);
-		when(responsaveis.buscarPorId(20L)).thenReturn(new ResponsavelResponse(20L, "Ana", "documento", null, null, "TUTOR", LocalDate.now(), "S", "S"));
+		when(responsaveis.buscarPorId(20L)).thenReturn(new ResponsavelResponse(20L, "Ana", "documento", null, null, "RESPONSAVEL", LocalDate.now(), "S", "S"));
 		mvc.perform(get("/api/responsaveis/20").with(user(tutor))).andExpect(status().isOk());
 		mvc.perform(get("/api/responsaveis/21").with(user(tutor))).andExpect(status().isForbidden());
 		mvc.perform(get("/api/responsaveis").with(user(tutor))).andExpect(status().isOk()).andExpect(jsonPath("$.content.length()").value(1));

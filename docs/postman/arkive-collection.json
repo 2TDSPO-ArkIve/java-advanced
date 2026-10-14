@@ -269,7 +269,7 @@
             "url": "{{baseUrl}}/api/responsaveis",
             "body": {
               "mode": "raw",
-          "raw": "{\n  \"nome\": \"Maria Responsável\",\n  \"documento\": \"12345678901\",\n  \"email\": \"maria.responsavel@example.com\",\n  \"telefone\": \"11988888888\",\n  \"tipo\": \"TUTOR\",\n  \"dataCadastro\": \"2026-09-12\",\n  \"notificacao\": \"S\",\n  \"ativo\": \"S\"\n}",
+          "raw": "{\n  \"nome\": \"Maria Responsável\",\n  \"documento\": \"12345678901\",\n  \"email\": \"maria.responsavel@example.com\",\n  \"telefone\": \"11988888888\",\n  \"tipo\": \"RESPONSAVEL\",\n  \"dataCadastro\": \"2026-09-12\",\n  \"notificacao\": \"S\",\n  \"ativo\": \"S\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -320,7 +320,7 @@
             "url": "{{baseUrl}}/api/responsaveis/{{responsavelId}}",
             "body": {
               "mode": "raw",
-          "raw": "{\n  \"nome\": \"Maria Responsável\",\n  \"documento\": \"12345678901\",\n  \"email\": \"maria.responsavel@example.com\",\n  \"telefone\": \"11988888888\",\n  \"tipo\": \"TUTOR\",\n  \"dataCadastro\": \"2026-09-12\",\n  \"notificacao\": \"S\",\n  \"ativo\": \"S\"\n}",
+          "raw": "{\n  \"nome\": \"Maria Responsável\",\n  \"documento\": \"12345678901\",\n  \"email\": \"maria.responsavel@example.com\",\n  \"telefone\": \"11988888888\",\n  \"tipo\": \"RESPONSAVEL\",\n  \"dataCadastro\": \"2026-09-12\",\n  \"notificacao\": \"S\",\n  \"ativo\": \"S\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -620,7 +620,7 @@
             "url": "{{baseUrl}}/api/animais-responsaveis",
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"animalId\": {{animalId}},\n  \"responsavelId\": {{responsavelId}},\n  \"tipoVinculo\": \"TUTOR\",\n  \"dataInicio\": \"2026-09-12\",\n  \"dataFim\": null,\n  \"principal\": \"S\",\n  \"ativo\": \"S\"\n}",
+              "raw": "{\n  \"animalId\": {{animalId}},\n  \"responsavelId\": {{responsavelId}},\n  \"tipoVinculo\": \"TUTOR_LEGAL\",\n  \"dataInicio\": \"2026-09-12\",\n  \"dataFim\": null,\n  \"principal\": \"S\",\n  \"ativo\": \"S\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -671,7 +671,7 @@
             "url": "{{baseUrl}}/api/animais-responsaveis",
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"animalId\": {{animalId}},\n  \"responsavelId\": {{responsavelId}},\n  \"tipoVinculo\": \"TUTOR\",\n  \"dataInicio\": \"2026-09-12\",\n  \"dataFim\": null,\n  \"principal\": \"S\",\n  \"ativo\": \"S\"\n}",
+              "raw": "{\n  \"animalId\": {{animalId}},\n  \"responsavelId\": {{responsavelId}},\n  \"tipoVinculo\": \"TUTOR_LEGAL\",\n  \"dataInicio\": \"2026-09-12\",\n  \"dataFim\": null,\n  \"principal\": \"S\",\n  \"ativo\": \"S\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -696,7 +696,7 @@
             "description": "O endpoint recebe AnimalResponsavelRequest no corpo JSON.",
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"animalId\": {{animalId}},\n  \"responsavelId\": {{responsavelId}},\n  \"tipoVinculo\": \"TUTOR\",\n  \"dataInicio\": \"2026-09-12\",\n  \"dataFim\": \"2026-12-31\",\n  \"principal\": \"S\",\n  \"ativo\": \"N\"\n}",
+              "raw": "{\n  \"animalId\": {{animalId}},\n  \"responsavelId\": {{responsavelId}},\n  \"tipoVinculo\": \"TUTOR_LEGAL\",\n  \"dataInicio\": \"2026-09-12\",\n  \"dataFim\": \"2026-12-31\",\n  \"principal\": \"S\",\n  \"ativo\": \"N\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
