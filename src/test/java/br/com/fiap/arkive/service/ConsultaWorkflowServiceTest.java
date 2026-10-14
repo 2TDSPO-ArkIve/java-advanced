@@ -131,6 +131,23 @@ class ConsultaWorkflowServiceTest {
 	}
 
 	@Test
+	void consultaIniciadaPodeSerCanceladaEPreservaSnapshotDaObservacaoResponsavel() {
+		Consulta consulta = consulta("AG");
+		consulta.getAnimal().setObservacaoResponsavelPendente("Está bebendo pouca água.");
+		when(consultaService.buscarEntidade(1L)).thenReturn(consulta);
+		when(animalRepository.buscarParaAtualizarVinculos(10L)).thenReturn(java.util.Optional.of(consulta.getAnimal()));
+
+		ConsultaWorkflowResponse iniciada = workflowService.iniciar(1L);
+		ConsultaWorkflowResponse cancelada = workflowService.cancelar(
+				1L, new CancelarConsultaRequest("Atendimento interrompido."));
+
+		assertEquals("EP", iniciada.status());
+		assertEquals("CA", cancelada.status());
+		assertEquals("Está bebendo pouca água.", cancelada.observacaoResponsavel());
+		assertEquals(null, consulta.getAnimal().getObservacaoResponsavelPendente());
+	}
+
+	@Test
 	void rejeitaIniciarConsultaJaIniciadaOuTerminal() {
 		assertInicioRejeitado("EP");
 		assertInicioRejeitado("FI");

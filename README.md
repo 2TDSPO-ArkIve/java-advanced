@@ -129,25 +129,28 @@ Atualmente, as áreas web completas são destinadas a `SYSADMIN` e `ADMIN_CLINIC
 
 ## Fluxos funcionais além de CRUD
 
-### Fluxo 1 — Consulta clínica assistida
+### Fluxo 1 — Consulta clínica com suporte ArkIve opcional
 
 ```text
 AG (Agendada)
   → EP (Em Progresso)
   → narrativa clínica
-  → suporte clínico assistido por IA
-  → AP (Aguardando Parecer)
-  → conclusão do veterinário
-  → FI (Finalizada)
+  ├→ conclusão do veterinário → FI (Finalizada)
+  └→ suporte clínico assistido por IA → AP (Aguardando Parecer)
+       → conclusão do veterinário → FI (Finalizada)
+
+AG / EP / AP → CA (Cancelada)
 ```
 
 1. Uma consulta é criada/agendada, normalmente com status `AG`.
 2. O veterinário responsável inicia o atendimento; o service valida o vínculo, os recursos ativos e a transição `AG → EP`.
 3. A narrativa clínica é registrada e pode ser corrigida enquanto a consulta está em `EP` ou `AP`.
-4. Em `EP`, o veterinário solicita suporte clínico. A aplicação consulta o motor externo e valida a resposta.
-5. A hipótese, severidade, confiança e insight são persistidos como apoio provisório; URLs externas e títulos das referências RAG permanecem separados. O registro nasce com `confirmado=N` e `validacaoVet=NULL`, e a consulta avança para `AP`.
-6. O veterinário informa seu próprio diagnóstico e conclusão. Esse parecer é persistido como confirmado e validado pelo profissional.
-7. A consulta muda para `FI`, e eventos relevantes da jornada são registrados.
+4. O suporte ArkIve é opcional. O veterinário pode finalizar diretamente de `EP` para `FI`, sem criar diagnóstico de IA, ou pode solicitar explicitamente o suporte clínico em `EP`.
+5. Quando solicitado, a aplicação consulta o motor externo. A hipótese, severidade, confiança e insight são persistidos como apoio provisório; URLs externas e títulos das referências RAG permanecem separados. O registro nasce com `confirmado=N` e `validacaoVet=NULL`, e a consulta avança para `AP`.
+6. De `EP` ou `AP`, o veterinário informa sua própria conclusão diagnóstica ou clínica. O registro profissional separado nasce com `confirmado=S`, `validacaoVet=NULL` e sem metadados de IA.
+7. `doencaId` e severidade são opcionais. Conclusões como `Consulta de rotina` e `Nenhuma doença identificada` usam o texto clínico normal, com `doencaId=null` e severidade nula; não existem doenças fictícias no catálogo.
+8. Consultas `AG`, `EP` ou `AP` podem ser canceladas e preservadas no histórico como `CA`. Uma observação do responsável consumida ao iniciar permanece como snapshot mesmo após cancelamento; cancelar ainda em `AG` não a consome.
+9. A API transporta datas e horas em ISO-8601, por exemplo `2026-10-20T14:30:00`; formatação de exibição é responsabilidade do cliente.
 
 Comandos:
 
@@ -157,6 +160,7 @@ PATCH /api/consultas/{id}/narrativa
 POST  /api/consultas/{id}/suporte-clinico
 GET   /api/consultas/{id}/suporte-clinico
 POST  /api/consultas/{id}/finalizar
+POST  /api/consultas/{id}/cancelar
 ```
 
 Esse fluxo não é CRUD simples porque contém uma máquina de estados, regras de transição, autorização pelo veterinário responsável, chamada externa, validação e persistência do resultado provisório, distinção entre hipótese da IA e conclusão profissional e registro de eventos da jornada.

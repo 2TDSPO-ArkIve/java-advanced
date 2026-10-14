@@ -40,6 +40,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
@@ -138,10 +139,10 @@ class ClinicalWorkflowApiMvcTest {
 	}
 
 	@Test
-	void veterinarioCriaConsultaParaSiERecebeStatusAg() throws Exception {
+	void veterinarioCriaConsultaParaSiComDataIsoDe2026ERecebeStatusAg() throws Exception {
 		when(consultaService.criar(any(ConsultaRequest.class), any(UsuarioPrincipal.class))).thenReturn(new ConsultaResponse(
 				100L,
-				LocalDateTime.parse("2026-09-01T10:00:00"),
+				LocalDateTime.parse("2026-10-20T14:30:00"),
 				"PRESENCIAL",
 				"Avaliacao",
 				null,
@@ -163,7 +164,7 @@ class ClinicalWorkflowApiMvcTest {
 						.contentType(MediaType.APPLICATION_JSON)
 						.content("""
 								{
-								  "dataHora": "2026-09-01T10:00:00",
+								  "dataHora": "2026-10-20T14:30:00",
 								  "modalidade": "PRESENCIAL",
 								  "motivo": "Avaliacao",
 								  "status": "AG",
@@ -179,6 +180,7 @@ class ClinicalWorkflowApiMvcTest {
 
 		verify(consultaService).criar(
 				argThat(request -> Long.valueOf(10L).equals(request.veterinarioId())
+						&& LocalDateTime.parse("2026-10-20T14:30:00").equals(request.dataHora())
 						&& BigDecimal.ZERO.compareTo(request.valorConsulta()) == 0),
 				argThat(principal -> Long.valueOf(10L).equals(principal.getVeterinarioId()))
 		);
@@ -289,6 +291,18 @@ class ClinicalWorkflowApiMvcTest {
 				.andExpect(status().isForbidden())
 				.andExpect(jsonPath("$.status").value(403))
 				.andExpect(jsonPath("$.path").value("/api/consultas/100/narrativa"));
+	}
+
+	@Test
+	void cancelamentoExigeMotivoNaoVazio() throws Exception {
+		mockMvc.perform(post("/api/consultas/100/cancelar")
+						.with(user(veterinario()))
+						.contentType(MediaType.APPLICATION_JSON)
+						.content("{\"motivo\":\"   \"}"))
+				.andExpect(status().isBadRequest())
+				.andExpect(jsonPath("$.fields.motivo").exists());
+
+		verify(consultaWorkflowService, never()).cancelar(eq(100L), any(), any(UsuarioPrincipal.class));
 	}
 
 	@Test

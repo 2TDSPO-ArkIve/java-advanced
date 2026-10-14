@@ -1,6 +1,7 @@
 package br.com.fiap.arkive.service;
 
 import br.com.fiap.arkive.dto.request.AtualizarNarrativaConsultaRequest;
+import br.com.fiap.arkive.dto.request.CancelarConsultaRequest;
 import br.com.fiap.arkive.dto.request.ConsultaRequest;
 import br.com.fiap.arkive.dto.request.FinalizarConsultaRequest;
 import br.com.fiap.arkive.dto.request.PrescricaoRequest;
@@ -30,6 +31,8 @@ import br.com.fiap.arkive.service.clinical.ClinicalSupportProviderResult;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.data.domain.Pageable;
 
 import java.time.LocalDate;
@@ -47,6 +50,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -58,6 +62,7 @@ class ClinicalWorkflowEndToEndServiceTest {
 
 	private ClinicalSupportProvider clinicalSupportProvider;
 	private EventoJornadaService eventoJornadaService;
+	private NotificacaoService notificacaoService;
 	private ConsultaService consultaService;
 	private ConsultaWorkflowService consultaWorkflowService;
 	private ClinicalSupportService clinicalSupportService;
@@ -81,6 +86,7 @@ class ClinicalWorkflowEndToEndServiceTest {
 		AnimalResponsavelRepository animalResponsavelRepository = mock(AnimalResponsavelRepository.class);
 		VeterinarioService veterinarioService = mock(VeterinarioService.class);
 		eventoJornadaService = mock(EventoJornadaService.class);
+		notificacaoService = mock(NotificacaoService.class);
 		clinicalSupportProvider = mock(ClinicalSupportProvider.class);
 
 		Animal animal = animal();
@@ -95,10 +101,11 @@ class ClinicalWorkflowEndToEndServiceTest {
 		consultaWorkflowService = new ConsultaWorkflowService(
 				consultaService,
 				consultaRepository,
+				animalRepository,
 				diagnosticoService,
 				eventoJornadaService,
 				clinicalAccessService,
-				mock(NotificacaoService.class)
+				notificacaoService
 		);
 		ClinicalSupportPersistenceService persistenceService = new ClinicalSupportPersistenceService(consultaService, consultaRepository, diagnosticoService, clinicalAccessService, new ObjectMapper());
 		clinicalSupportService = new ClinicalSupportService(consultaService, diagnosticoService, clinicalAccessService, clinicalSupportProvider, persistenceService);
@@ -106,6 +113,7 @@ class ClinicalWorkflowEndToEndServiceTest {
 		adesaoPrescricaoService = new AdesaoPrescricaoService(adesaoPrescricaoRepository, prescricaoService, animalRepository, responsavelRepository, eventoJornadaService, clinicalAccessService);
 
 		when(animalRepository.findById(50L)).thenReturn(Optional.of(animal));
+		when(animalRepository.buscarParaAtualizarVinculos(50L)).thenReturn(Optional.of(animal));
 		when(veterinarioRepository.findById(10L)).thenReturn(Optional.of(veterinario));
 		when(clinicaRepository.findById(30L)).thenReturn(Optional.of(clinica));
 		when(veterinarioService.buscarClinicaId(10L)).thenReturn(30L);
@@ -171,9 +179,12 @@ class ClinicalWorkflowEndToEndServiceTest {
 		var consultaCriada = consultaService.criar(consultaRequest(), principalVeterinario);
 		assertEquals(100L, consultaCriada.id());
 		assertEquals("AG", consultaCriada.status());
+		consultaAtual.getAnimal().setObservacaoResponsavelPendente("Claudicação percebida em casa.");
 
 		var iniciada = consultaWorkflowService.iniciar(consultaCriada.id(), principalVeterinario);
 		assertEquals("EP", iniciada.status());
+		assertEquals("Claudicação percebida em casa.", iniciada.observacaoResponsavel());
+		assertNull(consultaAtual.getAnimal().getObservacaoResponsavelPendente());
 
 		var comNarrativa = consultaWorkflowService.atualizarNarrativa(
 				consultaCriada.id(),
@@ -211,11 +222,16 @@ class ClinicalWorkflowEndToEndServiceTest {
 				principalVeterinario
 		);
 		assertEquals("FI", finalizada.status());
+		assertEquals("Claudicação percebida em casa.", finalizada.observacaoResponsavel());
 		Diagnostico diagnosticoVeterinario = diagnosticos.get(diagnosticos.size() - 1);
 		assertEquals("S", diagnosticoVeterinario.getConfirmado());
 		assertNull(diagnosticoVeterinario.getValidacaoVet());
+		assertNull(diagnosticoVeterinario.getInsightIa());
+		assertNull(diagnosticoVeterinario.getConfianca());
 		assertEquals("N", suporteIa.getConfirmado());
 		assertNull(suporteIa.getValidacaoVet());
+		assertNotNull(suporteIa.getInsightIa());
+		assertNotNull(suporteIa.getConfianca());
 
 		var prescricao = prescricaoService.criar(prescricaoRequest(consultaCriada.id()), principalVeterinario);
 		assertEquals(300L, prescricao.id());
@@ -240,6 +256,65 @@ class ClinicalWorkflowEndToEndServiceTest {
 		verify(eventoJornadaService).registrarEvento(eq("PRESCRICAO_CRIADA"), eq("VETERINARIO"), eq(null), eq(10L), eq(50L), eq(30L), eq("Prescricao criada."), any());
 		verify(eventoJornadaService).registrarEvento(eq("ADESAO_REGISTRADA"), eq("RESPONSAVEL"), eq(40L), eq(null), eq(50L), eq(null), eq("Adesao de prescricao registrada."), any());
 		assertTrue(diagnosticos.size() >= 2);
+	}
+
+	@ParameterizedTest
+	@ValueSource(strings = { "Consulta de rotina", "Nenhuma doença identificada" })
+	void finalizaDiretamenteDoEpSemArkiveComConclusaoSemDoenca(String conclusaoClinica) {
+		UsuarioPrincipal principalVeterinario = veterinarioPrincipal();
+		var consultaCriada = consultaService.criar(consultaRequest(), principalVeterinario);
+		consultaAtual.getAnimal().setObservacaoResponsavelPendente("Está se alimentando normalmente.");
+
+		var iniciada = consultaWorkflowService.iniciar(consultaCriada.id(), principalVeterinario);
+		assertEquals("EP", iniciada.status());
+
+		var finalizada = consultaWorkflowService.finalizar(
+				consultaCriada.id(),
+				new FinalizarConsultaRequest(conclusaoClinica, null, null, "Animal clinicamente estável."),
+				principalVeterinario
+		);
+
+		assertEquals("FI", finalizada.status());
+		assertEquals("Está se alimentando normalmente.", finalizada.observacaoResponsavel());
+		assertNull(consultaAtual.getAnimal().getObservacaoResponsavelPendente());
+		assertEquals(1, diagnosticos.size());
+		Diagnostico conclusaoVeterinaria = diagnosticos.get(0);
+		assertEquals(conclusaoClinica, conclusaoVeterinaria.getDiagnostico());
+		assertEquals("S", conclusaoVeterinaria.getConfirmado());
+		assertNull(conclusaoVeterinaria.getValidacaoVet());
+		assertNull(conclusaoVeterinaria.getDoenca());
+		assertNull(conclusaoVeterinaria.getSeveridade());
+		assertNull(conclusaoVeterinaria.getInsightIa());
+		assertNull(conclusaoVeterinaria.getConfianca());
+		verify(clinicalSupportProvider, never()).gerarSuporte(any());
+		verify(notificacaoService).criarParaConsultaFinalizada(consultaAtual);
+		verify(eventoJornadaService).registrarEvento(
+				eq("CONSULTA_FINALIZADA"), eq("VETERINARIO"), eq(null), eq(10L), eq(50L), eq(30L),
+				eq("Consulta finalizada com diagnostico confirmado pelo veterinario."), any());
+	}
+
+	@Test
+	void cancelaDepoisDoSuporteArkiveEPreservaSnapshotDaObservacaoResponsavel() {
+		UsuarioPrincipal principalVeterinario = veterinarioPrincipal();
+		var consultaCriada = consultaService.criar(consultaRequest(), principalVeterinario);
+		consultaAtual.getAnimal().setObservacaoResponsavelPendente("Está sem apetite.");
+
+		consultaWorkflowService.iniciar(consultaCriada.id(), principalVeterinario);
+		var suporte = clinicalSupportService.gerarSuporte(consultaCriada.id(), principalVeterinario);
+		assertEquals("AP", suporte.statusConsulta());
+
+		var cancelada = consultaWorkflowService.cancelar(
+				consultaCriada.id(), new CancelarConsultaRequest("Responsável solicitou interrupção."), principalVeterinario);
+
+		assertEquals("CA", cancelada.status());
+		assertEquals("Está sem apetite.", cancelada.observacaoResponsavel());
+		assertNull(consultaAtual.getAnimal().getObservacaoResponsavelPendente());
+		assertEquals(1, diagnosticos.size());
+		assertEquals("N", diagnosticos.get(0).getConfirmado());
+		verify(eventoJornadaService).registrarEvento(
+				eq("CONSULTA_CANCELADA"), eq("VETERINARIO"), eq(null), eq(10L), eq(50L), eq(30L),
+				eq("Consulta cancelada."), any());
+		verify(notificacaoService, never()).criarParaConsultaFinalizada(any());
 	}
 
 	private ConsultaRequest consultaRequest() {
