@@ -42,6 +42,31 @@ public interface ConsultaRepository extends JpaRepository<Consulta, Long> {
 
 	@Query("""
 			select c from Consulta c
+			join fetch c.animal
+			join fetch c.veterinario
+			left join fetch c.clinica
+			where c.animal.id = :animalId
+			and c.veterinario.id = :veterinarioId
+			and c.status = 'FI'
+			order by c.dataHora desc, c.id desc
+			""")
+	List<Consulta> buscarCustosFinalizadosPorAnimalEVeterinario(
+			@Param("animalId") Long animalId,
+			@Param("veterinarioId") Long veterinarioId);
+
+	@Query("""
+			select c from Consulta c
+			join fetch c.animal
+			join fetch c.veterinario
+			left join fetch c.clinica
+			where c.veterinario.id = :veterinarioId
+			and c.status = 'FI'
+			order by c.dataHora desc, c.id desc
+			""")
+	List<Consulta> buscarCustosFinalizadosPorVeterinario(@Param("veterinarioId") Long veterinarioId);
+
+	@Query("""
+			select c from Consulta c
 			join fetch c.veterinario
 			left join fetch c.clinica
 			where c.animal.id = :animalId

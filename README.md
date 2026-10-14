@@ -196,7 +196,11 @@ Esse fluxo não é CRUD simples porque depende do encerramento de outro processo
 
 Consultas e prescrições podem registrar, opcionalmente, `valorConsulta` e `valorMedicamento`. Esses dados são custos informativos associados ao cuidado do paciente; não representam faturamento, pagamento, estoque ou contabilidade. `valorMedicamento` é o custo total estimado ou registrado daquela prescrição/tratamento, e não um preço unitário.
 
-O endpoint `GET /api/animais/{animalId}/custos` reutiliza as regras clínicas de leitura do paciente e retorna somente consultas finalizadas (`FI`) visíveis ao usuário, em ordem da mais recente para a mais antiga. A resposta separa total de consultas, total de medicamentos e total geral, além do detalhamento por consulta. Valores `NULL` significam que nenhum custo foi registrado; eles permanecem nulos no detalhe da consulta e são tratados como zero exclusivamente na agregação.
+O endpoint `GET /api/animais/{animalId}/custos` reutiliza as regras clínicas de leitura do paciente e retorna somente consultas finalizadas (`FI`), em ordem da mais recente para a mais antiga. Para um responsável autorizado, a visão continua abrangendo os custos do paciente. Para um veterinário, consultas, totais e contagens são limitados ao trabalho daquele próprio profissional; acesso clínico compartilhado não concede acesso aos preços de outro veterinário.
+
+O endpoint `GET /api/veterinarios/me/custos` usa exclusivamente o `veterinarioId` da identidade autenticada e apresenta o dashboard financeiro das consultas finalizadas daquele veterinário. Não existe parâmetro de ID de veterinário que permita trocar a titularidade do dashboard. Cada animal é identificado também pelo ArkIve ID.
+
+A resposta separa total de consultas, total de medicamentos e total geral, além do detalhamento por consulta. Nos dashboards próprios, `NULL` significa que nenhum custo foi registrado; no detalhe e no histórico clínico genéricos, um campo monetário nulo também pode significar que o valor foi redigido por privacidade financeira. Valores ausentes contribuem como zero somente nas agregações. Um zero explícito permanece zero e conta como valor registrado.
 
 ### Fluxo 4 — Cadastro, busca e observação do paciente pelo responsável
 

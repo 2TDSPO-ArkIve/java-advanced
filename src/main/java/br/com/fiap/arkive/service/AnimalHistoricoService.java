@@ -31,16 +31,19 @@ public class AnimalHistoricoService {
 	private final PrescricaoRepository prescricoes;
 	private final AnimalResponsavelRepository responsaveis;
 	private final ClinicalAccessService acesso;
+	private final FinancialVisibilityService visibilidadeFinanceira;
 
 	public AnimalHistoricoService(AnimalRepository animais, ConsultaRepository consultas,
 			DiagnosticoRepository diagnosticos, PrescricaoRepository prescricoes,
-			AnimalResponsavelRepository responsaveis, ClinicalAccessService acesso) {
+			AnimalResponsavelRepository responsaveis, ClinicalAccessService acesso,
+			FinancialVisibilityService visibilidadeFinanceira) {
 		this.animais = animais;
 		this.consultas = consultas;
 		this.diagnosticos = diagnosticos;
 		this.prescricoes = prescricoes;
 		this.responsaveis = responsaveis;
 		this.acesso = acesso;
+		this.visibilidadeFinanceira = visibilidadeFinanceira;
 	}
 
 	@Transactional(readOnly = true)
@@ -58,17 +61,19 @@ public class AnimalHistoricoService {
 		// Animal access can be broader than consultation access (notably for clinic veterinarians).
 		var historico = consultas.buscarHistoricoPorAnimal(animalId).stream()
 				.filter(consulta -> acesso.podeLerConsulta(principal, consulta))
-				.map(this::resumir).toList();
+				.map(consulta -> resumir(consulta, principal)).toList();
 		return new AnimalHistoricoResponse(paciente, historico);
 	}
 
-	private ConsultaHistorico resumir(Consulta consulta) {
+	private ConsultaHistorico resumir(Consulta consulta, UsuarioPrincipal principal) {
 		boolean finalizada = StatusConsulta.FI.getCodigo().equals(consulta.getStatus());
+		boolean mostrarCustos = visibilidadeFinanceira.podeVerCustosConsulta(principal, consulta);
 		Diagnostico diagnostico = finalizada
 				? diagnosticos.buscarDiagnosticosConfirmadosVeterinario(consulta.getId(), PageRequest.of(0, 1))
 						.stream().findFirst().orElse(null) : null;
 		var medicamentos = finalizada ? prescricoes.buscarPorConsulta(consulta.getId()).stream()
-				.map(PrescricaoResumoResponse::fromEntity).toList() : List.<PrescricaoResumoResponse>of();
+				.map(prescricao -> PrescricaoResumoResponse.fromEntity(prescricao, mostrarCustos)).toList()
+				: List.<PrescricaoResumoResponse>of();
 		String endereco = consulta.getEndereco();
 		return new ConsultaHistorico(consulta.getDataHora(), consulta.getModalidade(),
 				"PRESENCIAL".equals(consulta.getModalidade()) && endereco != null && !endereco.isBlank()
@@ -79,6 +84,6 @@ public class AnimalHistoricoService {
 				diagnostico == null ? null : diagnostico.getDiagnostico(),
 				diagnostico == null ? null : diagnostico.getSeveridade(),
 				finalizada ? consulta.getObservacao() : null, consulta.getObservacaoResponsavel(),
-				medicamentos, consulta.getValorConsulta());
+				medicamentos, mostrarCustos ? consulta.getValorConsulta() : null);
 	}
 }

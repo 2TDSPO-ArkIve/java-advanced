@@ -45,6 +45,7 @@ public class ConsultaService {
 	private final EventoJornadaService eventoJornadaService;
 	private final ClinicalAccessService clinicalAccessService;
 	private final NotificacaoService notificacaoService;
+	private final FinancialVisibilityService financialVisibilityService;
 	private final Clock clock;
 
 	public ConsultaService(
@@ -55,6 +56,7 @@ public class ConsultaService {
 			EventoJornadaService eventoJornadaService,
 			ClinicalAccessService clinicalAccessService,
 			NotificacaoService notificacaoService,
+			FinancialVisibilityService financialVisibilityService,
 			@Qualifier("businessClock") Clock clock
 	) {
 		this.clock = clock;
@@ -65,6 +67,7 @@ public class ConsultaService {
 		this.eventoJornadaService = eventoJornadaService;
 		this.clinicalAccessService = clinicalAccessService;
 		this.notificacaoService = notificacaoService;
+		this.financialVisibilityService = financialVisibilityService;
 	}
 
 	@Transactional
@@ -95,7 +98,7 @@ public class ConsultaService {
 				eventoJornadaService.criarPayload("Consulta", salva.getId(), "CONSULTA_CRIADA")
 		);
 		notificacaoService.criarParaConsultaAgendada(salva);
-		return ConsultaResponse.fromEntity(salva);
+		return respostaAutorizada(salva, principal);
 	}
 
 	@Transactional(readOnly = true)
@@ -123,8 +126,8 @@ public class ConsultaService {
 		validarModalidadeQuandoInformada(modalidade);
 		return switch (principal.getTipoUsuario()) {
 			case SYSADMIN -> consultaRepository.buscar(animalId, veterinarioId, clinicaId, vazioParaNulo(status), vazioParaNulo(modalidade), pageable)
-					.map(ConsultaResponse::fromEntity);
-			case VETERINARIO -> listarParaVeterinario(animalId, veterinarioId, clinicaId, status, modalidade, pageable, principal.getVeterinarioId());
+					.map(consulta -> respostaAutorizada(consulta, principal));
+			case VETERINARIO -> listarParaVeterinario(animalId, veterinarioId, clinicaId, status, modalidade, pageable, principal);
 			case RESPONSAVEL -> consultaRepository.buscarParaResponsavel(
 					principal.getResponsavelId(),
 					LocalDate.now(),
@@ -134,8 +137,8 @@ public class ConsultaService {
 					vazioParaNulo(status),
 					vazioParaNulo(modalidade),
 					pageable
-			).map(ConsultaResponse::fromEntity);
-			case ADMIN_CLINICA -> listarParaClinica(animalId, veterinarioId, clinicaId, status, modalidade, pageable, principal.getClinicaId());
+			).map(consulta -> respostaAutorizada(consulta, principal));
+			case ADMIN_CLINICA -> listarParaClinica(animalId, veterinarioId, clinicaId, status, modalidade, pageable, principal);
 		};
 	}
 
@@ -148,7 +151,7 @@ public class ConsultaService {
 	public ConsultaResponse buscarPorIdAutorizado(Long id, UsuarioPrincipal principal) {
 		Consulta consulta = buscarEntidade(id);
 		clinicalAccessService.exigirLeituraConsulta(principal, consulta);
-		return ConsultaResponse.fromEntity(consulta);
+		return respostaAutorizada(consulta, principal);
 	}
 
 	@Transactional
@@ -163,7 +166,7 @@ public class ConsultaService {
 		ConsultaRequest requestAutorizado = comVeterinarioAtualQuandoOmitido(consulta, request);
 		exigirAssociacoesImutaveis(consulta, requestAutorizado);
 		aplicarDados(consulta, requestAutorizado, false);
-		return ConsultaResponse.fromEntity(consultaRepository.save(consulta));
+		return respostaAutorizada(consultaRepository.save(consulta), principal);
 	}
 
 	@Transactional
@@ -199,13 +202,14 @@ public class ConsultaService {
 			String status,
 			String modalidade,
 			Pageable pageable,
-			Long veterinarioAutenticadoId
+			UsuarioPrincipal principal
 	) {
+		Long veterinarioAutenticadoId = principal.getVeterinarioId();
 		if (veterinarioAutenticadoId == null || (veterinarioId != null && !veterinarioId.equals(veterinarioAutenticadoId))) {
 			return Page.empty(pageable);
 		}
 		return consultaRepository.buscar(animalId, veterinarioAutenticadoId, clinicaId, vazioParaNulo(status), vazioParaNulo(modalidade), pageable)
-				.map(ConsultaResponse::fromEntity);
+				.map(consulta -> respostaAutorizada(consulta, principal));
 	}
 
 	private Page<ConsultaResponse> listarParaClinica(
@@ -215,13 +219,21 @@ public class ConsultaService {
 			String status,
 			String modalidade,
 			Pageable pageable,
-			Long clinicaAutenticadaId
+			UsuarioPrincipal principal
 	) {
+		Long clinicaAutenticadaId = principal.getClinicaId();
 		if (clinicaAutenticadaId == null || (clinicaId != null && !clinicaId.equals(clinicaAutenticadaId))) {
 			return Page.empty(pageable);
 		}
 		return consultaRepository.buscar(animalId, veterinarioId, clinicaAutenticadaId, vazioParaNulo(status), vazioParaNulo(modalidade), pageable)
-				.map(ConsultaResponse::fromEntity);
+				.map(consulta -> respostaAutorizada(consulta, principal));
+	}
+
+	private ConsultaResponse respostaAutorizada(Consulta consulta, UsuarioPrincipal principal) {
+		return ConsultaResponse.fromEntity(
+				consulta,
+				financialVisibilityService.podeVerCustosConsulta(principal, consulta)
+		);
 	}
 
 	private void aplicarDados(Consulta consulta, ConsultaRequest request, boolean criando) {

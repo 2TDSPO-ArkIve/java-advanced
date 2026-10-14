@@ -2,6 +2,7 @@ package br.com.fiap.arkive.dto.response;
 
 import br.com.fiap.arkive.domain.consulta.StatusConsulta;
 import br.com.fiap.arkive.entity.Consulta;
+import io.swagger.v3.oas.annotations.media.Schema;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -26,6 +27,7 @@ public record ConsultaResponse(
 		Long clinicaId,
 		String clinicaNome,
 		String endereco,
+		@Schema(description = "Valor assistencial da consulta. Para veterinarios, nulo também pode indicar redacao por privacidade financeira.")
 		BigDecimal valorConsulta
 ) {
 	public ConsultaResponse(Long id, LocalDateTime dataHora, String modalidade, String motivo,
@@ -57,6 +59,10 @@ public record ConsultaResponse(
 	}
 
 	public static ConsultaResponse fromEntity(Consulta consulta) {
+		return fromEntity(consulta, true);
+	}
+
+	public static ConsultaResponse fromEntity(Consulta consulta, boolean mostrarCustos) {
 		Long clinicaId = consulta.getClinica() == null ? null : consulta.getClinica().getId();
 		String clinicaNome = consulta.getClinica() == null ? null : consulta.getClinica().getNome();
 		StatusConsulta statusConsulta = StatusConsulta.fromCodigo(consulta.getStatus());
@@ -66,7 +72,7 @@ public record ConsultaResponse(
 				consulta.getPeso(), consulta.getTranscricao(), consulta.getStatus(), statusConsulta.getDescricao(),
 				consulta.getAnimal().getId(), consulta.getAnimal().getNome(), consulta.getAnimal().getArkivePatientId(),
 				consulta.getVeterinario().getId(), consulta.getVeterinario().getNome(), clinicaId, clinicaNome,
-				consulta.getEndereco(), consulta.getValorConsulta()
+				consulta.getEndereco(), mostrarCustos ? consulta.getValorConsulta() : null
 		);
 	}
 }

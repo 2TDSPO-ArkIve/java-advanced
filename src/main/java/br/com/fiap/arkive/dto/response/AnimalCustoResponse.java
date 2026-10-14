@@ -6,7 +6,7 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
 
-@Schema(description = "Resumo de custos assistenciais finalizados do paciente. Valores nulos nao registrados contam como zero apenas nos totais.")
+@Schema(description = "Resumo de custos assistenciais finalizados do paciente no escopo financeiro autorizado. Para veterinarios, inclui somente atendimentos proprios. Valores nulos nao registrados contam como zero apenas nos totais.")
 public record AnimalCustoResponse(
 		Long animalId,
 		String arkivePatientId,

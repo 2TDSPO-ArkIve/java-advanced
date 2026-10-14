@@ -21,6 +21,7 @@ import java.time.LocalDateTime;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.argThat;
@@ -57,6 +58,7 @@ class ConsultaServiceTest {
 				eventoJornadaService,
 				clinicalAccessService,
 				notificacaoService,
+				new FinancialVisibilityService(),
 				clock
 		);
 		when(consultaRepository.save(any(Consulta.class))).thenAnswer(invocation -> invocation.getArgument(0));
@@ -283,6 +285,33 @@ class ConsultaServiceTest {
 		consultaService.buscarPorIdAutorizado(1L, principal);
 
 		verify(clinicalAccessService).exigirLeituraConsulta(principal, consulta);
+	}
+
+	@Test
+	void leituraClinicaDeOutroVeterinarioRedigeValorSemOcultarConsulta() {
+		Consulta consulta = consulta("FI");
+		consulta.setId(1L);
+		consulta.setMotivo("Acompanhamento clinico compartilhado");
+		consulta.setValorConsulta(new BigDecimal("200.00"));
+		consulta.getVeterinario().setId(21L);
+		when(consultaRepository.findById(1L)).thenReturn(Optional.of(consulta));
+
+		var response = consultaService.buscarPorIdAutorizado(1L, veterinarioPrincipal(20L));
+
+		assertEquals("Acompanhamento clinico compartilhado", response.motivo());
+		assertNull(response.valorConsulta());
+	}
+
+	@Test
+	void leituraDaConsultaPropriaPreservaZeroRegistrado() {
+		Consulta consulta = consulta("FI");
+		consulta.setId(1L);
+		consulta.setValorConsulta(new BigDecimal("0.00"));
+		when(consultaRepository.findById(1L)).thenReturn(Optional.of(consulta));
+
+		var response = consultaService.buscarPorIdAutorizado(1L, veterinarioPrincipal(20L));
+
+		assertEquals(new BigDecimal("0.00"), response.valorConsulta());
 	}
 
 	@org.junit.jupiter.params.ParameterizedTest

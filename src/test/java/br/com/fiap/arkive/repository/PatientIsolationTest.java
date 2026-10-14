@@ -34,7 +34,7 @@ import static org.junit.jupiter.api.Assertions.*;
 		"spring.jpa.database-platform=org.hibernate.dialect.H2Dialect"})
 @Import({AnimalService.class, ClinicalAccessService.class, VeterinarioService.class, ConsultaService.class,
 		AnimalResponsavelService.class, AnimalHistoricoService.class, AnimalHistoricoPdfService.class,
-		ConsultaResumoPdfService.class, BusinessTimeConfig.class})
+		ConsultaResumoPdfService.class, FinancialVisibilityService.class, BusinessTimeConfig.class})
 class PatientIsolationTest {
 	@Autowired TestEntityManager em;
 	@Autowired AnimalService animais;

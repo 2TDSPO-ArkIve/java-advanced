@@ -33,6 +33,32 @@ public interface PrescricaoRepository extends JpaRepository<Prescricao, Long> {
 			@Param("animalId") Long animalId);
 
 	@Query("""
+			select p.consulta.id as consultaId,
+			       sum(p.valorMedicamento) as valorMedicamentos,
+			       count(p.valorMedicamento) as quantidadePrescricoesComValor
+			from Prescricao p
+			where p.consulta.animal.id = :animalId
+			and p.consulta.veterinario.id = :veterinarioId
+			and p.consulta.status = 'FI'
+			group by p.consulta.id
+			""")
+	List<CustoMedicamentoPorConsulta> somarCustosMedicamentosFinalizadosPorAnimalEVeterinario(
+			@Param("animalId") Long animalId,
+			@Param("veterinarioId") Long veterinarioId);
+
+	@Query("""
+			select p.consulta.id as consultaId,
+			       sum(p.valorMedicamento) as valorMedicamentos,
+			       count(p.valorMedicamento) as quantidadePrescricoesComValor
+			from Prescricao p
+			where p.consulta.veterinario.id = :veterinarioId
+			and p.consulta.status = 'FI'
+			group by p.consulta.id
+			""")
+	List<CustoMedicamentoPorConsulta> somarCustosMedicamentosFinalizadosPorVeterinario(
+			@Param("veterinarioId") Long veterinarioId);
+
+	@Query("""
 			select p from Prescricao p
 			where (:consultaId is null or p.consulta.id = :consultaId)
 			and (:medicamento is null or lower(p.medicamento) like lower(concat('%', :medicamento, '%')))

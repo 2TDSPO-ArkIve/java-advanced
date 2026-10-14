@@ -102,6 +102,42 @@ class AnimalHistoricoRepositoryTest {
 		assertEquals(2L, agregados.get(0).getQuantidadePrescricoesComValor());
 	}
 
+	@Test
+	void consultasEAgregadosFinanceirosPodemSerEscopadosPorVeterinarioNoBanco() {
+		Animal animal = animal("Paciente compartilhado");
+		Consulta consultaVetA = consulta(animal, "2026-10-20T14:30:00", "FI");
+		consultaVetA.setValorConsulta(new BigDecimal("100.00"));
+		prescricao(consultaVetA, "40.00");
+		Consulta consultaVetB = consulta(animal, "2026-10-19T14:30:00", "FI");
+		consultaVetB.setValorConsulta(new BigDecimal("200.00"));
+		prescricao(consultaVetB, "80.00");
+		Consulta naoFinalizadaVetA = consulta(animal, "2026-10-21T14:30:00", "EP");
+		naoFinalizadaVetA.setVeterinario(consultaVetA.getVeterinario());
+		naoFinalizadaVetA.setValorConsulta(new BigDecimal("999.00"));
+		prescricao(naoFinalizadaVetA, "999.00");
+		em.flush();
+		em.clear();
+
+		Long veterinarioAId = consultaVetA.getVeterinario().getId();
+		var consultasDoVetA = consultas.buscarCustosFinalizadosPorAnimalEVeterinario(
+				animal.getId(), veterinarioAId);
+		var dashboardVetA = consultas.buscarCustosFinalizadosPorVeterinario(veterinarioAId);
+		var medicamentosPacienteVetA = prescricoes.somarCustosMedicamentosFinalizadosPorAnimalEVeterinario(
+				animal.getId(), veterinarioAId);
+		var medicamentosDashboardVetA = prescricoes.somarCustosMedicamentosFinalizadosPorVeterinario(veterinarioAId);
+
+		assertEquals(List.of(consultaVetA.getId()), consultasDoVetA.stream().map(Consulta::getId).toList());
+		assertEquals(List.of(consultaVetA.getId()), dashboardVetA.stream().map(Consulta::getId).toList());
+		assertEquals(1, medicamentosPacienteVetA.size());
+		assertEquals(consultaVetA.getId(), medicamentosPacienteVetA.get(0).getConsultaId());
+		assertEquals(new BigDecimal("40.00"), medicamentosPacienteVetA.get(0).getValorMedicamentos());
+		assertEquals(1, medicamentosDashboardVetA.size());
+		assertEquals(new BigDecimal("40.00"), medicamentosDashboardVetA.get(0).getValorMedicamentos());
+
+		assertEquals(2, consultas.buscarCustosFinalizadosPorAnimal(animal.getId()).size(),
+				"A visão autorizada do responsável continua abrangendo os dois veterinários.");
+	}
+
 	private Animal animal(String nome) {
 		Especie especie = new Especie(); especie.setNome(nome + " especie"); em.persist(especie);
 		Animal animal = new Animal(); animal.setNome(nome); animal.setEspecie(especie);

@@ -29,7 +29,7 @@ public class AnimalCustoController {
 	@GetMapping("/{animalId}/custos")
 	@Operation(
 			summary = "Consulta custos assistenciais finalizados do paciente",
-			description = "Retorna apenas consultas FI que o usuario pode ler. Valores nao informados permanecem nulos no detalhe e contam como zero nos totais."
+			description = "Retorna consultas FI no escopo financeiro do usuario. Para veterinarios, agrega somente atendimentos proprios; responsaveis mantem a visao autorizada do paciente. Valores nao informados permanecem nulos no detalhe e contam como zero nos totais."
 	)
 	public ResponseEntity<AnimalCustoResponse> buscar(
 			@PathVariable Long animalId,

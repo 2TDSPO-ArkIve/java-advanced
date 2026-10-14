@@ -97,6 +97,7 @@ class ClinicalWorkflowEndToEndServiceTest {
 		ClinicalAccessService clinicalAccessService = new ClinicalAccessService(animalResponsavelRepository, consultaRepository, veterinarioService);
 		consultaService = new ConsultaService(consultaRepository, animalRepository, veterinarioRepository, clinicaRepository,
 				eventoJornadaService, clinicalAccessService, notificacaoService,
+				new FinancialVisibilityService(),
 				new br.com.fiap.arkive.config.BusinessTimeConfig().businessClock());
 		DiagnosticoService diagnosticoService = new DiagnosticoService(diagnosticoRepository, consultaService, doencaRepository, clinicalAccessService);
 		consultaWorkflowService = new ConsultaWorkflowService(
@@ -110,7 +111,8 @@ class ClinicalWorkflowEndToEndServiceTest {
 		);
 		ClinicalSupportPersistenceService persistenceService = new ClinicalSupportPersistenceService(consultaService, consultaRepository, diagnosticoService, clinicalAccessService, new ObjectMapper());
 		clinicalSupportService = new ClinicalSupportService(consultaService, diagnosticoService, clinicalAccessService, clinicalSupportProvider, persistenceService);
-		prescricaoService = new PrescricaoService(prescricaoRepository, adesaoPrescricaoRepository, consultaService, eventoJornadaService, clinicalAccessService);
+		prescricaoService = new PrescricaoService(prescricaoRepository, adesaoPrescricaoRepository, consultaService,
+				eventoJornadaService, clinicalAccessService, new FinancialVisibilityService());
 		adesaoPrescricaoService = new AdesaoPrescricaoService(adesaoPrescricaoRepository, prescricaoService, animalRepository, responsavelRepository, eventoJornadaService, clinicalAccessService);
 
 		when(animalRepository.findById(50L)).thenReturn(Optional.of(animal));
