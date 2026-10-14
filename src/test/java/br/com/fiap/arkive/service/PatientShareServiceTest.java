@@ -109,19 +109,41 @@ class PatientShareServiceTest {
 	}
 
 	@Test
-	void responsibleRedemptionCreatesSafeCaregiverRelationshipAndGrant() {
+	void firstResponsibleRedemptionCreatesPrincipalLegalRelationshipAndGrant() {
 		Usuario creator = user(1L, TipoUsuario.VETERINARIO);
 		Usuario recipient = user(2L, TipoUsuario.RESPONSAVEL);
 		PatientShareToken invitation = invitation(PatientAccessRole.RESPONSAVEL, creator);
 		PatientAccess access = access(recipient, creator, PatientAccessRole.RESPONSAVEL);
 		stubRedeem("secret", invitation, recipient, access);
 		when(relationships.existsVinculoAtivoVigente(eq(50L), eq(102L), any(LocalDate.class))).thenReturn(false);
+		when(relationships.existsQualquerVinculoAtivoVigente(eq(50L), any(LocalDate.class))).thenReturn(false);
 		when(relationships.findById(any())).thenReturn(Optional.empty());
 
 		service.redeem("secret", principal(recipient));
 
+		verify(relationships).save(argThat(link -> "TUTOR_LEGAL".equals(link.getTipoVinculo())
+				&& "S".equals(link.getAtivo()) && "S".equals(link.getPrincipal())));
+	}
+
+	@Test
+	void laterResponsibleRedemptionCreatesNonPrincipalCaregiver() {
+		Usuario creator = user(1L, TipoUsuario.VETERINARIO);
+		Usuario recipient = user(2L, TipoUsuario.RESPONSAVEL);
+		PatientShareToken invitation = invitation(PatientAccessRole.RESPONSAVEL, creator);
+		stubRedeem("later", invitation, recipient, access(recipient, creator, PatientAccessRole.RESPONSAVEL));
+		when(relationships.existsVinculoAtivoVigente(eq(50L), eq(102L), any(LocalDate.class))).thenReturn(false);
+		when(relationships.existsQualquerVinculoAtivoVigente(eq(50L), any(LocalDate.class))).thenReturn(true);
+		when(relationships.findById(any())).thenReturn(Optional.empty());
+
+		service.redeem("later", principal(recipient));
+
 		verify(relationships).save(argThat(link -> "CUIDADOR".equals(link.getTipoVinculo())
 				&& "S".equals(link.getAtivo()) && "N".equals(link.getPrincipal())));
+		var order = inOrder(tokens, animals, relationships);
+		order.verify(tokens).findByTokenHashForUpdate(codec.hash("later"));
+		order.verify(animals).buscarParaAtualizarVinculos(50L);
+		order.verify(relationships).existsVinculoAtivoVigente(eq(50L), eq(102L), any(LocalDate.class));
+		order.verify(relationships).existsQualquerVinculoAtivoVigente(eq(50L), any(LocalDate.class));
 	}
 
 	@Test

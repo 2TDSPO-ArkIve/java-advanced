@@ -8,6 +8,7 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
+import jakarta.persistence.Lob;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import java.time.LocalDate;
@@ -63,6 +64,10 @@ public class Animal {
 
 	@Column(name = "ST_ATIVO", nullable = false, columnDefinition = "CHAR(1)")
 	private String ativo = "S";
+
+	@Lob
+	@Column(name = "DS_OBS_RESP_PENDENTE")
+	private String observacaoResponsavelPendente;
 
 	public Long getId() {
 		return id;
@@ -145,6 +150,14 @@ public class Animal {
 
 	public void setAtivo(String ativo) {
 		this.ativo = ativo;
+	}
+
+	public String getObservacaoResponsavelPendente() {
+		return observacaoResponsavelPendente;
+	}
+
+	public void setObservacaoResponsavelPendente(String observacaoResponsavelPendente) {
+		this.observacaoResponsavelPendente = observacaoResponsavelPendente;
 	}
 
 }

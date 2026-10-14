@@ -39,6 +39,18 @@ public interface AnimalResponsavelRepository extends JpaRepository<AnimalRespons
 	);
 
 	@Query("""
+			select count(ar) > 0 from AnimalResponsavel ar
+			where ar.animal.id = :animalId
+			and ar.ativo = 'S'
+			and ar.id.dataInicio <= :dataAtual
+			and (ar.dataFim is null or ar.dataFim >= :dataAtual)
+			""")
+	boolean existsQualquerVinculoAtivoVigente(
+			@Param("animalId") Long animalId,
+			@Param("dataAtual") LocalDate dataAtual
+	);
+
+	@Query("""
 			select ar from AnimalResponsavel ar
 			where ar.animal.id = :animalId
 			and ar.ativo = :ativo

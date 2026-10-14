@@ -1,15 +1,22 @@
 package br.com.fiap.arkive.service;
 
 import br.com.fiap.arkive.dto.request.AnimalRequest;
+import br.com.fiap.arkive.dto.request.ObservacaoResponsavelRequest;
 import br.com.fiap.arkive.dto.response.AnimalResponse;
+import br.com.fiap.arkive.dto.response.ObservacaoResponsavelResponse;
 import br.com.fiap.arkive.entity.Animal;
+import br.com.fiap.arkive.entity.AnimalResponsavel;
+import br.com.fiap.arkive.entity.AnimalResponsavelId;
 import br.com.fiap.arkive.entity.Clinica;
 import br.com.fiap.arkive.entity.Especie;
 import br.com.fiap.arkive.entity.Raca;
+import br.com.fiap.arkive.entity.Responsavel;
 import br.com.fiap.arkive.entity.TipoUsuario;
 import br.com.fiap.arkive.exception.BusinessException;
 import br.com.fiap.arkive.exception.ResourceNotFoundException;
 import br.com.fiap.arkive.repository.AnimalRepository;
+import br.com.fiap.arkive.repository.AnimalResponsavelRepository;
+import br.com.fiap.arkive.repository.ResponsavelRepository;
 import br.com.fiap.arkive.security.UsuarioPrincipal;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Profile;
@@ -28,6 +35,8 @@ import java.util.Objects;
 public class AnimalService {
 
 	private final AnimalRepository animalRepository;
+	private final AnimalResponsavelRepository animalResponsavelRepository;
+	private final ResponsavelRepository responsavelRepository;
 	private final EspecieService especieService;
 	private final RacaService racaService;
 	private final ClinicaService clinicaService;
@@ -40,6 +49,8 @@ public class AnimalService {
 	@Autowired
 	public AnimalService(
 			AnimalRepository animalRepository,
+			AnimalResponsavelRepository animalResponsavelRepository,
+			ResponsavelRepository responsavelRepository,
 			EspecieService especieService,
 			RacaService racaService,
 			ClinicaService clinicaService,
@@ -47,14 +58,15 @@ public class AnimalService {
 			ClinicalAccessService clinicalAccessService,
 			VeterinarioService veterinarioService
 	) {
-		this(animalRepository, especieService, racaService, clinicaService, eventoJornadaService,
-				clinicalAccessService, veterinarioService, new ArkivePatientIdGenerator(), Clock.systemDefaultZone());
+		this(animalRepository, animalResponsavelRepository, responsavelRepository, especieService, racaService,
+				clinicaService, eventoJornadaService, clinicalAccessService, veterinarioService,
+				new ArkivePatientIdGenerator(), Clock.systemDefaultZone());
 	}
 
 	AnimalService(AnimalRepository animalRepository, EspecieService especieService, RacaService racaService,
 			ClinicaService clinicaService, EventoJornadaService eventoJornadaService,
 			ClinicalAccessService clinicalAccessService, VeterinarioService veterinarioService, Clock clock) {
-		this(animalRepository, especieService, racaService, clinicaService, eventoJornadaService,
+		this(animalRepository, null, null, especieService, racaService, clinicaService, eventoJornadaService,
 				clinicalAccessService, veterinarioService, new ArkivePatientIdGenerator(), clock);
 	}
 
@@ -62,8 +74,19 @@ public class AnimalService {
 			ClinicaService clinicaService, EventoJornadaService eventoJornadaService,
 			ClinicalAccessService clinicalAccessService, VeterinarioService veterinarioService,
 			ArkivePatientIdGenerator patientIdGenerator, Clock clock) {
+		this(animalRepository, null, null, especieService, racaService, clinicaService, eventoJornadaService,
+				clinicalAccessService, veterinarioService, patientIdGenerator, clock);
+	}
+
+	AnimalService(AnimalRepository animalRepository, AnimalResponsavelRepository animalResponsavelRepository,
+			ResponsavelRepository responsavelRepository, EspecieService especieService, RacaService racaService,
+			ClinicaService clinicaService, EventoJornadaService eventoJornadaService,
+			ClinicalAccessService clinicalAccessService, VeterinarioService veterinarioService,
+			ArkivePatientIdGenerator patientIdGenerator, Clock clock) {
 		this.clock = clock;
 		this.animalRepository = animalRepository;
+		this.animalResponsavelRepository = animalResponsavelRepository;
+		this.responsavelRepository = responsavelRepository;
 		this.especieService = especieService;
 		this.racaService = racaService;
 		this.clinicaService = clinicaService;
@@ -88,12 +111,16 @@ public class AnimalService {
 			animal.setVeterinarioCadastro(veterinarioService.buscarEntidadeAtiva(principal.getVeterinarioId()));
 		}
 		Animal salvo = animalRepository.save(animal);
+		if (TipoUsuario.RESPONSAVEL.equals(principal.getTipoUsuario())) {
+			criarVinculoInicialResponsavel(salvo, principal.getResponsavelId());
+		}
 		Long clinicaId = salvo.getClinica() == null ? null : salvo.getClinica().getId();
 		Long veterinarioId = TipoUsuario.VETERINARIO.equals(principal.getTipoUsuario()) ? principal.getVeterinarioId() : null;
+		Long responsavelId = TipoUsuario.RESPONSAVEL.equals(principal.getTipoUsuario()) ? principal.getResponsavelId() : null;
 		eventoJornadaService.registrarEvento(
 				"ANIMAL_CADASTRADO",
-				veterinarioId == null ? "SISTEMA" : "VETERINARIO",
-				null,
+				responsavelId != null ? "RESPONSAVEL" : veterinarioId == null ? "SISTEMA" : "VETERINARIO",
+				responsavelId,
 				veterinarioId,
 				salvo.getId(),
 				clinicaId,
@@ -278,7 +305,16 @@ public class AnimalService {
 				}
 				yield comClinicaEAtivo(request, clinicaId, "S");
 			}
-			case RESPONSAVEL -> throw new AccessDeniedException("Operacao permitida apenas a SYSADMIN, ADMIN_CLINICA ou VETERINARIO.");
+			case RESPONSAVEL -> {
+				exigirResponsavelAutenticado(principal);
+				if (request.clinicaId() != null) {
+					throw new AccessDeniedException("Responsavel nao pode vincular o animal a uma clinica.");
+				}
+				if (request.ativo() != null) {
+					throw new AccessDeniedException("Responsavel nao pode definir o status do animal.");
+				}
+				yield comClinicaEAtivo(request, null, "S");
+			}
 		};
 	}
 
@@ -308,7 +344,17 @@ public class AnimalService {
 				}
 				yield comClinicaEAtivo(request, clinicaAtualId, animal.getAtivo());
 			}
-			case RESPONSAVEL -> throw new AccessDeniedException("Operacao permitida apenas a SYSADMIN, ADMIN_CLINICA ou VETERINARIO.");
+			case RESPONSAVEL -> {
+				exigirResponsavelVinculado(principal, animal);
+				if (request.clinicaId() != null) {
+					throw new AccessDeniedException("Responsavel nao pode alterar a clinica do animal.");
+				}
+				if (request.ativo() != null) {
+					throw new AccessDeniedException("Responsavel nao pode alterar o status do animal.");
+				}
+				Long clinicaAtualId = animal.getClinica() == null ? null : animal.getClinica().getId();
+				yield comClinicaEAtivo(request, clinicaAtualId, animal.getAtivo());
+			}
 		};
 	}
 
@@ -318,6 +364,28 @@ public class AnimalService {
 				.orElseThrow(() -> new ResourceNotFoundException("Animal nao encontrado."));
 		clinicalAccessService.exigirLeituraAnimal(principal, animal);
 		return AnimalResponse.fromEntity(animal);
+	}
+
+	@Transactional(readOnly = true)
+	public ObservacaoResponsavelResponse buscarObservacaoResponsavel(Long animalId, UsuarioPrincipal principal) {
+		Animal animal = buscarEntidade(animalId);
+		exigirResponsavelVinculado(principal, animal);
+		return new ObservacaoResponsavelResponse(animal.getId(), animal.getObservacaoResponsavelPendente());
+	}
+
+	@Transactional
+	public ObservacaoResponsavelResponse atualizarObservacaoResponsavel(
+			Long animalId,
+			ObservacaoResponsavelRequest request,
+			UsuarioPrincipal principal
+	) {
+		Animal animal = animalRepository.buscarParaAtualizarVinculos(animalId)
+				.orElseThrow(() -> new ResourceNotFoundException("Animal nao encontrado."));
+		exigirResponsavelVinculado(principal, animal);
+		String observacao = request.observacao() == null ? null : request.observacao().trim();
+		animal.setObservacaoResponsavelPendente(observacao == null || observacao.isBlank() ? null : observacao);
+		Animal salvo = animalRepository.save(animal);
+		return new ObservacaoResponsavelResponse(salvo.getId(), salvo.getObservacaoResponsavelPendente());
 	}
 
 	private String gerarPatientIdUnico() {
@@ -392,6 +460,44 @@ public class AnimalService {
 		if (principal == null) {
 			throw new AccessDeniedException("Usuario autenticado invalido.");
 		}
+	}
+
+	private void exigirResponsavelAutenticado(UsuarioPrincipal principal) {
+		if (principal == null || !TipoUsuario.RESPONSAVEL.equals(principal.getTipoUsuario())
+				|| principal.getResponsavelId() == null) {
+			throw new AccessDeniedException("Operacao permitida apenas ao responsavel autenticado.");
+		}
+	}
+
+	private void exigirResponsavelVinculado(UsuarioPrincipal principal, Animal animal) {
+		exigirResponsavelAutenticado(principal);
+		if (animalResponsavelRepository == null || !animalResponsavelRepository.existsVinculoAtivoVigente(
+				animal.getId(), principal.getResponsavelId(), LocalDate.now(clock))) {
+			throw new AccessDeniedException("Responsavel nao autorizado para este animal.");
+		}
+	}
+
+	private void criarVinculoInicialResponsavel(Animal animal, Long responsavelId) {
+		if (responsavelId == null || animalResponsavelRepository == null || responsavelRepository == null) {
+			throw new AccessDeniedException("Responsavel autenticado sem cadastro vinculado.");
+		}
+		Responsavel responsavel = responsavelRepository.findById(responsavelId)
+				.filter(item -> "S".equals(item.getAtivo()))
+				.orElseThrow(() -> new AccessDeniedException("Responsavel autenticado sem cadastro ativo."));
+		LocalDate hoje = LocalDate.now(clock);
+		AnimalResponsavelId id = new AnimalResponsavelId();
+		id.setAnimalId(animal.getId());
+		id.setResponsavelId(responsavelId);
+		id.setDataInicio(hoje);
+		AnimalResponsavel vinculo = new AnimalResponsavel();
+		vinculo.setId(id);
+		vinculo.setAnimal(animal);
+		vinculo.setResponsavel(responsavel);
+		vinculo.setTipoVinculo("TUTOR_LEGAL");
+		vinculo.setDataFim(null);
+		vinculo.setPrincipal("S");
+		vinculo.setAtivo("S");
+		animalResponsavelRepository.save(vinculo);
 	}
 
 	private AnimalRequest comClinica(AnimalRequest request, Long clinicaId) {

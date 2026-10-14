@@ -51,7 +51,7 @@ public class AnimalHistoricoService {
 		var vinculos = responsaveis.buscarResponsaveisPrincipaisAtivosVigentes(animalId, LocalDate.now());
 		String responsavel = vinculos.size() == 1 && vinculos.get(0).getResponsavel() != null
 				? vinculos.get(0).getResponsavel().getNome() : null;
-		var paciente = new Paciente(animal.getId(), animal.getNome(),
+		var paciente = new Paciente(animal.getId(), animal.getArkivePatientId(), animal.getNome(),
 				animal.getEspecie() == null ? null : animal.getEspecie().getNome(),
 				animal.getRaca() == null ? null : animal.getRaca().getNome(), animal.getSexo(),
 				animal.getCastrado(), animal.getDataNascimento(), responsavel);
@@ -78,6 +78,7 @@ public class AnimalHistoricoService {
 				consulta.getClinica() == null ? null : consulta.getClinica().getNome(),
 				diagnostico == null ? null : diagnostico.getDiagnostico(),
 				diagnostico == null ? null : diagnostico.getSeveridade(),
-				finalizada ? consulta.getObservacao() : null, medicamentos, consulta.getValorConsulta());
+				finalizada ? consulta.getObservacao() : null, consulta.getObservacaoResponsavel(),
+				medicamentos, consulta.getValorConsulta());
 	}
 }

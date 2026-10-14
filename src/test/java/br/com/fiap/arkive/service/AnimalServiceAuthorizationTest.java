@@ -1,14 +1,19 @@
 package br.com.fiap.arkive.service;
 
 import br.com.fiap.arkive.dto.request.AnimalRequest;
+import br.com.fiap.arkive.dto.request.ObservacaoResponsavelRequest;
 import br.com.fiap.arkive.dto.response.AnimalResponse;
 import br.com.fiap.arkive.entity.Animal;
+import br.com.fiap.arkive.entity.AnimalResponsavel;
 import br.com.fiap.arkive.entity.Clinica;
 import br.com.fiap.arkive.entity.Especie;
+import br.com.fiap.arkive.entity.Responsavel;
 import br.com.fiap.arkive.entity.TipoUsuario;
 import br.com.fiap.arkive.entity.Veterinario;
 import br.com.fiap.arkive.exception.BusinessException;
 import br.com.fiap.arkive.repository.AnimalRepository;
+import br.com.fiap.arkive.repository.AnimalResponsavelRepository;
+import br.com.fiap.arkive.repository.ResponsavelRepository;
 import br.com.fiap.arkive.security.UsuarioPrincipal;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -35,6 +40,8 @@ import static org.mockito.Mockito.doThrow;
 class AnimalServiceAuthorizationTest {
 
 	private AnimalRepository animalRepository;
+	private AnimalResponsavelRepository animalResponsavelRepository;
+	private ResponsavelRepository responsavelRepository;
 	private EspecieService especieService;
 	private RacaService racaService;
 	private ClinicaService clinicaService;
@@ -47,6 +54,8 @@ class AnimalServiceAuthorizationTest {
 	@BeforeEach
 	void setUp() {
 		animalRepository = mock(AnimalRepository.class);
+		animalResponsavelRepository = mock(AnimalResponsavelRepository.class);
+		responsavelRepository = mock(ResponsavelRepository.class);
 		especieService = mock(EspecieService.class);
 		racaService = mock(RacaService.class);
 		clinicaService = mock(ClinicaService.class);
@@ -55,18 +64,25 @@ class AnimalServiceAuthorizationTest {
 		veterinarioService = mock(VeterinarioService.class);
 		animalService = new AnimalService(
 				animalRepository,
+				animalResponsavelRepository,
+				responsavelRepository,
 				especieService,
 				racaService,
 				clinicaService,
 				eventoJornadaService,
 				clinicalAccessService,
 				veterinarioService,
+				new ArkivePatientIdGenerator(),
 				clock
 		);
 		when(especieService.buscarEntidade(1L)).thenReturn(especie());
 		when(clinicaService.buscarEntidade(30L)).thenReturn(clinica(30L));
 		when(clinicaService.buscarEntidade(31L)).thenReturn(clinica(31L));
-		when(animalRepository.save(any(Animal.class))).thenAnswer(invocation -> invocation.getArgument(0));
+		when(animalRepository.save(any(Animal.class))).thenAnswer(invocation -> {
+			Animal animal = invocation.getArgument(0);
+			if (animal.getId() == null) animal.setId(50L);
+			return animal;
+		});
 		when(eventoJornadaService.criarPayload(any(), any(), any())).thenReturn("{\"entity\":\"Animal\"}");
 	}
 
@@ -352,8 +368,108 @@ class AnimalServiceAuthorizationTest {
 	}
 
 	@Test
-	void responsavelNaoExecutaMutacaoGenericaDeAnimal() {
-		assertMutacoesBloqueadas(principal(TipoUsuario.RESPONSAVEL, 40L, null, null));
+	void responsavelCriaAnimalAtivoSemClinicaComVinculoPrincipal() {
+		Responsavel responsavel = responsavel(40L);
+		when(responsavelRepository.findById(40L)).thenReturn(Optional.of(responsavel));
+		AnimalRequest request = new AnimalRequest("Nina", 1L, null, "F", "N", null, null);
+
+		AnimalResponse response = animalService.criar(request, principal(TipoUsuario.RESPONSAVEL, 40L, null, null));
+
+		assertNull(response.clinicaId());
+		assertEquals("S", response.ativo());
+		verify(animalResponsavelRepository).save(argThat(vinculo -> vinculo.getAnimal().getId().equals(50L)
+				&& vinculo.getResponsavel().getId().equals(40L)
+				&& "TUTOR_LEGAL".equals(vinculo.getTipoVinculo())
+				&& "S".equals(vinculo.getPrincipal())
+				&& "S".equals(vinculo.getAtivo())
+				&& vinculo.getDataFim() == null));
+	}
+
+	@Test
+	void responsavelNaoPodeForcarClinicaOuStatusAoCriar() {
+		var principal = principal(TipoUsuario.RESPONSAVEL, 40L, null, null);
+		assertThrows(AccessDeniedException.class, () -> animalService.criar(request(30L), principal));
+		assertThrows(AccessDeniedException.class, () -> animalService.criar(
+				new AnimalRequest("Nina", 1L, null, "F", "N", null, "S"), principal));
+		verify(animalRepository, never()).save(any());
+	}
+
+	@Test
+	void responsavelVinculadoAtualizaDadosBasicosSemAlterarCamposControlados() {
+		Animal animal = animal(30L);
+		when(animalRepository.findById(50L)).thenReturn(Optional.of(animal));
+		when(animalResponsavelRepository.existsVinculoAtivoVigente(eq(50L), eq(40L), any(LocalDate.class))).thenReturn(true);
+		AnimalRequest request = new AnimalRequest("Nina Atualizada", 1L, null, "F", "S", null, null);
+
+		AnimalResponse response = animalService.atualizar(50L, request,
+				principal(TipoUsuario.RESPONSAVEL, 40L, null, null));
+
+		assertEquals("Nina Atualizada", response.nome());
+		assertEquals(30L, response.clinicaId());
+		assertEquals("S", response.ativo());
+	}
+
+	@Test
+	void responsavelSemVinculoNaoAtualizaAnimalNemPorConhecerId() {
+		when(animalRepository.findById(50L)).thenReturn(Optional.of(animal(30L)));
+		when(animalResponsavelRepository.existsVinculoAtivoVigente(eq(50L), eq(40L), any(LocalDate.class))).thenReturn(false);
+
+		assertThrows(AccessDeniedException.class, () -> animalService.atualizar(50L,
+				new AnimalRequest("Nina", 1L, null, "F", "N", null, null),
+				principal(TipoUsuario.RESPONSAVEL, 40L, null, null)));
+		verify(animalRepository, never()).save(any());
+	}
+
+	@Test
+	void responsavelVinculadoNaoAlteraClinicaOuStatus() {
+		when(animalRepository.findById(50L)).thenReturn(Optional.of(animal(30L)));
+		when(animalResponsavelRepository.existsVinculoAtivoVigente(eq(50L), eq(40L), any(LocalDate.class))).thenReturn(true);
+		var principal = principal(TipoUsuario.RESPONSAVEL, 40L, null, null);
+
+		assertThrows(AccessDeniedException.class, () -> animalService.atualizar(50L, request(30L), principal));
+		assertThrows(AccessDeniedException.class, () -> animalService.atualizar(50L,
+				new AnimalRequest("Nina", 1L, null, "F", "N", null, "S"), principal));
+	}
+
+	@Test
+	void falhaAoSalvarVinculoPropagaParaRollbackDaCriacaoTransacional() {
+		when(responsavelRepository.findById(40L)).thenReturn(Optional.of(responsavel(40L)));
+		when(animalResponsavelRepository.save(any(AnimalResponsavel.class))).thenThrow(new IllegalStateException("falha"));
+
+		assertThrows(IllegalStateException.class, () -> animalService.criar(
+				new AnimalRequest("Nina", 1L, null, "F", "N", null, null),
+				principal(TipoUsuario.RESPONSAVEL, 40L, null, null)));
+		verify(animalRepository).save(any());
+	}
+
+	@Test
+	void responsavelVinculadoRegistraConsultaELimpaObservacaoPendente() {
+		Animal animal = animal(30L);
+		when(animalRepository.buscarParaAtualizarVinculos(50L)).thenReturn(Optional.of(animal));
+		when(animalResponsavelRepository.existsVinculoAtivoVigente(eq(50L), eq(40L), any(LocalDate.class))).thenReturn(true);
+		var principal = principal(TipoUsuario.RESPONSAVEL, 40L, null, null);
+
+		var registrada = animalService.atualizarObservacaoResponsavel(50L,
+				new ObservacaoResponsavelRequest("  Esta comendo menos.  "), principal);
+		assertEquals("Esta comendo menos.", registrada.observacao());
+
+		var limpa = animalService.atualizarObservacaoResponsavel(50L,
+				new ObservacaoResponsavelRequest("   "), principal);
+		assertNull(limpa.observacao());
+	}
+
+	@Test
+	void responsavelNaoVinculadoNaoLeNemEditaObservacaoPendente() {
+		Animal animal = animal(30L);
+		when(animalRepository.findById(50L)).thenReturn(Optional.of(animal));
+		when(animalRepository.buscarParaAtualizarVinculos(50L)).thenReturn(Optional.of(animal));
+		var principal = principal(TipoUsuario.RESPONSAVEL, 40L, null, null);
+
+		assertThrows(AccessDeniedException.class,
+				() -> animalService.buscarObservacaoResponsavel(50L, principal));
+		assertThrows(AccessDeniedException.class,
+				() -> animalService.atualizarObservacaoResponsavel(50L,
+						new ObservacaoResponsavelRequest("Nota"), principal));
 	}
 
 	@Test
@@ -425,6 +541,14 @@ class AnimalServiceAuthorizationTest {
 		veterinario.setNome("Dra " + id);
 		veterinario.setAtivo("S");
 		return veterinario;
+	}
+
+	private Responsavel responsavel(Long id) {
+		Responsavel responsavel = new Responsavel();
+		responsavel.setId(id);
+		responsavel.setNome("Responsavel " + id);
+		responsavel.setAtivo("S");
+		return responsavel;
 	}
 
 	private Especie especie() {

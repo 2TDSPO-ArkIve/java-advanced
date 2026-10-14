@@ -194,6 +194,16 @@ Consultas e prescrições podem registrar, opcionalmente, `valorConsulta` e `val
 
 O endpoint `GET /api/animais/{animalId}/custos` reutiliza as regras clínicas de leitura do paciente e retorna somente consultas finalizadas (`FI`) visíveis ao usuário, em ordem da mais recente para a mais antiga. A resposta separa total de consultas, total de medicamentos e total geral, além do detalhamento por consulta. Valores `NULL` significam que nenhum custo foi registrado; eles permanecem nulos no detalhe da consulta e são tratados como zero exclusivamente na agregação.
 
+### Fluxo 4 — Cadastro, busca e observação do paciente pelo responsável
+
+O responsável autenticado pode cadastrar um animal próprio e editar seus dados demográficos enquanto mantiver vínculo ativo e vigente. O cadastro cria atomicamente o primeiro vínculo principal, força o paciente como ativo e não permite que o responsável defina clínica, veterinário de cadastro ou estado administrativo. Raças devem existir previamente; o perfil `RESPONSAVEL` não pode criá-las.
+
+As listagens de animais aceitam `busca` para localizar, sem diferenciar maiúsculas e minúsculas, parte do nome ou do ArkIve ID. O parâmetro legado `nome` continua aceito; quando ambos são enviados, `busca` prevalece. O ArkIve ID é identidade pública permanente do paciente e nunca é credencial de autorização.
+
+O primeiro responsável também pode ser estabelecido pelo resgate de um convite seguro `RESPONSAVEL`. Se não existir vínculo vigente, o resgatante se torna principal; resgates posteriores mantêm a semântica de cuidador não principal. O token continua aleatório, expirável, de uso único e armazenado apenas como hash.
+
+`GET` e `PATCH /api/animais/{animalId}/observacao-responsavel` permitem que somente um responsável atualmente vinculado leia ou altere uma observação pendente de até 2000 caracteres. A observação é copiada para a primeira consulta que efetivamente transicionar de agendada para em progresso e então removida do animal; consultas posteriores não a repetem. O snapshot permanece na consulta histórica.
+
 ## Validações
 
 A aplicação valida dados em camadas complementares:
@@ -226,6 +236,7 @@ O **Flyway controla o versionamento do schema Oracle**. As migrations ficam em `
 | V12 | `V12__add_diagnostico_referencias_rag.sql` | Persiste separadamente os títulos das referências RAG |
 | V13 | `V13__add_patient_care_costs.sql` | Adiciona custos assistenciais opcionais de consultas e prescrições |
 | V14 | `V14__normalize_responsavel_identity.sql` | Substitui o tipo normal por `RESPONSAVEL`, preserva registros e adiciona o tipo opcional de documento CPF/RG |
+| V15 | `V15__add_responsavel_pending_observation.sql` | Adiciona a observação pendente do responsável no animal e seu snapshot consumido pela próxima consulta iniciada |
 
 No perfil Oracle:
 

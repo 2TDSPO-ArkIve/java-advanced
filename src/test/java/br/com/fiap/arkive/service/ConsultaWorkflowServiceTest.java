@@ -12,6 +12,7 @@ import br.com.fiap.arkive.entity.Veterinario;
 import br.com.fiap.arkive.exception.BusinessException;
 import br.com.fiap.arkive.exception.ResourceNotFoundException;
 import br.com.fiap.arkive.repository.ConsultaRepository;
+import br.com.fiap.arkive.repository.AnimalRepository;
 import br.com.fiap.arkive.security.UsuarioPrincipal;
 import br.com.fiap.arkive.entity.TipoUsuario;
 import org.junit.jupiter.api.BeforeEach;
@@ -34,6 +35,7 @@ class ConsultaWorkflowServiceTest {
 
 	private ConsultaService consultaService;
 	private ConsultaRepository consultaRepository;
+	private AnimalRepository animalRepository;
 	private DiagnosticoService diagnosticoService;
 	private EventoJornadaService eventoJornadaService;
 	private ClinicalAccessService clinicalAccessService;
@@ -44,6 +46,7 @@ class ConsultaWorkflowServiceTest {
 	void setUp() {
 		consultaService = mock(ConsultaService.class);
 		consultaRepository = mock(ConsultaRepository.class);
+		animalRepository = mock(AnimalRepository.class);
 		diagnosticoService = mock(DiagnosticoService.class);
 		eventoJornadaService = mock(EventoJornadaService.class);
 		clinicalAccessService = mock(ClinicalAccessService.class);
@@ -51,12 +54,18 @@ class ConsultaWorkflowServiceTest {
 		workflowService = new ConsultaWorkflowService(
 				consultaService,
 				consultaRepository,
+				animalRepository,
 				diagnosticoService,
 				eventoJornadaService,
 				clinicalAccessService,
 				notificacaoService
 		);
 		when(consultaRepository.save(any(Consulta.class))).thenAnswer(invocation -> invocation.getArgument(0));
+		when(animalRepository.save(any(Animal.class))).thenAnswer(invocation -> invocation.getArgument(0));
+		Animal animalBloqueado = new Animal();
+		animalBloqueado.setId(10L);
+		animalBloqueado.setAtivo("S");
+		when(animalRepository.buscarParaAtualizarVinculos(10L)).thenReturn(java.util.Optional.of(animalBloqueado));
 		when(eventoJornadaService.criarPayload(any(), any(), any())).thenReturn("{\"entity\":\"Consulta\"}");
 	}
 
@@ -64,12 +73,14 @@ class ConsultaWorkflowServiceTest {
 	void iniciaConsultaAgendada() {
 		Consulta consulta = consulta("AG");
 		when(consultaService.buscarEntidade(1L)).thenReturn(consulta);
+		when(animalRepository.buscarParaAtualizarVinculos(10L)).thenReturn(java.util.Optional.of(consulta.getAnimal()));
 
 		ConsultaWorkflowResponse response = workflowService.iniciar(1L);
 
 		assertEquals("EP", consulta.getStatus());
 		assertEquals("EP", response.status());
 		assertEquals("Em Progresso", response.statusDescricao());
+		assertEquals("ARK-PET-11111-22222-33333-44444-555555", response.animalArkivePatientId());
 		verify(consultaRepository).save(consulta);
 		verify(eventoJornadaService).registrarEvento(
 				eq("CONSULTA_INICIADA"),
@@ -81,6 +92,42 @@ class ConsultaWorkflowServiceTest {
 				eq("Consulta iniciada."),
 				any()
 		);
+	}
+
+	@Test
+	void inicioConsomeObservacaoPendenteUmaUnicaVezSobLockDoAnimal() {
+		Consulta primeira = consulta("AG");
+		primeira.getAnimal().setObservacaoResponsavelPendente("Esta sem apetite.");
+		when(consultaService.buscarEntidade(1L)).thenReturn(primeira);
+		when(animalRepository.buscarParaAtualizarVinculos(10L)).thenReturn(java.util.Optional.of(primeira.getAnimal()));
+
+		ConsultaWorkflowResponse primeiraResposta = workflowService.iniciar(1L);
+
+		assertEquals("Esta sem apetite.", primeira.getObservacaoResponsavel());
+		assertEquals("Esta sem apetite.", primeiraResposta.observacaoResponsavel());
+		assertEquals(null, primeira.getAnimal().getObservacaoResponsavelPendente());
+		verify(animalRepository).buscarParaAtualizarVinculos(10L);
+		verify(animalRepository).save(primeira.getAnimal());
+
+		Consulta segunda = consulta("AG");
+		segunda.setId(2L);
+		segunda.setAnimal(primeira.getAnimal());
+		when(consultaService.buscarEntidade(2L)).thenReturn(segunda);
+		workflowService.iniciar(2L);
+		assertEquals(null, segunda.getObservacaoResponsavel());
+	}
+
+	@Test
+	void cancelamentoAntesDoInicioNaoConsomeObservacaoPendente() {
+		Consulta consulta = consulta("AG");
+		consulta.getAnimal().setObservacaoResponsavelPendente("Nota para a proxima consulta.");
+		when(consultaService.buscarEntidade(1L)).thenReturn(consulta);
+
+		workflowService.cancelar(1L, new CancelarConsultaRequest("Remarcacao"));
+
+		assertEquals("Nota para a proxima consulta.", consulta.getAnimal().getObservacaoResponsavelPendente());
+		assertEquals(null, consulta.getObservacaoResponsavel());
+		verify(animalRepository, never()).buscarParaAtualizarVinculos(any());
 	}
 
 	@Test
@@ -386,6 +433,7 @@ class ConsultaWorkflowServiceTest {
 		Animal animal = new Animal();
 		animal.setId(10L);
 		animal.setNome("Nina");
+		animal.assignArkivePatientId("ARK-PET-11111-22222-33333-44444-555555");
 		animal.setAtivo("S");
 
 		Veterinario veterinario = new Veterinario();

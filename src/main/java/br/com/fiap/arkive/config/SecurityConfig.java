@@ -223,6 +223,11 @@ public class SecurityConfig {
 						.requestMatchers("/api/responsaveis", "/api/responsaveis/**")
 						.hasAnyRole("SYSADMIN", "ADMIN_CLINICA")
 
+						.requestMatchers(HttpMethod.GET, "/api/animais/*/observacao-responsavel")
+						.hasRole("RESPONSAVEL")
+						.requestMatchers(HttpMethod.PATCH, "/api/animais/*/observacao-responsavel")
+						.hasRole("RESPONSAVEL")
+
 						// Private account inbox and device registrations. Administration and
 						// clinic roles do not receive global access to another user's inbox.
 						.requestMatchers("/api/notificacoes", "/api/notificacoes/**")

@@ -294,6 +294,14 @@ class SecurityConfigTest {
 	}
 
 	@Test
+	void responsavelNaoPodeCriarRaca() throws Exception {
+		mockMvc.perform(post("/api/racas").with(user("responsavel").roles("RESPONSAVEL")))
+				.andExpect(status().isForbidden());
+		mockMvc.perform(post("/api/racas").with(user("vet").roles("VETERINARIO")))
+				.andExpect(status().isOk());
+	}
+
+	@Test
 	void fluxosClinicosPrincipaisContinuamAutorizados() throws Exception {
 		mockMvc.perform(post("/api/consultas").with(user("vet").roles("VETERINARIO")))
 				.andExpect(status().isOk());
@@ -388,6 +396,11 @@ class SecurityConfigTest {
 
 		@org.springframework.web.bind.annotation.PostMapping("/api/eventos-preventivos")
 		String criarEventoPreventivo() {
+			return "ok";
+		}
+
+		@org.springframework.web.bind.annotation.PostMapping("/api/racas")
+		String criarRaca() {
 			return "ok";
 		}
 

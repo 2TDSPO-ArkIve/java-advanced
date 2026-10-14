@@ -16,12 +16,21 @@ public record EventoJornadaResponse(
 		String veterinarioNome,
 		Long animalId,
 		String animalNome,
+		String animalArkivePatientId,
 		Long clinicaId,
 		String clinicaNome,
 		String canal,
 		String contexto,
 		String payloadJson
 ) {
+	public EventoJornadaResponse(Long id, String tipoEvento, LocalDateTime dataEvento, String origem,
+			String ator, Long responsavelId, String responsavelNome, Long veterinarioId,
+			String veterinarioNome, Long animalId, String animalNome, Long clinicaId,
+			String clinicaNome, String canal, String contexto, String payloadJson) {
+		this(id, tipoEvento, dataEvento, origem, ator, responsavelId, responsavelNome, veterinarioId,
+				veterinarioNome, animalId, animalNome, null, clinicaId, clinicaNome, canal, contexto, payloadJson);
+	}
+
 	public static EventoJornadaResponse fromEntity(EventoJornada evento) {
 		Long responsavelId = evento.getResponsavel() == null ? null : evento.getResponsavel().getId();
 		String responsavelNome = evento.getResponsavel() == null ? null : evento.getResponsavel().getNome();
@@ -29,6 +38,7 @@ public record EventoJornadaResponse(
 		String veterinarioNome = evento.getVeterinario() == null ? null : evento.getVeterinario().getNome();
 		Long animalId = evento.getAnimal() == null ? null : evento.getAnimal().getId();
 		String animalNome = evento.getAnimal() == null ? null : evento.getAnimal().getNome();
+		String animalArkivePatientId = evento.getAnimal() == null ? null : evento.getAnimal().getArkivePatientId();
 		Long clinicaId = evento.getClinica() == null ? null : evento.getClinica().getId();
 		String clinicaNome = evento.getClinica() == null ? null : evento.getClinica().getNome();
 		return new EventoJornadaResponse(
@@ -43,6 +53,7 @@ public record EventoJornadaResponse(
 				veterinarioNome,
 				animalId,
 				animalNome,
+				animalArkivePatientId,
 				clinicaId,
 				clinicaNome,
 				evento.getCanal(),
