@@ -11,7 +11,7 @@ public record ClinicalSupportProviderResult(
 		String insightIa,
 		Integer confianca,
 		List<String> fontesPesquisadas,
-		List<String> referenciasRag
+		List<RagReference> referenciasRag
 ) {
 	public ClinicalSupportProviderResult {
 		fontesPesquisadas = fontesPesquisadas == null
@@ -34,16 +34,16 @@ public record ClinicalSupportProviderResult(
 		this(diagnostico, severidade, insightIa, confianca, List.of(), List.of());
 	}
 
-	private static List<String> normalizarReferenciasRag(List<String> referenciasRag) {
+	private static List<RagReference> normalizarReferenciasRag(List<RagReference> referenciasRag) {
 		if (referenciasRag == null || referenciasRag.isEmpty()) {
 			return List.of();
 		}
-		LinkedHashSet<String> titulos = new LinkedHashSet<>();
-		for (String titulo : referenciasRag) {
-			if (titulo != null && !titulo.isBlank()) {
-				titulos.add(titulo.strip());
+		LinkedHashSet<RagReference> referencias = new LinkedHashSet<>();
+		for (RagReference referencia : referenciasRag) {
+			if (referencia != null && referencia.titulo() != null && !referencia.titulo().isBlank()) {
+				referencias.add(new RagReference(referencia.fonte(), referencia.titulo()));
 			}
 		}
-		return List.copyOf(titulos);
+		return List.copyOf(referencias);
 	}
 }

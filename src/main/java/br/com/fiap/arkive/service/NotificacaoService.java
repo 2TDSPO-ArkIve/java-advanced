@@ -5,6 +5,7 @@ import br.com.fiap.arkive.dto.response.NotificacaoResponse;
 import br.com.fiap.arkive.dto.response.NotificacoesLidasResponse;
 import br.com.fiap.arkive.entity.Consulta;
 import br.com.fiap.arkive.entity.Notificacao;
+import br.com.fiap.arkive.entity.PatientAccessRequest;
 import br.com.fiap.arkive.entity.TipoNotificacao;
 import br.com.fiap.arkive.entity.TipoRecursoNotificacao;
 import br.com.fiap.arkive.entity.Usuario;
@@ -35,6 +36,8 @@ public class NotificacaoService {
 	private static final String CHAVE_CONSULTA_AGENDADA = "CONSULTA_AGENDADA:";
 	private static final String CHAVE_LEMBRETE_CONSULTA = "LEMBRETE_CONSULTA:";
 	private static final String CHAVE_CONSULTA_FINALIZADA = "CONSULTA_FINALIZADA:";
+	private static final String TITULO_SOLICITACAO_ACESSO = "Solicitação de acesso";
+	private static final String CHAVE_SOLICITACAO_ACESSO = "SOLICITACAO_ACESSO:";
 
 	private final NotificacaoRepository notificacaoRepository;
 	private final NotificacaoRecipientService recipientService;
@@ -84,6 +87,33 @@ public class NotificacaoService {
 		return criada;
 	}
 
+	@Transactional
+	public List<Notificacao> criarParaSolicitacaoAcesso(
+			PatientAccessRequest solicitacao,
+			List<Usuario> destinatarios
+	) {
+		var veterinario = solicitacao.getRequester().getVeterinario();
+		var animal = solicitacao.getAnimal();
+		String mensagem = veterinario.getNome() + " (CRMV " + veterinario.getCrmv()
+				+ ") solicitou acesso a " + animal.getNome() + " (" + animal.getArkivePatientId() + ").";
+		String chaveEvento = CHAVE_SOLICITACAO_ACESSO + solicitacao.getId();
+		List<Notificacao> criadas = new ArrayList<>();
+		for (Usuario destinatario : destinatarios) {
+			criarSeAusente(
+					destinatario,
+					animal,
+					TipoNotificacao.SOLICITACAO_ACESSO,
+					TITULO_SOLICITACAO_ACESSO,
+					mensagem,
+					TipoRecursoNotificacao.SOLICITACAO_ACESSO,
+					solicitacao.getId(),
+					chaveEvento
+			).ifPresent(criadas::add);
+		}
+		publicarCriadas(criadas);
+		return List.copyOf(criadas);
+	}
+
 	private List<Notificacao> criarParaResponsaveis(
 			Consulta consulta,
 			TipoNotificacao tipo,
@@ -108,6 +138,20 @@ public class NotificacaoService {
 			String mensagem,
 			String chaveEvento
 	) {
+		return criarSeAusente(destinatario, consulta.getAnimal(), tipo, titulo, mensagem,
+				TipoRecursoNotificacao.CONSULTA, consulta.getId(), chaveEvento);
+	}
+
+	private Optional<Notificacao> criarSeAusente(
+			Usuario destinatario,
+			br.com.fiap.arkive.entity.Animal animal,
+			TipoNotificacao tipo,
+			String titulo,
+			String mensagem,
+			TipoRecursoNotificacao tipoRecurso,
+			Long recursoId,
+			String chaveEvento
+	) {
 		if (notificacaoRepository.findByUsuarioIdAndChaveEvento(destinatario.getId(), chaveEvento).isPresent()) {
 			return Optional.empty();
 		}
@@ -116,9 +160,9 @@ public class NotificacaoService {
 		notificacao.setTipo(tipo);
 		notificacao.setTitulo(titulo);
 		notificacao.setMensagem(mensagem);
-		notificacao.setAnimal(consulta.getAnimal());
-		notificacao.setTipoRecurso(TipoRecursoNotificacao.CONSULTA);
-		notificacao.setRecursoId(consulta.getId());
+		notificacao.setAnimal(animal);
+		notificacao.setTipoRecurso(tipoRecurso);
+		notificacao.setRecursoId(recursoId);
 		notificacao.setChaveEvento(chaveEvento);
 		return Optional.of(notificacaoRepository.save(notificacao));
 	}

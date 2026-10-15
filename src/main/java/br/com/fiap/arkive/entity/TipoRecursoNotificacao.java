@@ -1,6 +1,6 @@
 package br.com.fiap.arkive.entity;
 
 public enum TipoRecursoNotificacao {
-	CONSULTA
+	CONSULTA,
+	SOLICITACAO_ACESSO
 }
-

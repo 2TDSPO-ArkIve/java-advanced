@@ -5,9 +5,11 @@ import br.com.fiap.arkive.entity.AnimalResponsavel;
 import br.com.fiap.arkive.entity.AnimalResponsavelId;
 import br.com.fiap.arkive.entity.Consulta;
 import br.com.fiap.arkive.entity.Especie;
+import br.com.fiap.arkive.entity.PatientAccessRequest;
 import br.com.fiap.arkive.entity.Responsavel;
 import br.com.fiap.arkive.entity.TipoUsuario;
 import br.com.fiap.arkive.entity.Usuario;
+import br.com.fiap.arkive.entity.Veterinario;
 import br.com.fiap.arkive.repository.NotificacaoRepository;
 import br.com.fiap.arkive.service.notification.NotificacaoPushListener;
 import br.com.fiap.arkive.service.notification.NotificacaoPushService;
@@ -26,6 +28,7 @@ import org.springframework.transaction.support.TransactionTemplate;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Objects;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.ArgumentMatchers.anyList;
@@ -56,7 +59,7 @@ class NotificacaoTransactionIntegrationTest {
 
 	@Test
 	void publicaPushSomenteDepoisDoCommitEIdempotenciaEvitaDuplicata() {
-		Consulta consulta = prepararConsultaComResponsavelAtual("S");
+		Consulta consulta = prepararConsultaComResponsavelAtual();
 		TransactionTemplate transaction = new TransactionTemplate(transactionManager);
 
 		transaction.executeWithoutResult(status -> {
@@ -71,7 +74,7 @@ class NotificacaoTransactionIntegrationTest {
 
 	@Test
 	void rollbackRemoveNotificacaoENaoDisparaPush() {
-		Consulta consulta = prepararConsultaComResponsavelAtual("S");
+		Consulta consulta = prepararConsultaComResponsavelAtual();
 		TransactionTemplate transaction = new TransactionTemplate(transactionManager);
 
 		transaction.executeWithoutResult(status -> {
@@ -83,7 +86,50 @@ class NotificacaoTransactionIntegrationTest {
 		verify(pushService, never()).entregar(anyList());
 	}
 
-	private Consulta prepararConsultaComResponsavelAtual(String preferencia) {
+	@Test
+	void rollbackDaSolicitacaoRemoveNotificacaoENaoDisparaPush() {
+		Consulta consulta = prepararConsultaComResponsavelAtual();
+		Usuario destinatario = Objects.requireNonNull(
+				new TransactionTemplate(transactionManager).execute(status ->
+						notificacaoRecipient(consulta.getAnimal())),
+				"A transação de preparação deve retornar o destinatário persistido.");
+		PatientAccessRequest solicitacao = solicitacaoAcesso(consulta.getAnimal());
+		TransactionTemplate transaction = new TransactionTemplate(transactionManager);
+
+		transaction.executeWithoutResult(status -> {
+			notificacaoService.criarParaSolicitacaoAcesso(solicitacao, List.of(destinatario));
+			status.setRollbackOnly();
+		});
+
+		assertEquals(0, notificacaoRepository.count());
+		verify(pushService, never()).entregar(anyList());
+	}
+
+	private Usuario notificacaoRecipient(Animal animal) {
+		return (Usuario) em.createQuery("""
+				select u from Usuario u
+				where u.responsavel.id in (
+					select ar.responsavel.id from AnimalResponsavel ar where ar.animal.id = :animalId
+				)
+				""")
+				.setParameter("animalId", animal.getId())
+				.getSingleResult();
+	}
+
+	private PatientAccessRequest solicitacaoAcesso(Animal animal) {
+		Veterinario veterinario = new Veterinario();
+		veterinario.setNome("Fernanda Vieira");
+		veterinario.setCrmv("12345");
+		Usuario solicitante = new Usuario();
+		solicitante.setVeterinario(veterinario);
+		PatientAccessRequest solicitacao = new PatientAccessRequest();
+		solicitacao.setId(91L);
+		solicitacao.setAnimal(animal);
+		solicitacao.setRequester(solicitante);
+		return solicitacao;
+	}
+
+	private Consulta prepararConsultaComResponsavelAtual() {
 		TransactionTemplate transaction = new TransactionTemplate(transactionManager);
 		return transaction.execute(status -> {
 			Especie especie = new Especie();
@@ -97,7 +143,7 @@ class NotificacaoTransactionIntegrationTest {
 			responsavel.setNome("Responsável");
 			responsavel.setDocumento("doc-" + System.nanoTime());
 			responsavel.setTipo("CUIDADOR");
-			responsavel.setNotificacao(preferencia);
+			responsavel.setNotificacao("S");
 			em.persist(responsavel);
 			Usuario usuario = new Usuario();
 			usuario.setNome("Responsável");

@@ -5,6 +5,7 @@ import br.com.fiap.arkive.dto.request.AtualizarNarrativaConsultaRequest;
 import br.com.fiap.arkive.dto.request.ConsultaRequest;
 import br.com.fiap.arkive.dto.response.ClinicalSupportResponse;
 import br.com.fiap.arkive.dto.response.ConsultaResponse;
+import br.com.fiap.arkive.dto.response.RagReferenceResponse;
 import br.com.fiap.arkive.entity.TipoUsuario;
 import br.com.fiap.arkive.exception.BusinessException;
 import br.com.fiap.arkive.exception.GlobalExceptionHandler;
@@ -317,7 +318,9 @@ class ClinicalWorkflowApiMvcTest {
 				"Avaliar apoio, dor e amplitude articular.",
 				72,
 				null,
-				List.of("Feline calicivirus infection", "Cryptococcosis"),
+				List.of(
+						new RagReferenceResponse("ABCD", "Feline calicivirus infection"),
+						new RagReferenceResponse("CFSPH", "Cryptococcosis")),
 				List.of("https://source-one.example", "https://source-two.example")
 		));
 
@@ -328,8 +331,10 @@ class ClinicalWorkflowApiMvcTest {
 				.andExpect(jsonPath("$.hipoteseDiagnostica").value("Entorse leve"))
 				.andExpect(jsonPath("$.confianca").value(72))
 				.andExpect(jsonPath("$.validacaoVet").isEmpty())
-				.andExpect(jsonPath("$.referenciasRag[0]").value("Feline calicivirus infection"))
-				.andExpect(jsonPath("$.referenciasRag[1]").value("Cryptococcosis"))
+				.andExpect(jsonPath("$.referenciasRag[0].fonte").value("ABCD"))
+				.andExpect(jsonPath("$.referenciasRag[0].titulo").value("Feline calicivirus infection"))
+				.andExpect(jsonPath("$.referenciasRag[1].fonte").value("CFSPH"))
+				.andExpect(jsonPath("$.referenciasRag[1].titulo").value("Cryptococcosis"))
 				.andExpect(jsonPath("$.fontesPesquisadas[0]").value("https://source-one.example"))
 				.andExpect(jsonPath("$.fontesPesquisadas[1]").value("https://source-two.example"));
 	}
@@ -346,7 +351,9 @@ class ClinicalWorkflowApiMvcTest {
 				"Avaliar apoio, dor e amplitude articular.",
 				72,
 				"S",
-				List.of("Feline calicivirus infection", "Cryptococcosis"),
+				List.of(
+						new RagReferenceResponse("ABCD", "Feline calicivirus infection"),
+						new RagReferenceResponse("CFSPH", "Cryptococcosis")),
 				List.of("https://source-one.example", "https://source-two.example")
 		));
 
@@ -354,8 +361,10 @@ class ClinicalWorkflowApiMvcTest {
 				.andExpect(status().isOk())
 				.andExpect(jsonPath("$.diagnosticoId").value(501))
 				.andExpect(jsonPath("$.validacaoVet").value("S"))
-				.andExpect(jsonPath("$.referenciasRag[0]").value("Feline calicivirus infection"))
-				.andExpect(jsonPath("$.referenciasRag[1]").value("Cryptococcosis"))
+				.andExpect(jsonPath("$.referenciasRag[0].fonte").value("ABCD"))
+				.andExpect(jsonPath("$.referenciasRag[0].titulo").value("Feline calicivirus infection"))
+				.andExpect(jsonPath("$.referenciasRag[1].fonte").value("CFSPH"))
+				.andExpect(jsonPath("$.referenciasRag[1].titulo").value("Cryptococcosis"))
 				.andExpect(jsonPath("$.fontesPesquisadas[0]").value("https://source-one.example"))
 				.andExpect(jsonPath("$.fontesPesquisadas[1]").value("https://source-two.example"));
 	}

@@ -4,6 +4,7 @@ import br.com.fiap.arkive.dto.response.NotificacaoResponse;
 import br.com.fiap.arkive.entity.Animal;
 import br.com.fiap.arkive.entity.Consulta;
 import br.com.fiap.arkive.entity.Notificacao;
+import br.com.fiap.arkive.entity.PatientAccessRequest;
 import br.com.fiap.arkive.entity.Responsavel;
 import br.com.fiap.arkive.entity.TipoNotificacao;
 import br.com.fiap.arkive.entity.TipoRecursoNotificacao;
@@ -122,13 +123,60 @@ class NotificacaoServiceTest {
 	}
 
 	@Test
+	void solicitacaoAcessoNotificaResponsaveisComIdentidadeClinicaERecursoDaSolicitacao() {
+		PatientAccessRequest solicitacao = solicitacaoAcesso();
+		Usuario primeiro = usuario(10L, "S");
+		Usuario segundo = usuario(11L, "N");
+		when(repository.findByUsuarioIdAndChaveEvento(any(), any())).thenReturn(Optional.empty());
+		AtomicLong ids = new AtomicLong(250);
+		when(repository.save(any())).thenAnswer(invocation -> {
+			Notificacao notificacao = invocation.getArgument(0);
+			notificacao.setId(ids.getAndIncrement());
+			return notificacao;
+		});
+
+		List<Notificacao> criadas = service.criarParaSolicitacaoAcesso(
+				solicitacao, List.of(primeiro, segundo));
+
+		assertEquals(2, criadas.size());
+		for (Notificacao notificacao : criadas) {
+			assertEquals(TipoNotificacao.SOLICITACAO_ACESSO, notificacao.getTipo());
+			assertEquals("Solicitação de acesso", notificacao.getTitulo());
+			assertEquals("Fernanda Vieira (CRMV 12345) solicitou acesso a Rex "
+					+ "(ARK-PET-AAAAA-BBBBB-CCCCC-DDDDD).", notificacao.getMensagem());
+			assertEquals(solicitacao.getAnimal(), notificacao.getAnimal());
+			assertEquals(TipoRecursoNotificacao.SOLICITACAO_ACESSO, notificacao.getTipoRecurso());
+			assertEquals(91L, notificacao.getRecursoId());
+			assertEquals("SOLICITACAO_ACESSO:91", notificacao.getChaveEvento());
+		}
+		ArgumentCaptor<NotificacoesCriadasEvent> event = ArgumentCaptor.forClass(NotificacoesCriadasEvent.class);
+		verify(publisher).publishEvent(event.capture());
+		assertEquals(List.of(250L, 251L), event.getValue().notificacaoIds());
+	}
+
+	@Test
+	void solicitacaoAcessoDuplicadaNaoCriaOutraNotificacaoNemPublicaPush() {
+		PatientAccessRequest solicitacao = solicitacaoAcesso();
+		Usuario usuario = usuario(10L, "S");
+		when(repository.findByUsuarioIdAndChaveEvento(10L, "SOLICITACAO_ACESSO:91"))
+				.thenReturn(Optional.of(new Notificacao()));
+
+		assertTrue(service.criarParaSolicitacaoAcesso(solicitacao, List.of(usuario)).isEmpty());
+
+		verify(repository, never()).save(any());
+		verify(publisher, never()).publishEvent(any());
+	}
+
+	@Test
 	void lembreteEhIdempotentePorHorarioEReagendamentoGeraNovaIdentidade() {
 		Consulta consulta = consulta();
 		consulta.setDataHora(LocalDateTime.of(2026, 10, 20, 14, 30));
 		Usuario veterinario = usuarioVeterinario(30L, 9L);
 		Map<String, Notificacao> persistidas = new LinkedHashMap<>();
-		when(repository.findByUsuarioIdAndChaveEvento(eq(30L), any())).thenAnswer(invocation ->
-				Optional.ofNullable(persistidas.get(invocation.getArgument(1))));
+		when(repository.findByUsuarioIdAndChaveEvento(eq(30L), any())).thenAnswer(invocation -> {
+			String chaveEvento = invocation.getArgument(1, String.class);
+			return Optional.ofNullable(persistidas.get(chaveEvento));
+		});
 		AtomicLong ids = new AtomicLong(300);
 		when(repository.save(any())).thenAnswer(invocation -> {
 			Notificacao notificacao = invocation.getArgument(0);
@@ -268,6 +316,21 @@ class NotificacaoServiceTest {
 		consulta.setId(77L);
 		consulta.setAnimal(animal);
 		return consulta;
+	}
+
+	private PatientAccessRequest solicitacaoAcesso() {
+		Consulta consulta = consulta();
+		Veterinario veterinario = new Veterinario();
+		veterinario.setId(9L);
+		veterinario.setNome("Fernanda Vieira");
+		veterinario.setCrmv("12345");
+		Usuario solicitante = usuarioVeterinario(30L, 9L);
+		solicitante.setVeterinario(veterinario);
+		PatientAccessRequest solicitacao = new PatientAccessRequest();
+		solicitacao.setId(91L);
+		solicitacao.setAnimal(consulta.getAnimal());
+		solicitacao.setRequester(solicitante);
+		return solicitacao;
 	}
 
 	private Usuario usuario(Long id, String notificacaoPreferencia) {

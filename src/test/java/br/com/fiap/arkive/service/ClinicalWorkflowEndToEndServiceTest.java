@@ -28,6 +28,8 @@ import br.com.fiap.arkive.repository.VeterinarioRepository;
 import br.com.fiap.arkive.security.UsuarioPrincipal;
 import br.com.fiap.arkive.service.clinical.ClinicalSupportProvider;
 import br.com.fiap.arkive.service.clinical.ClinicalSupportProviderResult;
+import br.com.fiap.arkive.service.clinical.RagReference;
+import br.com.fiap.arkive.dto.response.RagReferenceResponse;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -129,7 +131,9 @@ class ClinicalWorkflowEndToEndServiceTest {
 				"Avaliar apoio, dor e amplitude articular.",
 				72,
 				List.of("https://source-one.example", "https://source-two.example"),
-				List.of("Feline calicivirus infection", "Cryptococcosis")
+				List.of(
+						new RagReference("ABCD", "Feline calicivirus infection"),
+						new RagReference("CFSPH", "Cryptococcosis"))
 		));
 
 		when(consultaRepository.save(any(Consulta.class))).thenAnswer(invocation -> {
@@ -204,7 +208,10 @@ class ClinicalWorkflowEndToEndServiceTest {
 		assertEquals(72, suporteGerado.confianca());
 		assertNotNull(suporteGerado.diagnosticoId());
 		assertNull(suporteGerado.validacaoVet());
-		assertEquals(List.of("Feline calicivirus infection", "Cryptococcosis"), suporteGerado.referenciasRag());
+		assertEquals(List.of(
+				new RagReferenceResponse("ABCD", "Feline calicivirus infection"),
+				new RagReferenceResponse("CFSPH", "Cryptococcosis")
+		), suporteGerado.referenciasRag());
 		assertEquals(List.of("https://source-one.example", "https://source-two.example"), suporteGerado.fontesPesquisadas());
 		assertEquals("AP", consultaAtual.getStatus());
 
@@ -213,7 +220,9 @@ class ClinicalWorkflowEndToEndServiceTest {
 		assertEquals("N", suporteIa.getConfirmado());
 		assertNull(suporteIa.getValidacaoVet());
 		assertEquals("[\"https://source-one.example\",\"https://source-two.example\"]", suporteIa.getFontesIaJson());
-		assertEquals("[\"Feline calicivirus infection\",\"Cryptococcosis\"]", suporteIa.getReferenciasRagJson());
+		assertEquals("[{\"fonte\":\"ABCD\",\"titulo\":\"Feline calicivirus infection\"},"
+				+ "{\"fonte\":\"CFSPH\",\"titulo\":\"Cryptococcosis\"}]",
+				suporteIa.getReferenciasRagJson());
 
 		clinicalSupportService.gerarSuporte(consultaCriada.id(), principalVeterinario);
 		clinicalSupportService.buscarSuporte(consultaCriada.id(), principalVeterinario);

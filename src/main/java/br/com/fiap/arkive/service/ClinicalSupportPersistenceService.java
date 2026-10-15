@@ -65,7 +65,7 @@ public class ClinicalSupportPersistenceService {
 		return ClinicalSupportResponse.fromEntities(consulta, diagnostico);
 	}
 
-	private String serializarLista(List<String> valores) {
+	private String serializarLista(List<?> valores) {
 		if (valores == null || valores.isEmpty()) {
 			return null;
 		}

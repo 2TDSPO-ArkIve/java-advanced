@@ -4,7 +4,6 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.LinkedHashSet;
 import java.util.List;
 
 public record RenderClinicalEngineResponse(
@@ -42,18 +41,7 @@ public record RenderClinicalEngineResponse(
 				insightIa,
 				confianca,
 				fontesPesquisadas,
-				extrairTitulosRag()
+				fontesRag
 		);
-	}
-
-	private List<String> extrairTitulosRag() {
-		LinkedHashSet<String> titulos = new LinkedHashSet<>();
-		for (RagReference referencia : fontesRag) {
-			if (referencia == null || referencia.titulo() == null || referencia.titulo().isBlank()) {
-				continue;
-			}
-			titulos.add(referencia.titulo().strip());
-		}
-		return List.copyOf(titulos);
 	}
 }
