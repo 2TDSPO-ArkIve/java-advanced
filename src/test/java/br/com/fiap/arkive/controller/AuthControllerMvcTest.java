@@ -102,7 +102,10 @@ class AuthControllerMvcTest {
 		// point of the registration feature.
 		mockMvc.perform(post("/api/auth/register")
 						.contentType(MediaType.APPLICATION_JSON)
-						.content("{\"nome\":\"Dra Nova\",\"crmv\":\"CRMV999\",\"email\":\"nova@arkive.com\"}"))
+						.content("""
+								{"nome":"Dra Nova","crmv":"CRMV999","email":"nova@arkive.com",
+								 "senha":"SenhaSegura1","confirmacaoSenha":"SenhaSegura1"}
+								"""))
 				.andExpect(status().isCreated())
 				.andExpect(jsonPath("$.id").value(77))
 				.andExpect(jsonPath("$.nome").value("Dra Nova"))
@@ -115,7 +118,9 @@ class AuthControllerMvcTest {
 		mockMvc.perform(post("/api/auth/register")
 						.contentType(MediaType.APPLICATION_JSON)
 						.content("{\"nome\":\"\",\"crmv\":\"\",\"email\":\"nao-e-email\"}"))
-				.andExpect(status().isBadRequest());
+				.andExpect(status().isBadRequest())
+				.andExpect(jsonPath("$.fields.senha").exists())
+				.andExpect(jsonPath("$.fields.confirmacaoSenha").exists());
 	}
 
 	@Test
@@ -125,9 +130,30 @@ class AuthControllerMvcTest {
 
 		mockMvc.perform(post("/api/auth/register")
 						.contentType(MediaType.APPLICATION_JSON)
-						.content("{\"nome\":\"Dra Nova\",\"crmv\":\"CRMV999\",\"email\":\"nova@arkive.com\"}"))
+						.content("""
+								{"nome":"Dra Nova","crmv":"CRMV999","email":"nova@arkive.com",
+								 "senha":"SenhaSegura1","confirmacaoSenha":"SenhaSegura1"}
+								"""))
 				.andExpect(status().isConflict())
 				.andExpect(jsonPath("$.message").value("CRMV ja cadastrado."));
+	}
+
+	@Test
+	void cadastroPublicoVeterinarioNaoAceitaControleDePapelOuTrocaSenha() throws Exception {
+		when(authService.registrarVeterinario(any())).thenReturn(new VeterinarioResponse(
+				77L, "Dra Nova", "CRMV999", null, "nova@arkive.com", null, null, "S"));
+
+		mockMvc.perform(post("/api/auth/register")
+						.contentType(MediaType.APPLICATION_JSON)
+						.content("""
+								{"nome":"Dra Nova","crmv":"CRMV999","email":"nova@arkive.com",
+								 "senha":"SenhaSegura1","confirmacaoSenha":"SenhaSegura1",
+								 "tipo":"SYSADMIN","role":"ADMIN_CLINICA","trocaSenha":"S","clinicaId":99,"ativo":"N"}
+								"""))
+				.andExpect(status().isCreated())
+				.andExpect(jsonPath("$.id").value(77))
+				.andExpect(jsonPath("$.tipo").doesNotExist())
+				.andExpect(jsonPath("$.trocaSenha").doesNotExist());
 	}
 
 	@Test

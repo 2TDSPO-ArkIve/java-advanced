@@ -6,6 +6,7 @@ import br.com.fiap.arkive.dto.response.VeterinarioResponse;
 import br.com.fiap.arkive.entity.TipoUsuario;
 import br.com.fiap.arkive.entity.Usuario;
 import br.com.fiap.arkive.repository.UsuarioRepository;
+import br.com.fiap.arkive.security.PasswordPolicy;
 import br.com.fiap.arkive.security.UsuarioPrincipal;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -32,6 +33,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 		UsuarioService.class,
 		AccountProvisioningService.class,
 		AuthService.class,
+		PasswordPolicy.class,
 		VeterinarioRegistrationProfileIntegrationTest.PasswordConfig.class
 })
 class VeterinarioRegistrationProfileIntegrationTest {
@@ -60,7 +62,8 @@ class VeterinarioRegistrationProfileIntegrationTest {
 	@Test
 	void cadastroPublicoProduzIdentidadeQueResolveAuthMeEPerfilProprio() {
 		VeterinarioResponse cadastro = authService.registrarVeterinario(
-				new RegistroVeterinarioRequest("Dra Vera", "CRMV123", "vera@arkive.com"));
+				new RegistroVeterinarioRequest(
+						"Dra Vera", "CRMV123", "vera@arkive.com", "SenhaSegura1", "SenhaSegura1"));
 		Usuario usuario = usuarioRepository.findByLoginIgnoreCase("vera@arkive.com").orElseThrow();
 		UsuarioPrincipal principal = UsuarioPrincipal.fromEntity(usuario);
 
@@ -73,8 +76,10 @@ class VeterinarioRegistrationProfileIntegrationTest {
 		assertEquals("CRMV123", me.crmv());
 		assertEquals("vera@arkive.com", me.email());
 		assertNull(me.clinicaId());
-		assertTrue(me.trocaSenhaObrigatoria());
-		assertTrue(passwordEncoder.matches("vera@arkive.com", usuario.getSenhaHash()));
+		assertFalse(me.trocaSenhaObrigatoria());
+		assertEquals("N", usuario.getTrocaSenha());
+		assertTrue(passwordEncoder.matches("SenhaSegura1", usuario.getSenhaHash()));
+		assertFalse(passwordEncoder.matches("vera@arkive.com", usuario.getSenhaHash()));
 
 		assertEquals(cadastro.id(), perfil.id());
 		assertEquals("Dra Vera", perfil.nome());

@@ -61,6 +61,32 @@ class VeterinarioServiceTest {
 	}
 
 	@Test
+	void autocadastroProvisionaSenhaEscolhidaSemUsarCredencialTemporaria() {
+		VeterinarioRepository veterinarioRepository = mock(VeterinarioRepository.class);
+		AccountProvisioningService provisioningService = mock(AccountProvisioningService.class);
+		VeterinarioService service = new VeterinarioService(
+				veterinarioRepository, mock(ClinicaService.class), provisioningService);
+		when(veterinarioRepository.save(any(Veterinario.class))).thenAnswer(invocation -> {
+			Veterinario veterinario = invocation.getArgument(0);
+			veterinario.setId(10L);
+			return veterinario;
+		});
+		ArgumentCaptor<UsuarioProvisioningRequest> captor = ArgumentCaptor.forClass(UsuarioProvisioningRequest.class);
+
+		service.criarAutocadastro(
+				new VeterinarioRequest("Dra Vera", "CRMV123", null, "vera@arkive.com", null, null),
+				"SenhaSegura1");
+
+		verify(provisioningService).provisionarComSenhaDefinida(captor.capture(),
+				org.mockito.Mockito.eq("SenhaSegura1"));
+		verify(provisioningService, never()).provisionar(any());
+		assertEquals(TipoUsuario.VETERINARIO, captor.getValue().tipo());
+		assertEquals("vera@arkive.com", captor.getValue().login());
+		assertEquals(10L, captor.getValue().veterinarioId());
+		assertNull(captor.getValue().clinicaId());
+	}
+
+	@Test
 	void criarVeterinarioComProvisionamentoRealPersisteUsuarioComBcryptETrocaObrigatoria() {
 		VeterinarioRepository veterinarioRepository = mock(VeterinarioRepository.class);
 		ClinicaService clinicaService = mock(ClinicaService.class);

@@ -12,7 +12,9 @@ import io.swagger.v3.oas.annotations.media.Schema;
  * to attach themselves to an arbitrary clinic or dictate their own active
  * flag). {@code email} is required here (unlike VeterinarioRequest, where
  * it's only enforced by {@code VeterinarioService.criar}'s business rule)
- * since it doubles as the account's login.
+ * since it doubles as the account's login. The chosen password belongs only
+ * to this public flow; administrator-created accounts continue to use a
+ * temporary credential and mandatory password change.
  */
 @Schema(description = "Cadastro público de veterinário. Papel, clínica e status são definidos pelo servidor.")
 public record RegistroVeterinarioRequest(
@@ -29,7 +31,17 @@ public record RegistroVeterinarioRequest(
 		@NotBlank
 		@Email
 		@Size(max = 200)
-		@Schema(description = "E-mail usado como login e senha temporária inicial, com no máximo 200 caracteres.", example = "vera@example.com")
-		String email
+		@Schema(description = "E-mail usado como login, com no máximo 200 caracteres.", example = "vera@example.com")
+		String email,
+
+		@NotBlank
+		@Size(min = 8, max = 72)
+		@Schema(description = "Senha entre 8 e 72 caracteres, com letra maiúscula, minúscula e número.", example = "SenhaSegura1")
+		String senha,
+
+		@NotBlank
+		@Size(min = 8, max = 72)
+		@Schema(description = "Confirmação idêntica à senha.", example = "SenhaSegura1")
+		String confirmacaoSenha
 ) {
 }

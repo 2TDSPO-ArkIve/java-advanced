@@ -28,6 +28,7 @@ public class AccountProvisioningService {
 	@Transactional
 	public AccountProvisioningResult provisionar(UsuarioProvisioningRequest request) {
 		String loginNormalizado = normalizarLogin(request.login());
+		validarEmailLogin(loginNormalizado);
 		validarTamanhoCredencialInicial(loginNormalizado);
 		UsuarioRequest requestProvisionado = new UsuarioRequest(
 				request.nome(),
@@ -43,17 +44,41 @@ public class AccountProvisioningService {
 		return new AccountProvisioningResult(usuario);
 	}
 
+	@Transactional
+	public AccountProvisioningResult provisionarComSenhaDefinida(
+			UsuarioProvisioningRequest request,
+			String senha
+	) {
+		String loginNormalizado = normalizarLogin(request.login());
+		validarEmailLogin(loginNormalizado);
+		UsuarioRequest requestProvisionado = new UsuarioRequest(
+				request.nome(),
+				request.tipo(),
+				loginNormalizado,
+				senha,
+				request.responsavelId(),
+				request.veterinarioId(),
+				request.clinicaId(),
+				"S"
+		);
+		UsuarioResponse usuario = usuarioService.criar(requestProvisionado);
+		return new AccountProvisioningResult(usuario);
+	}
+
 	private String normalizarLogin(String login) {
 		return login == null ? null : login.trim();
 	}
 
-	private void validarTamanhoCredencialInicial(String login) {
+	private void validarEmailLogin(String login) {
 		if (login == null || login.isBlank()) {
 			throw new BusinessException("E-mail/login e obrigatorio para criar a conta de acesso.");
 		}
 		if (!EMAIL_PATTERN.matcher(login).matches()) {
 			throw new BusinessException("E-mail/login deve ter formato valido.");
 		}
+	}
+
+	private void validarTamanhoCredencialInicial(String login) {
 		if (login.getBytes(StandardCharsets.UTF_8).length > MAX_INITIAL_CREDENTIAL_BYTES) {
 			throw new BusinessException("E-mail/login deve ter no maximo 72 bytes para uso como credencial inicial.");
 		}

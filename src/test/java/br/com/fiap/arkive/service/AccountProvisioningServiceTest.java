@@ -64,6 +64,26 @@ class AccountProvisioningServiceTest {
 	}
 
 	@Test
+	void provisionaAutocadastroComSenhaEscolhidaSemTrocaObrigatoria() {
+		UsuarioService usuarioService = mock(UsuarioService.class);
+		AccountProvisioningService service = new AccountProvisioningService(usuarioService);
+		UsuarioResponse usuarioResponse = new UsuarioResponse(
+				10L, "Dra Vera", TipoUsuario.VETERINARIO, "vera@arkive.com", "S",
+				LocalDateTime.now(), null, null, 1L, "Dra Vera", null, null, false, null);
+		when(usuarioService.criar(any())).thenReturn(usuarioResponse);
+
+		AccountProvisioningResult result = service.provisionarComSenhaDefinida(
+				new UsuarioProvisioningRequest(
+						"Dra Vera", TipoUsuario.VETERINARIO, "  vera@arkive.com  ", null, 1L, null),
+				"SenhaSegura1");
+
+		assertEquals(usuarioResponse, result.usuario());
+		verify(usuarioService).criar(new UsuarioRequest(
+				"Dra Vera", TipoUsuario.VETERINARIO, "vera@arkive.com", "SenhaSegura1",
+				null, 1L, null, "S"));
+	}
+
+	@Test
 	void rejeitaLoginSemFormatoDeEmail() {
 		UsuarioService usuarioService = mock(UsuarioService.class);
 		AccountProvisioningService service = new AccountProvisioningService(usuarioService);

@@ -38,19 +38,33 @@ public class VeterinarioService {
 
 	@Transactional
 	public VeterinarioResponse criar(VeterinarioRequest request) {
+		return criarInterno(request, null);
+	}
+
+	@Transactional
+	public VeterinarioResponse criarAutocadastro(VeterinarioRequest request, String senha) {
+		return criarInterno(request, senha);
+	}
+
+	private VeterinarioResponse criarInterno(VeterinarioRequest request, String senhaAutocadastro) {
 		validarEmailObrigatorioParaCriacao(request.email());
 		validarCrmvDisponivel(request.crmv());
 		Veterinario veterinario = new Veterinario();
 		aplicarDados(veterinario, request, true);
 		Veterinario salvo = veterinarioRepository.save(veterinario);
-		accountProvisioningService.provisionar(new UsuarioProvisioningRequest(
+		UsuarioProvisioningRequest provisioningRequest = new UsuarioProvisioningRequest(
 				salvo.getNome(),
 				TipoUsuario.VETERINARIO,
 				salvo.getEmail(),
 				null,
 				salvo.getId(),
 				null
-		));
+		);
+		if (senhaAutocadastro == null) {
+			accountProvisioningService.provisionar(provisioningRequest);
+		} else {
+			accountProvisioningService.provisionarComSenhaDefinida(provisioningRequest, senhaAutocadastro);
+		}
 		return VeterinarioResponse.fromEntity(salvo);
 	}
 
