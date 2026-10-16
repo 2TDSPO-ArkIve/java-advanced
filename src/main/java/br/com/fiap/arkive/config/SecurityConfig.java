@@ -228,6 +228,17 @@ public class SecurityConfig {
 						.hasRole("RESPONSAVEL")
 						.requestMatchers(HttpMethod.PATCH, "/api/animais/*/observacao-responsavel")
 						.hasRole("RESPONSAVEL")
+						.requestMatchers(HttpMethod.POST, "/api/animais/*/relatos")
+						.hasRole("RESPONSAVEL")
+						.requestMatchers(HttpMethod.GET, "/api/animais/*/relatos")
+						.hasAnyRole("SYSADMIN", "ADMIN_CLINICA", "VETERINARIO", "RESPONSAVEL")
+						.requestMatchers("/api/animais/*/relatos", "/api/animais/*/relatos/**")
+						.denyAll()
+
+						.requestMatchers(HttpMethod.POST, "/api/transcricoes")
+						.hasAnyRole("VETERINARIO", "RESPONSAVEL")
+						.requestMatchers("/api/transcricoes", "/api/transcricoes/**")
+						.denyAll()
 
 						.requestMatchers(HttpMethod.POST,
 								"/api/solicitacoes-acesso/*/aprovar",

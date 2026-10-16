@@ -28,7 +28,7 @@ public class TranscricaoService {
 	}
 
 	public TranscricaoResponse transcrever(MultipartFile audio, String idioma, UsuarioPrincipal principal) {
-		exigirVeterinarioAutenticado(principal);
+		exigirPerfilClinicoAutenticado(principal);
 		IdiomaTranscricao idiomaTranscricao = IdiomaTranscricao.fromCodigoOrDefault(idioma);
 		AudioUpload upload = validarAudio(audio);
 		String transcricao = speechTranscriptionGateway.transcrever(upload.bytes(), upload.filename(), upload.contentType(), upload.format(), idiomaTranscricao);
@@ -80,9 +80,15 @@ public class TranscricaoService {
 		return slash >= 0 ? cleanFilename.substring(slash + 1) : cleanFilename;
 	}
 
-	private void exigirVeterinarioAutenticado(UsuarioPrincipal principal) {
-		if (principal == null || !TipoUsuario.VETERINARIO.equals(principal.getTipoUsuario()) || principal.getVeterinarioId() == null) {
-			throw new AccessDeniedException("Transcricao permitida apenas ao veterinario autenticado.");
+	private void exigirPerfilClinicoAutenticado(UsuarioPrincipal principal) {
+		boolean veterinarioValido = principal != null
+				&& TipoUsuario.VETERINARIO.equals(principal.getTipoUsuario())
+				&& principal.getVeterinarioId() != null;
+		boolean responsavelValido = principal != null
+				&& TipoUsuario.RESPONSAVEL.equals(principal.getTipoUsuario())
+				&& principal.getResponsavelId() != null;
+		if (!veterinarioValido && !responsavelValido) {
+			throw new AccessDeniedException("Transcricao permitida apenas a veterinario ou responsavel autenticado.");
 		}
 	}
 
