@@ -22,7 +22,7 @@ Esta aplicação Spring Boot foi preparada para os requisitos da **FIAP Java Adv
 | Requisito da Sprint | Evidência no projeto |
 | --- | --- |
 | Frontend | Controllers MVC, templates Thymeleaf, dashboards, formulários e páginas de consulta de dados |
-| Flyway | Migrations Oracle `V1` a `V17` em `src/main/resources/db/migration` |
+| Flyway | Migrations Oracle `V1` a `V18` em `src/main/resources/db/migration` |
 | Spring Security | Usuários persistidos, BCrypt, form login, HTTP Basic, quatro perfis e proteção de rotas |
 | Fluxos além de CRUD | Consulta clínica assistida e prescrição com registro de adesão |
 | Validação | Bean Validation, `BindingResult`, regras nos services e constraints Oracle |
@@ -90,7 +90,7 @@ Spring Data Repository ──► JPA/Hibernate ──► Oracle
 | `SYSADMIN` | Administração global; dashboards; gestão de clínicas, usuários, veterinários e responsáveis; acesso administrativo aos dados do sistema |
 | `ADMIN_CLINICA` | Dashboard e gestão de animais no escopo da própria clínica; visualização das consultas, prescrições e adesões vinculadas à clínica |
 | `VETERINARIO` | Operações clínicas nas próprias consultas; narrativa, suporte clínico, conclusão, prescrições, transcrição e acesso aos pacientes permitidos |
-| `RESPONSAVEL` | Leitura dos animais, consultas e prescrições aos quais está vinculado; registro da própria adesão e interações destinadas ao responsável |
+| `RESPONSAVEL` | Leitura dos animais, consultas e prescrições aos quais está vinculado; relatos permanentes, transcrição opcional, registro da própria adesão e interações destinadas ao responsável |
 
 Os usuários são carregados do banco por um `UserDetailsService` e autenticados por um `DaoAuthenticationProvider`. As senhas são persistidas somente como hashes BCrypt. O navegador usa form login em `/login`, enquanto clientes REST podem usar HTTP Basic.
 
@@ -234,6 +234,14 @@ Cada responsável elegível recebe na caixa persistida uma notificação `SOLICI
 
 Um responsável vigente pode usar `POST /api/solicitacoes-acesso/{id}/aprovar` ou `/rejeitar`. A aprovação reutiliza o serviço canônico para criar ou recuperar um `PatientAccess` de papel `VETERINARIO`; a rejeição não concede nem revoga acesso. A decisão é serializada por bloqueio pessimista, não duplica paciente, relação de responsável, convite ou acesso efetivo. O acesso clínico aprovado continua independente da privacidade financeira: o veterinário não passa a ver preços registrados por outro profissional. QR code, link HTTPS e código manual do compartilhamento existente permanecem alternativas válidas.
 
+### Fluxo 7 — Relatos permanentes do animal
+
+Um `RESPONSAVEL` ativo e atualmente vinculado pode criar um relato em `POST /api/animais/{animalId}/relatos`. O texto tem no máximo 2.000 caracteres, a data de ocorrência é opcional e não pode estar no futuro segundo o calendário `America/Sao_Paulo`, e `originadoDeTranscricao` registra apenas a origem informada pelo cliente. Autor, horário de criação, animal e ArkIve ID são determinados pelo backend. O relato é permanente e independente da observação pendente consumida ao iniciar uma consulta; não produz notificação nem evento de jornada.
+
+`GET /api/animais/{animalId}/relatos` reutiliza a autorização clínica de leitura e aceita `busca`, `page` e `size` (padrões 0 e 20, máximo 50). A consulta é paginada no Oracle e ordenada por criação e ID decrescentes. Texto original e texto de busca são armazenados separadamente: a busca remove diacríticos, ignora caixa e usa correspondência literal parcial, sem stemming, sinônimos ou inferência clínica. Assim, `vômito` e `vomito` são equivalentes, `vomitar` não é tratado automaticamente como a mesma palavra, e `vomit` pode localizar ambos.
+
+`POST /api/transcricoes` aceita `VETERINARIO` com `veterinarioId` válido e `RESPONSAVEL` com `responsavelId` válido. A transcrição continua stateless: retorna texto editável e não cria relato, observação, consulta ou narrativa automaticamente.
+
 ## Validações
 
 A aplicação valida dados em camadas complementares:
@@ -269,6 +277,7 @@ O **Flyway controla o versionamento do schema Oracle**. As migrations ficam em `
 | V15 | `V15__add_responsavel_pending_observation.sql` | Adiciona a observação pendente do responsável no animal e seu snapshot consumido pela próxima consulta iniciada |
 | V16 | `V16__expand_consulta_notifications.sql` | Expande os tipos de notificação de consulta para agendamento, lembrete e finalização |
 | V17 | `V17__add_patient_access_requests.sql` | Adiciona solicitações autenticadas de acesso veterinário, resolução por responsável vigente e o tipo/recurso de notificação correspondente |
+| V18 | `V18__add_permanent_animal_reports.sql` | Adiciona o histórico permanente e pesquisável de relatos dos responsáveis por animal |
 
 No perfil Oracle:
 

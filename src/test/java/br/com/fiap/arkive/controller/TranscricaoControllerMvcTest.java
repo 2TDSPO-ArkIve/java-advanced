@@ -13,7 +13,6 @@ import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
 import org.springframework.mock.web.MockMultipartFile;
-import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
@@ -103,18 +102,27 @@ class TranscricaoControllerMvcTest {
 	}
 
 	@Test
-	void perfilNaoVeterinarioRecebe403Json() throws Exception {
+	void responsavelAutenticadoChegaAoController() throws Exception {
 		when(transcricaoService.transcrever(any(), eq("pt-BR"), any()))
-				.thenThrow(new AccessDeniedException("Transcricao permitida apenas ao veterinario autenticado."));
+				.thenReturn(new TranscricaoResponse("Relato transcrito.", "pt-BR"));
 
 		mockMvc.perform(multipart("/api/transcricoes")
 						.file(audio())
 						.param("idioma", "pt-BR")
 						.with(user(responsavel())))
-				.andExpect(status().isForbidden())
-				.andExpect(header().doesNotExist("Location"))
-				.andExpect(jsonPath("$.status").value(403))
-				.andExpect(jsonPath("$.message").value("Transcricao permitida apenas ao veterinario autenticado."));
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.transcricao").value("Relato transcrito."));
+	}
+
+	@Test
+	void perfilAdministrativoRecebe403AntesDoController() throws Exception {
+		mockMvc.perform(multipart("/api/transcricoes")
+						.file(audio())
+						.param("idioma", "pt-BR")
+						.with(user(sysadmin())))
+				.andExpect(status().isForbidden());
+
+		verify(transcricaoService, never()).transcrever(any(), any(), any());
 	}
 
 	private MockMultipartFile audio() {
@@ -131,5 +139,9 @@ class TranscricaoControllerMvcTest {
 
 	private UsuarioPrincipal responsavel() {
 		return new UsuarioPrincipal(2L, "Joao", "joao@arkive.com", "$2a$10$hash", TipoUsuario.RESPONSAVEL, "S", false, 20L, null, null);
+	}
+
+	private UsuarioPrincipal sysadmin() {
+		return new UsuarioPrincipal(3L, "Admin", "admin@arkive.com", "$2a$10$hash", TipoUsuario.SYSADMIN, "S");
 	}
 }

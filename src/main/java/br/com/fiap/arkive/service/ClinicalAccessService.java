@@ -85,6 +85,22 @@ public class ClinicalAccessService {
 		throw new AccessDeniedException("Usuario nao autorizado para este animal.");
 	}
 
+	public void exigirCriacaoRelatoResponsavel(
+			UsuarioPrincipal principal,
+			Animal animal,
+			LocalDate dataAtual
+	) {
+		exigirPrincipal(principal);
+		if (!TipoUsuario.RESPONSAVEL.equals(principal.getTipoUsuario())
+				|| principal.getResponsavelId() == null
+				|| animal == null
+				|| animal.getId() == null
+				|| !animalResponsavelRepository.existsVinculoAtivoVigente(
+						animal.getId(), principal.getResponsavelId(), dataAtual)) {
+			throw new AccessDeniedException("Responsavel nao autorizado a criar relato para este animal.");
+		}
+	}
+
 	public void exigirGestaoVinculosAnimal(UsuarioPrincipal principal, Animal animal) {
 		exigirPrincipal(principal);
 		if (TipoUsuario.RESPONSAVEL.equals(principal.getTipoUsuario())) {

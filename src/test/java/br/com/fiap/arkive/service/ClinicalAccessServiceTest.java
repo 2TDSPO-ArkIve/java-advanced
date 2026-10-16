@@ -109,6 +109,32 @@ class ClinicalAccessServiceTest {
 	}
 
 	@Test
+	void acessoExplicitoAprovadoPermiteVeterinarioLerRelatosPeloEscopoDoAnimal() {
+		Animal animal = animal(50L, null);
+		when(patientAccessRepository.existsEffective(eq(50L), eq(1L),
+				eq(br.com.fiap.arkive.entity.PatientAccessRole.VETERINARIO), any(java.time.LocalDateTime.class)))
+				.thenReturn(true);
+
+		assertDoesNotThrow(() -> clinicalAccessService.exigirLeituraAnimal(veterinario(10L), animal));
+	}
+
+	@Test
+	void criacaoDeRelatoExigeResponsavelComVinculoAtivoNaDataInformada() {
+		LocalDate dataAtual = LocalDate.of(2026, 10, 16);
+		Animal animal = animal(50L, 30L);
+		when(animalResponsavelRepository.existsVinculoAtivoVigente(50L, 40L, dataAtual)).thenReturn(true);
+
+		assertDoesNotThrow(() -> clinicalAccessService.exigirCriacaoRelatoResponsavel(
+				responsavel(40L), animal, dataAtual));
+		assertThrows(AccessDeniedException.class, () -> clinicalAccessService.exigirCriacaoRelatoResponsavel(
+				responsavel(41L), animal, dataAtual));
+		assertThrows(AccessDeniedException.class, () -> clinicalAccessService.exigirCriacaoRelatoResponsavel(
+				veterinario(10L), animal, dataAtual));
+		assertThrows(AccessDeniedException.class, () -> clinicalAccessService.exigirCriacaoRelatoResponsavel(
+				sysadmin(), animal, dataAtual));
+	}
+
+	@Test
 	void somenteVeterinarioOuResponsavelPodemOriginarCompartilhamento() {
 		Animal animal = animal(50L, 30L);
 		when(animalResponsavelRepository.existsVinculoAtivoVigente(eq(50L), eq(40L), any(LocalDate.class)))
