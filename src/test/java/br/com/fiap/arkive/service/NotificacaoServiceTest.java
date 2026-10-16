@@ -4,11 +4,13 @@ import br.com.fiap.arkive.dto.response.NotificacaoResponse;
 import br.com.fiap.arkive.entity.Animal;
 import br.com.fiap.arkive.entity.Consulta;
 import br.com.fiap.arkive.entity.Notificacao;
+import br.com.fiap.arkive.entity.PatientAccessRequest;
 import br.com.fiap.arkive.entity.Responsavel;
 import br.com.fiap.arkive.entity.TipoNotificacao;
 import br.com.fiap.arkive.entity.TipoRecursoNotificacao;
 import br.com.fiap.arkive.entity.TipoUsuario;
 import br.com.fiap.arkive.entity.Usuario;
+import br.com.fiap.arkive.entity.Veterinario;
 import br.com.fiap.arkive.event.NotificacoesCriadasEvent;
 import br.com.fiap.arkive.exception.ResourceNotFoundException;
 import br.com.fiap.arkive.repository.NotificacaoRepository;
@@ -22,6 +24,8 @@ import org.springframework.data.domain.PageRequest;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.LinkedHashMap;
+import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicLong;
 
@@ -86,6 +90,120 @@ class NotificacaoServiceTest {
 	}
 
 	@Test
+	void consultaAgendadaNotificaCadaResponsavelComArkiveIdERecursoDaConsulta() {
+		Consulta consulta = consulta();
+		Usuario primeiro = usuario(10L, "S");
+		Usuario segundo = usuario(11L, "N");
+		when(recipientService.responsaveisAtivosVigentes(consulta.getAnimal()))
+				.thenReturn(List.of(primeiro, segundo));
+		when(repository.findByUsuarioIdAndChaveEvento(any(), any())).thenReturn(Optional.empty());
+		AtomicLong ids = new AtomicLong(200);
+		when(repository.save(any())).thenAnswer(invocation -> {
+			Notificacao notificacao = invocation.getArgument(0);
+			notificacao.setId(ids.getAndIncrement());
+			return notificacao;
+		});
+
+		List<Notificacao> criadas = service.criarParaConsultaAgendada(consulta);
+
+		assertEquals(2, criadas.size());
+		for (Notificacao notificacao : criadas) {
+			assertEquals(TipoNotificacao.CONSULTA_AGENDADA, notificacao.getTipo());
+			assertEquals("Consulta agendada", notificacao.getTitulo());
+			assertEquals("Uma consulta foi agendada para Rex (ARK-PET-AAAAA-BBBBB-CCCCC-DDDDD).",
+					notificacao.getMensagem());
+			assertEquals(consulta.getAnimal(), notificacao.getAnimal());
+			assertEquals(TipoRecursoNotificacao.CONSULTA, notificacao.getTipoRecurso());
+			assertEquals(77L, notificacao.getRecursoId());
+			assertEquals("CONSULTA_AGENDADA:77", notificacao.getChaveEvento());
+		}
+		ArgumentCaptor<NotificacoesCriadasEvent> event = ArgumentCaptor.forClass(NotificacoesCriadasEvent.class);
+		verify(publisher).publishEvent(event.capture());
+		assertEquals(List.of(200L, 201L), event.getValue().notificacaoIds());
+	}
+
+	@Test
+	void solicitacaoAcessoNotificaResponsaveisComIdentidadeClinicaERecursoDaSolicitacao() {
+		PatientAccessRequest solicitacao = solicitacaoAcesso();
+		Usuario primeiro = usuario(10L, "S");
+		Usuario segundo = usuario(11L, "N");
+		when(repository.findByUsuarioIdAndChaveEvento(any(), any())).thenReturn(Optional.empty());
+		AtomicLong ids = new AtomicLong(250);
+		when(repository.save(any())).thenAnswer(invocation -> {
+			Notificacao notificacao = invocation.getArgument(0);
+			notificacao.setId(ids.getAndIncrement());
+			return notificacao;
+		});
+
+		List<Notificacao> criadas = service.criarParaSolicitacaoAcesso(
+				solicitacao, List.of(primeiro, segundo));
+
+		assertEquals(2, criadas.size());
+		for (Notificacao notificacao : criadas) {
+			assertEquals(TipoNotificacao.SOLICITACAO_ACESSO, notificacao.getTipo());
+			assertEquals("Solicitação de acesso", notificacao.getTitulo());
+			assertEquals("Fernanda Vieira (CRMV 12345) solicitou acesso a Rex "
+					+ "(ARK-PET-AAAAA-BBBBB-CCCCC-DDDDD).", notificacao.getMensagem());
+			assertEquals(solicitacao.getAnimal(), notificacao.getAnimal());
+			assertEquals(TipoRecursoNotificacao.SOLICITACAO_ACESSO, notificacao.getTipoRecurso());
+			assertEquals(91L, notificacao.getRecursoId());
+			assertEquals("SOLICITACAO_ACESSO:91", notificacao.getChaveEvento());
+		}
+		ArgumentCaptor<NotificacoesCriadasEvent> event = ArgumentCaptor.forClass(NotificacoesCriadasEvent.class);
+		verify(publisher).publishEvent(event.capture());
+		assertEquals(List.of(250L, 251L), event.getValue().notificacaoIds());
+	}
+
+	@Test
+	void solicitacaoAcessoDuplicadaNaoCriaOutraNotificacaoNemPublicaPush() {
+		PatientAccessRequest solicitacao = solicitacaoAcesso();
+		Usuario usuario = usuario(10L, "S");
+		when(repository.findByUsuarioIdAndChaveEvento(10L, "SOLICITACAO_ACESSO:91"))
+				.thenReturn(Optional.of(new Notificacao()));
+
+		assertTrue(service.criarParaSolicitacaoAcesso(solicitacao, List.of(usuario)).isEmpty());
+
+		verify(repository, never()).save(any());
+		verify(publisher, never()).publishEvent(any());
+	}
+
+	@Test
+	void lembreteEhIdempotentePorHorarioEReagendamentoGeraNovaIdentidade() {
+		Consulta consulta = consulta();
+		consulta.setDataHora(LocalDateTime.of(2026, 10, 20, 14, 30));
+		Usuario veterinario = usuarioVeterinario(30L, 9L);
+		Map<String, Notificacao> persistidas = new LinkedHashMap<>();
+		when(repository.findByUsuarioIdAndChaveEvento(eq(30L), any())).thenAnswer(invocation -> {
+			String chaveEvento = invocation.getArgument(1, String.class);
+			return Optional.ofNullable(persistidas.get(chaveEvento));
+		});
+		AtomicLong ids = new AtomicLong(300);
+		when(repository.save(any())).thenAnswer(invocation -> {
+			Notificacao notificacao = invocation.getArgument(0);
+			notificacao.setId(ids.getAndIncrement());
+			persistidas.put(notificacao.getChaveEvento(), notificacao);
+			return notificacao;
+		});
+
+		assertTrue(service.criarLembreteConsulta(consulta, veterinario).isPresent());
+		assertTrue(service.criarLembreteConsulta(consulta, veterinario).isEmpty());
+		consulta.setDataHora(LocalDateTime.of(2026, 10, 21, 9, 15));
+		assertTrue(service.criarLembreteConsulta(consulta, veterinario).isPresent());
+
+		assertEquals(2, persistidas.size());
+		Notificacao primeira = persistidas.get("LEMBRETE_CONSULTA:77:2026-10-20T14:30");
+		assertNotNull(primeira);
+		assertEquals(TipoNotificacao.LEMBRETE_CONSULTA, primeira.getTipo());
+		assertEquals("Lembrete de consulta", primeira.getTitulo());
+		assertEquals("Consulta de Rex (ARK-PET-AAAAA-BBBBB-CCCCC-DDDDD) em breve.",
+				primeira.getMensagem());
+		assertEquals(veterinario, primeira.getUsuario());
+		assertEquals(TipoRecursoNotificacao.CONSULTA, primeira.getTipoRecurso());
+		assertEquals(77L, primeira.getRecursoId());
+		verify(repository, times(2)).save(any(Notificacao.class));
+	}
+
+	@Test
 	void eventoJaPersistidoNaoDuplicaEDestinatarioSemNovaLinhaNaoPublicaPush() {
 		Consulta consulta = consulta();
 		Usuario usuario = usuario(10L, "S");
@@ -94,6 +212,31 @@ class NotificacaoServiceTest {
 				.thenReturn(Optional.of(new Notificacao()));
 
 		assertTrue(service.criarParaConsultaFinalizada(consulta).isEmpty());
+
+		verify(repository, never()).save(any());
+		verify(publisher, never()).publishEvent(any());
+	}
+
+	@Test
+	void consultaAgendadaDuplicadaNaoCriaOutraLinhaParaMesmoUsuario() {
+		Consulta consulta = consulta();
+		Usuario usuario = usuario(10L, "S");
+		when(recipientService.responsaveisAtivosVigentes(consulta.getAnimal())).thenReturn(List.of(usuario));
+		when(repository.findByUsuarioIdAndChaveEvento(10L, "CONSULTA_AGENDADA:77"))
+				.thenReturn(Optional.of(new Notificacao()));
+
+		assertTrue(service.criarParaConsultaAgendada(consulta).isEmpty());
+
+		verify(repository, never()).save(any());
+		verify(publisher, never()).publishEvent(any());
+	}
+
+	@Test
+	void consultaSemResponsavelAtualNaoCriaNotificacaoOrfa() {
+		Consulta consulta = consulta();
+		when(recipientService.responsaveisAtivosVigentes(consulta.getAnimal())).thenReturn(List.of());
+
+		assertTrue(service.criarParaConsultaAgendada(consulta).isEmpty());
 
 		verify(repository, never()).save(any());
 		verify(publisher, never()).publishEvent(any());
@@ -175,6 +318,21 @@ class NotificacaoServiceTest {
 		return consulta;
 	}
 
+	private PatientAccessRequest solicitacaoAcesso() {
+		Consulta consulta = consulta();
+		Veterinario veterinario = new Veterinario();
+		veterinario.setId(9L);
+		veterinario.setNome("Fernanda Vieira");
+		veterinario.setCrmv("12345");
+		Usuario solicitante = usuarioVeterinario(30L, 9L);
+		solicitante.setVeterinario(veterinario);
+		PatientAccessRequest solicitacao = new PatientAccessRequest();
+		solicitacao.setId(91L);
+		solicitacao.setAnimal(consulta.getAnimal());
+		solicitacao.setRequester(solicitante);
+		return solicitacao;
+	}
+
 	private Usuario usuario(Long id, String notificacaoPreferencia) {
 		Responsavel responsavel = new Responsavel();
 		responsavel.setNotificacao(notificacaoPreferencia);
@@ -183,6 +341,17 @@ class NotificacaoServiceTest {
 		usuario.setTipo(TipoUsuario.RESPONSAVEL);
 		usuario.setAtivo("S");
 		usuario.setResponsavel(responsavel);
+		return usuario;
+	}
+
+	private Usuario usuarioVeterinario(Long usuarioId, Long veterinarioId) {
+		Veterinario veterinario = new Veterinario();
+		veterinario.setId(veterinarioId);
+		Usuario usuario = new Usuario();
+		usuario.setId(usuarioId);
+		usuario.setTipo(TipoUsuario.VETERINARIO);
+		usuario.setAtivo("S");
+		usuario.setVeterinario(veterinario);
 		return usuario;
 	}
 
@@ -201,7 +370,7 @@ class NotificacaoServiceTest {
 	}
 
 	private UsuarioPrincipal principal(Long usuarioId) {
-		return new UsuarioPrincipal(usuarioId, "Tutor", "tutor@example.test", "hash",
+		return new UsuarioPrincipal(usuarioId, "Responsável", "responsavel@example.test", "hash",
 				TipoUsuario.RESPONSAVEL, "S", false, 1L, null, null);
 	}
 }

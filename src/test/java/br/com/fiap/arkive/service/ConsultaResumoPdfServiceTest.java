@@ -102,7 +102,7 @@ class ConsultaResumoPdfServiceTest {
 		assertTrue(texto.contains("Medicamento Único"));
 		assertTrue(texto.contains("1 comprimido"));
 		assertTrue(texto.contains("a cada 12 horas"));
-		assertTrue(texto.contains("Tutora Ana"));
+		assertTrue(texto.contains("Responsável Ana"));
 		assertFalse(texto.contains(TRANSCRIPT_SECRET));
 		assertFalse(texto.contains(AI_HYPOTHESIS_SECRET));
 		assertFalse(texto.contains(AI_INSIGHT_SECRET));
@@ -228,7 +228,7 @@ class ConsultaResumoPdfServiceTest {
 		consulta.setId(63L);
 		consulta.setDataHora(LocalDateTime.parse("2026-09-05T14:30:00"));
 		consulta.setModalidade("PRESENCIAL");
-		consulta.setMotivo("Avaliação de claudicação com histórico informado pelo tutor.");
+		consulta.setMotivo("Avaliação de claudicação com histórico informado pelo responsável.");
 		consulta.setObservacao(conclusao);
 		consulta.setTranscricao(TRANSCRIPT_SECRET);
 		consulta.setStatus("FI");
@@ -306,7 +306,7 @@ class ConsultaResumoPdfServiceTest {
 	private AnimalResponsavel responsavelPrincipal() {
 		Responsavel responsavel = new Responsavel();
 		responsavel.setId(40L);
-		responsavel.setNome("Tutora Ana");
+		responsavel.setNome("Responsável Ana");
 		AnimalResponsavel vinculo = new AnimalResponsavel();
 		vinculo.setResponsavel(responsavel);
 		vinculo.setPrincipal("S");

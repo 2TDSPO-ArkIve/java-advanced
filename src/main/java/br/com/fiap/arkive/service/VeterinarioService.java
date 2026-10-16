@@ -9,10 +9,12 @@ import br.com.fiap.arkive.entity.Veterinario;
 import br.com.fiap.arkive.exception.BusinessException;
 import br.com.fiap.arkive.exception.ResourceNotFoundException;
 import br.com.fiap.arkive.repository.VeterinarioRepository;
+import br.com.fiap.arkive.security.UsuarioPrincipal;
 import org.springframework.context.annotation.Profile;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -36,19 +38,33 @@ public class VeterinarioService {
 
 	@Transactional
 	public VeterinarioResponse criar(VeterinarioRequest request) {
+		return criarInterno(request, null);
+	}
+
+	@Transactional
+	public VeterinarioResponse criarAutocadastro(VeterinarioRequest request, String senha) {
+		return criarInterno(request, senha);
+	}
+
+	private VeterinarioResponse criarInterno(VeterinarioRequest request, String senhaAutocadastro) {
 		validarEmailObrigatorioParaCriacao(request.email());
 		validarCrmvDisponivel(request.crmv());
 		Veterinario veterinario = new Veterinario();
 		aplicarDados(veterinario, request, true);
 		Veterinario salvo = veterinarioRepository.save(veterinario);
-		accountProvisioningService.provisionar(new UsuarioProvisioningRequest(
+		UsuarioProvisioningRequest provisioningRequest = new UsuarioProvisioningRequest(
 				salvo.getNome(),
 				TipoUsuario.VETERINARIO,
 				salvo.getEmail(),
 				null,
 				salvo.getId(),
 				null
-		));
+		);
+		if (senhaAutocadastro == null) {
+			accountProvisioningService.provisionar(provisioningRequest);
+		} else {
+			accountProvisioningService.provisionarComSenhaDefinida(provisioningRequest, senhaAutocadastro);
+		}
 		return VeterinarioResponse.fromEntity(salvo);
 	}
 
@@ -78,6 +94,16 @@ public class VeterinarioService {
 	@Transactional(readOnly = true)
 	public VeterinarioResponse buscarPorId(Long id) {
 		return VeterinarioResponse.fromEntity(buscarEntidade(id));
+	}
+
+	@Transactional(readOnly = true)
+	public VeterinarioResponse buscarPerfilAutenticado(UsuarioPrincipal principal) {
+		if (principal == null
+				|| principal.getTipoUsuario() != TipoUsuario.VETERINARIO
+				|| principal.getVeterinarioId() == null) {
+			throw new AccessDeniedException("Perfil veterinário autenticado inválido.");
+		}
+		return VeterinarioResponse.fromEntity(buscarEntidade(principal.getVeterinarioId()));
 	}
 
 	@Transactional(readOnly = true)

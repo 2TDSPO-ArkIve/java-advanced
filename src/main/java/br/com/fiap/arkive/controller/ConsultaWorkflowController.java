@@ -64,7 +64,7 @@ public class ConsultaWorkflowController {
 	}
 
 	@PostMapping("/{id}/finalizar")
-	@Operation(summary = "Finaliza uma consulta", description = "Cria a conclusao confirmada pelo veterinario, marca confirmado = S e faz EP/AP -> FI.")
+	@Operation(summary = "Finaliza uma consulta", description = "Cria a conclusao diagnostica ou clinica confirmada pelo veterinario, marca confirmado = S e faz EP/AP -> FI. O suporte ArkIve e opcional: EP pode seguir diretamente para FI. Doenca catalogada e severidade sao opcionais, permitindo conclusoes de rotina ou sem doenca identificada.")
 	public ConsultaWorkflowResponse finalizar(
 			@PathVariable Long id,
 			@Valid @RequestBody FinalizarConsultaRequest request,
@@ -84,7 +84,7 @@ public class ConsultaWorkflowController {
 	}
 
 	@PostMapping("/{id}/suporte-clinico")
-	@Operation(tags = "Suporte Clinico", summary = "Gera suporte clinico", description = "Solicita suporte investigativo por IA para consulta EP. Em sucesso, persiste diagnostico provisorio nao confirmado e faz EP -> AP. A IA nao prescreve medicamentos.")
+	@Operation(tags = "Suporte Clinico", summary = "Gera suporte clinico opcional", description = "Solicita explicitamente suporte investigativo por IA para consulta EP. Em sucesso, persiste diagnostico provisorio nao confirmado e faz EP -> AP. A consulta tambem pode ser finalizada diretamente de EP sem esta operacao. A IA nao prescreve medicamentos.")
 	public ClinicalSupportResponse gerarSuporteClinico(
 			@PathVariable Long id,
 			@AuthenticationPrincipal UsuarioPrincipal principal

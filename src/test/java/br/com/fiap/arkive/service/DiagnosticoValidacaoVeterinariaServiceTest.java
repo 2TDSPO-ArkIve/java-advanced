@@ -159,7 +159,7 @@ class DiagnosticoValidacaoVeterinariaServiceTest {
 	}
 
 	private UsuarioPrincipal responsavel() {
-		return new UsuarioPrincipal(2L, "Tutor", "tutor@arkive.com", "hash", TipoUsuario.RESPONSAVEL,
+		return new UsuarioPrincipal(2L, "Responsável", "responsavel@arkive.com", "hash", TipoUsuario.RESPONSAVEL,
 				"S", false, 40L, null, null);
 	}
 }

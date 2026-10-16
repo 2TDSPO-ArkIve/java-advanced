@@ -7,96 +7,120 @@ import br.com.fiap.arkive.entity.Especie;
 import br.com.fiap.arkive.entity.Responsavel;
 import br.com.fiap.arkive.entity.TipoUsuario;
 import br.com.fiap.arkive.entity.Usuario;
+import br.com.fiap.arkive.entity.Veterinario;
+import br.com.fiap.arkive.service.NotificacaoRecipientService;
+import jakarta.persistence.EntityManager;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
-import org.springframework.boot.test.autoconfigure.orm.jpa.TestEntityManager;
+import org.springframework.context.annotation.Import;
 
 import java.time.LocalDate;
 import java.util.List;
-import java.util.Set;
-import java.util.stream.Collectors;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 @DataJpaTest(properties = {
 		"spring.flyway.enabled=false",
 		"spring.jpa.hibernate.ddl-auto=create-drop",
 		"spring.jpa.database-platform=org.hibernate.dialect.H2Dialect"
 })
+@Import(NotificacaoRecipientService.class)
 class NotificacaoRecipientRepositoryTest {
 
-	@Autowired TestEntityManager em;
-	@Autowired UsuarioRepository usuarioRepository;
+	@Autowired EntityManager em;
+	@Autowired NotificacaoRecipientService service;
 
 	@Test
-	void selecionaTodosESomenteResponsaveisAtivosComVinculoAtivoEVigente() {
-		LocalDate hoje = LocalDate.of(2026, 10, 9);
+	void responsaveisExcluiVinculosHistoricosInativosEContasInativas() {
 		Animal animal = animal();
-		Usuario atualUm = conta(vinculo(animal, "Atual 1", "doc-1", hoje.minusYears(1), null, "S"),
-				TipoUsuario.RESPONSAVEL, "S", "atual1@example.test");
-		Usuario atualDois = conta(vinculo(animal, "Atual 2", "doc-2", hoje, hoje, "S"),
-				TipoUsuario.RESPONSAVEL, "S", "atual2@example.test");
-		conta(vinculo(animal, "Inativo", "doc-3", hoje.minusDays(1), null, "N"),
-				TipoUsuario.RESPONSAVEL, "S", "rel-inativa@example.test");
-		conta(vinculo(animal, "Historico", "doc-4", hoje.minusYears(1), hoje.minusDays(1), "S"),
-				TipoUsuario.RESPONSAVEL, "S", "historico@example.test");
-		conta(vinculo(animal, "Futuro", "doc-5", hoje.plusDays(1), null, "S"),
-				TipoUsuario.RESPONSAVEL, "S", "futuro@example.test");
-		conta(vinculo(animal, "Conta inativa", "doc-6", hoje.minusDays(1), null, "S"),
-				TipoUsuario.RESPONSAVEL, "N", "inativo@example.test");
-		conta(vinculo(animal, "Papel errado", "doc-7", hoje.minusDays(1), null, "S"),
-				TipoUsuario.VETERINARIO, "S", "vet@example.test");
-		vinculo(animal, "Sem conta", "doc-8", hoje.minusDays(1), null, "S");
+		Usuario atual = responsavelComVinculo(animal, "atual", "S", "S", null);
+		responsavelComVinculo(animal, "historico", "S", "S", LocalDate.now().minusDays(1));
+		responsavelComVinculo(animal, "vinculo-inativo", "S", "N", null);
+		responsavelComVinculo(animal, "conta-inativa", "N", "S", null);
 		em.flush();
 		em.clear();
 
-		List<Usuario> encontrados = usuarioRepository.findResponsaveisAtivosVigentesDoAnimal(animal.getId(), hoje);
+		List<Usuario> destinatarios = service.responsaveisAtivosVigentes(animal);
 
-		assertEquals(Set.of(atualUm.getId(), atualDois.getId()),
-				encontrados.stream().map(Usuario::getId).collect(Collectors.toSet()));
+		assertEquals(List.of(atual.getId()), destinatarios.stream().map(Usuario::getId).toList());
+	}
+
+	@Test
+	void resolveSomenteContaVeterinariaAtivaLigadaAoVeterinario() {
+		Veterinario ativo = veterinario("SP10001");
+		Usuario usuarioAtivo = usuarioVeterinario(ativo, "vet-ativo@example.test", "S");
+		Veterinario inativo = veterinario("SP10002");
+		usuarioVeterinario(inativo, "vet-inativo@example.test", "N");
+		em.flush();
+		em.clear();
+
+		assertEquals(usuarioAtivo.getId(), service.veterinarioAtivo(ativo).orElseThrow().getId());
+		assertTrue(service.veterinarioAtivo(inativo).isEmpty());
 	}
 
 	private Animal animal() {
 		Especie especie = new Especie();
-		especie.setNome("Canino-notificacao");
+		especie.setNome("Canino-recipient");
 		em.persist(especie);
 		Animal animal = new Animal();
-		animal.setNome("Rex");
+		animal.setNome("Epona");
 		animal.setEspecie(especie);
-		return em.persist(animal);
+		animal.assignArkivePatientId("ARK-PET-RECIPIENT-TEST-00001");
+		em.persist(animal);
+		em.flush();
+		return animal;
 	}
 
-	private Responsavel vinculo(Animal animal, String nome, String documento, LocalDate inicio,
-			LocalDate fim, String ativo) {
+	private Usuario responsavelComVinculo(Animal animal, String sufixo, String usuarioAtivo,
+			String vinculoAtivo, LocalDate fim) {
 		Responsavel responsavel = new Responsavel();
-		responsavel.setNome(nome);
-		responsavel.setDocumento(documento);
-		responsavel.setTipo("CUIDADOR");
+		responsavel.setNome("Responsável " + sufixo);
+		responsavel.setDocumento("doc-" + sufixo);
+		responsavel.setTipo("RESPONSAVEL");
 		em.persist(responsavel);
+		em.flush();
+		Usuario usuario = new Usuario();
+		usuario.setNome(responsavel.getNome());
+		usuario.setTipo(TipoUsuario.RESPONSAVEL);
+		usuario.setResponsavel(responsavel);
+		usuario.setLogin(sufixo + "@example.test");
+		usuario.setSenhaHash("hash");
+		usuario.setAtivo(usuarioAtivo);
+		em.persist(usuario);
 		AnimalResponsavelId id = new AnimalResponsavelId();
 		id.setAnimalId(animal.getId());
 		id.setResponsavelId(responsavel.getId());
-		id.setDataInicio(inicio);
+		id.setDataInicio(LocalDate.now().minusDays(10));
 		AnimalResponsavel vinculo = new AnimalResponsavel();
 		vinculo.setId(id);
 		vinculo.setAnimal(animal);
 		vinculo.setResponsavel(responsavel);
 		vinculo.setTipoVinculo("CUIDADOR");
+		vinculo.setAtivo(vinculoAtivo);
 		vinculo.setDataFim(fim);
-		vinculo.setAtivo(ativo);
 		em.persist(vinculo);
-		return responsavel;
+		return usuario;
 	}
 
-	private Usuario conta(Responsavel responsavel, TipoUsuario tipo, String ativo, String login) {
+	private Veterinario veterinario(String crmv) {
+		Veterinario veterinario = new Veterinario();
+		veterinario.setNome("Veterinário " + crmv);
+		veterinario.setCrmv(crmv);
+		em.persist(veterinario);
+		return veterinario;
+	}
+
+	private Usuario usuarioVeterinario(Veterinario veterinario, String login, String ativo) {
 		Usuario usuario = new Usuario();
-		usuario.setNome(responsavel.getNome());
-		usuario.setTipo(tipo);
-		usuario.setResponsavel(responsavel);
+		usuario.setNome(veterinario.getNome());
+		usuario.setTipo(TipoUsuario.VETERINARIO);
+		usuario.setVeterinario(veterinario);
 		usuario.setLogin(login);
 		usuario.setSenhaHash("hash");
 		usuario.setAtivo(ativo);
-		return em.persist(usuario);
+		em.persist(usuario);
+		return usuario;
 	}
 }

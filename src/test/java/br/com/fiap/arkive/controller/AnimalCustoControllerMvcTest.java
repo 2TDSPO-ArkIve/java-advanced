@@ -15,6 +15,7 @@ import br.com.fiap.arkive.security.ArkiveUserDetailsService;
 import br.com.fiap.arkive.security.UsuarioPrincipal;
 import br.com.fiap.arkive.service.AnimalCustoService;
 import br.com.fiap.arkive.service.ClinicalAccessService;
+import br.com.fiap.arkive.service.FinancialVisibilityService;
 import br.com.fiap.arkive.service.VeterinarioService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -41,7 +42,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @WebMvcTest(AnimalCustoController.class)
-@Import({SecurityConfig.class, GlobalExceptionHandler.class, AnimalCustoService.class, ClinicalAccessService.class})
+@Import({SecurityConfig.class, GlobalExceptionHandler.class, AnimalCustoService.class,
+		ClinicalAccessService.class, FinancialVisibilityService.class})
 class AnimalCustoControllerMvcTest {
 
 	@Autowired
@@ -73,7 +75,9 @@ class AnimalCustoControllerMvcTest {
 		consulta.setStatus("FI");
 		when(animais.findById(50L)).thenReturn(Optional.of(animal));
 		when(consultas.buscarCustosFinalizadosPorAnimal(50L)).thenReturn(List.of(consulta));
+		when(consultas.buscarCustosFinalizadosPorAnimalEVeterinario(50L, 10L)).thenReturn(List.of(consulta));
 		when(prescricoes.somarCustosMedicamentosFinalizadosPorAnimal(50L)).thenReturn(List.of());
+		when(prescricoes.somarCustosMedicamentosFinalizadosPorAnimalEVeterinario(50L, 10L)).thenReturn(List.of());
 	}
 
 	@Test
@@ -126,7 +130,7 @@ class AnimalCustoControllerMvcTest {
 	}
 
 	private UsuarioPrincipal principalResponsavel() {
-		return new UsuarioPrincipal(2L, "Tutor", "tutor@arkive.com", "hash", TipoUsuario.RESPONSAVEL,
+		return new UsuarioPrincipal(2L, "Responsável", "responsavel@arkive.com", "hash", TipoUsuario.RESPONSAVEL,
 				"S", false, 40L, null, null);
 	}
 }

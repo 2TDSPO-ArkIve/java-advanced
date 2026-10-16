@@ -66,13 +66,13 @@ class AzureSpeechTranscriptionServiceTest {
 		recognizer.onStart = () -> {
 			recognizer.emitRecognized(true, "Paciente canino apresenta claudicacao.");
 			recognizer.emitRecognized(false, "resultado parcial ignorado");
-			recognizer.emitRecognized(true, "Tutor relata uso previo de prednisolona.");
+			recognizer.emitRecognized(true, "Responsável relata uso previo de prednisolona.");
 			recognizer.emitSessionStopped();
 		};
 
 		String transcricao = service.transcrever(new byte[] { 1 }, "consulta.wav", "audio/wav", SupportedAudioFormat.WAV, IdiomaTranscricao.PT_BR);
 
-		assertEquals("Paciente canino apresenta claudicacao. Tutor relata uso previo de prednisolona.", transcricao);
+		assertEquals("Paciente canino apresenta claudicacao. Responsável relata uso previo de prednisolona.", transcricao);
 		assertTrue(recognizer.stopped);
 	}
 

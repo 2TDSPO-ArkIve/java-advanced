@@ -45,9 +45,9 @@ class RenderClinicalSupportProviderTest {
 		ClinicalSupportProviderResult result = response.toProviderResult();
 
 		assertEquals(List.of(
-				"Feline calicivirus infection",
-				"Herpesviridae · Alpha · Varicellovirus · Felid alphaherpesvirus 1",
-				"Cryptococcosis"
+				new RagReference("ABCD", "Feline calicivirus infection"),
+				new RagReference("AAZV", "Herpesviridae · Alpha · Varicellovirus · Felid alphaherpesvirus 1"),
+				new RagReference("CFSPH", "Cryptococcosis")
 		), result.referenciasRag());
 		assertEquals(fontesPesquisadasFixture(), result.fontesPesquisadas());
 	}
@@ -142,6 +142,8 @@ class RenderClinicalSupportProviderTest {
 				    "entrada-invalida",
 				    {"fonte":"ABCD","titulo":" Feline calicivirus infection "},
 				    {"fonte":"ABCD","titulo":"Feline calicivirus infection"},
+				    {"fonte":"OUTRA","titulo":"Feline calicivirus infection"},
+				    {"fonte":"   ","titulo":"Reference without organization"},
 				    {"fonte":"AAZV","titulo":"   "},
 				    {"fonte":"CFSPH"},
 				    {"fonte":"CFSPH","titulo":"Cryptococcosis"},
@@ -153,7 +155,12 @@ class RenderClinicalSupportProviderTest {
 
 		ClinicalSupportProviderResult result = response.toProviderResult();
 
-		assertEquals(List.of("Feline calicivirus infection", "Cryptococcosis"), result.referenciasRag());
+		assertEquals(List.of(
+				new RagReference("ABCD", "Feline calicivirus infection"),
+				new RagReference("OUTRA", "Feline calicivirus infection"),
+				new RagReference(null, "Reference without organization"),
+				new RagReference("CFSPH", "Cryptococcosis")
+		), result.referenciasRag());
 		assertEquals(List.of("https://pubmed.ncbi.nlm.nih.gov/31325462/"), result.fontesPesquisadas());
 	}
 
@@ -171,9 +178,9 @@ class RenderClinicalSupportProviderTest {
 		assertEquals("MODERADA", result.severidade());
 		assertEquals(65, result.confianca());
 		assertEquals(List.of(
-				"Feline calicivirus infection",
-				"Herpesviridae · Alpha · Varicellovirus · Felid alphaherpesvirus 1",
-				"Cryptococcosis"
+				new RagReference("ABCD", "Feline calicivirus infection"),
+				new RagReference("AAZV", "Herpesviridae · Alpha · Varicellovirus · Felid alphaherpesvirus 1"),
+				new RagReference("CFSPH", "Cryptococcosis")
 		), result.referenciasRag());
 		assertEquals(fontesPesquisadasFixture(), result.fontesPesquisadas());
 		server.verify();
@@ -237,6 +244,22 @@ class RenderClinicalSupportProviderTest {
 		server.expect(requestTo("https://engine.test/diagnostico/6"))
 				.andRespond(withSuccess(body, MediaType.APPLICATION_JSON));
 		return new RenderClinicalSupportProvider(builder.build());
+	}
+
+	@Test
+	void traduzTimeoutOuFalhaDeConexaoSemExporInfraestrutura() {
+		RestClient.Builder builder = RestClient.builder().baseUrl("https://engine.test");
+		MockRestServiceServer server = MockRestServiceServer.bindTo(builder).build();
+		RenderClinicalSupportProvider provider = new RenderClinicalSupportProvider(builder.build());
+		server.expect(requestTo("https://engine.test/diagnostico/6"))
+				.andRespond(request -> {
+					throw new org.springframework.web.client.ResourceAccessException("read timed out");
+				});
+
+		BusinessException exception = assertThrows(BusinessException.class, () -> provider.gerarSuporte(6L));
+
+		assertEquals(HttpStatus.SERVICE_UNAVAILABLE, exception.getStatus());
+		assertEquals("Motor clinico temporariamente indisponivel.", exception.getMessage());
 	}
 
 	private List<String> fontesPesquisadasFixture() {

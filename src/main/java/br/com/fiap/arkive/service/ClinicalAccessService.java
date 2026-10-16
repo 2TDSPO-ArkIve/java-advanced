@@ -88,7 +88,7 @@ public class ClinicalAccessService {
 	public void exigirGestaoVinculosAnimal(UsuarioPrincipal principal, Animal animal) {
 		exigirPrincipal(principal);
 		if (TipoUsuario.RESPONSAVEL.equals(principal.getTipoUsuario())) {
-			throw new AccessDeniedException("Gestao de tutores permitida apenas a veterinarios e administradores autorizados.");
+			throw new AccessDeniedException("Gestão de responsáveis permitida apenas a veterinários e administradores autorizados.");
 		}
 		exigirLeituraAnimal(principal, animal);
 	}

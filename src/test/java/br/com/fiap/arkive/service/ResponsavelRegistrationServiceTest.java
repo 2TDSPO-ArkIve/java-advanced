@@ -2,6 +2,7 @@ package br.com.fiap.arkive.service;
 
 import br.com.fiap.arkive.dto.request.RegistroResponsavelRequest;
 import br.com.fiap.arkive.entity.Responsavel;
+import br.com.fiap.arkive.entity.TipoDocumentoResponsavel;
 import br.com.fiap.arkive.entity.TipoUsuario;
 import br.com.fiap.arkive.entity.Usuario;
 import br.com.fiap.arkive.exception.BusinessException;
@@ -56,11 +57,12 @@ class ResponsavelRegistrationServiceTest {
 
 		Responsavel responsavel = responsavelCaptor.getValue();
 		Usuario usuario = usuarioCaptor.getValue();
-		assertEquals("Maria Tutor", responsavel.getNome());
-		assertEquals("12345678900", responsavel.getDocumento());
+		assertEquals("Maria Responsável", responsavel.getNome());
+		assertEquals("52998224725", responsavel.getDocumento());
+		assertEquals(TipoDocumentoResponsavel.CPF, responsavel.getTipoDocumento());
 		assertEquals("maria@arkive.com", responsavel.getEmail());
 		assertEquals("11999999999", responsavel.getTelefone());
-		assertEquals("TUTOR", responsavel.getTipo());
+		assertEquals("RESPONSAVEL", responsavel.getTipo());
 		assertEquals("S", responsavel.getNotificacao());
 		assertEquals("S", responsavel.getAtivo());
 
@@ -78,19 +80,21 @@ class ResponsavelRegistrationServiceTest {
 		assertFalse(response.trocaSenhaObrigatoria());
 		assertEquals(10L, response.usuarioId());
 		assertEquals(20L, response.responsavelId());
+		assertEquals(TipoDocumentoResponsavel.CPF, response.tipoDocumento());
 	}
 
 	@Test
 	void normalizaEmailETelefoneEmBrancoSemExporControlesDePerfil() {
 		service.registrar(new RegistroResponsavelRequest(
-				" Maria Tutor ", " 12345678900 ", " MARIA@ARKIVE.COM ", " ", "SenhaSegura1", "SenhaSegura1"));
+				" Maria Responsável ", TipoDocumentoResponsavel.CPF, " 529.982.247-25 ",
+				" MARIA@ARKIVE.COM ", " ", "SenhaSegura1", "SenhaSegura1"));
 		ArgumentCaptor<Usuario> usuarioCaptor = ArgumentCaptor.forClass(Usuario.class);
 		ArgumentCaptor<Responsavel> responsavelCaptor = ArgumentCaptor.forClass(Responsavel.class);
 		verify(usuarioRepository).existsByLoginIgnoreCase("maria@arkive.com");
 		verify(usuarioRepository).saveAndFlush(usuarioCaptor.capture());
 		verify(responsavelRepository).saveAndFlush(responsavelCaptor.capture());
 		assertEquals("maria@arkive.com", usuarioCaptor.getValue().getLogin());
-		assertEquals("12345678900", responsavelCaptor.getValue().getDocumento());
+		assertEquals("52998224725", responsavelCaptor.getValue().getDocumento());
 		assertNull(responsavelCaptor.getValue().getTelefone());
 	}
 
@@ -107,11 +111,15 @@ class ResponsavelRegistrationServiceTest {
 
 	@Test
 	void rejeitaDocumentoDuplicadoSemCriarUsuario() {
-		when(responsavelRepository.existsByDocumento("12345678900")).thenReturn(true);
+		when(responsavelRepository.existsByDocumento("52998224725")).thenReturn(true);
+		RegistroResponsavelRequest formatado = new RegistroResponsavelRequest(
+				"Maria Responsável", TipoDocumentoResponsavel.CPF, "529.982.247-25",
+				"maria@arkive.com", "11999999999", "SenhaSegura1", "SenhaSegura1");
 
-		BusinessException ex = assertThrows(BusinessException.class, () -> service.registrar(request()));
+		BusinessException ex = assertThrows(BusinessException.class, () -> service.registrar(formatado));
 
 		assertEquals(HttpStatus.CONFLICT, ex.getStatus());
+		assertEquals("Documento já cadastrado.", ex.getMessage());
 		verify(responsavelRepository, never()).saveAndFlush(any());
 		verify(usuarioRepository, never()).saveAndFlush(any());
 	}
@@ -119,11 +127,71 @@ class ResponsavelRegistrationServiceTest {
 	@Test
 	void aplicaPoliticaAtualDeSenhaAntesDePersistir() {
 		RegistroResponsavelRequest weak = new RegistroResponsavelRequest(
-				"Maria", "12345678900", "maria@arkive.com", null, "abcdefgh", "abcdefgh");
+				"Maria", TipoDocumentoResponsavel.CPF, "52998224725", "maria@arkive.com", null,
+				"abcdefgh", "abcdefgh");
 
 		assertThrows(BusinessException.class, () -> service.registrar(weak));
 		verify(responsavelRepository, never()).saveAndFlush(any());
 		verify(usuarioRepository, never()).saveAndFlush(any());
+	}
+
+	@Test
+	void aceitaCpfValidoFormatadoENormalizaAntesDaUnicidade() {
+		service.registrar(new RegistroResponsavelRequest(
+				"Maria", TipoDocumentoResponsavel.CPF, "529.982.247-25", "maria@arkive.com", null,
+				"SenhaSegura1", "SenhaSegura1"));
+
+		verify(responsavelRepository).existsByDocumento("52998224725");
+		ArgumentCaptor<Responsavel> captor = ArgumentCaptor.forClass(Responsavel.class);
+		verify(responsavelRepository).saveAndFlush(captor.capture());
+		assertEquals("52998224725", captor.getValue().getDocumento());
+	}
+
+	@Test
+	void rejeitaCpfComDigitosVerificadoresInvalidos() {
+		assertCpfInvalido("52998224724");
+	}
+
+	@Test
+	void rejeitaCpfComTodosOsDigitosIguais() {
+		assertCpfInvalido("11111111111");
+	}
+
+	@Test
+	void rejeitaCpfCurtoOuLongo() {
+		assertCpfInvalido("5299822472");
+		assertCpfInvalido("529982247250");
+	}
+
+	@Test
+	void aceitaRgNumericoEAlfanumericoComNormalizacaoGenerica() {
+		service.registrar(rgRequest("12.345.678-X"));
+
+		ArgumentCaptor<Responsavel> captor = ArgumentCaptor.forClass(Responsavel.class);
+		verify(responsavelRepository).saveAndFlush(captor.capture());
+		assertEquals("12345678X", captor.getValue().getDocumento());
+		assertEquals(TipoDocumentoResponsavel.RG, captor.getValue().getTipoDocumento());
+	}
+
+	@Test
+	void rejeitaRgComEstruturaInvalida() {
+		for (String rg : new String[] { "....", "1234", "123456789012345", "12@345" }) {
+			BusinessException ex = assertThrows(BusinessException.class, () -> service.registrar(rgRequest(rg)));
+			assertEquals("RG inválido.", ex.getMessage());
+		}
+		verify(responsavelRepository, never()).saveAndFlush(any());
+	}
+
+	@Test
+	void rejeitaTipoDeDocumentoAusenteEmDefesaDeDominio() {
+		RegistroResponsavelRequest request = new RegistroResponsavelRequest(
+				"Maria", null, "52998224725", "maria@arkive.com", null,
+				"SenhaSegura1", "SenhaSegura1");
+
+		BusinessException ex = assertThrows(BusinessException.class, () -> service.registrar(request));
+
+		assertEquals("Tipo de documento é obrigatório.", ex.getMessage());
+		verify(responsavelRepository, never()).saveAndFlush(any());
 	}
 
 	@Test
@@ -138,7 +206,22 @@ class ResponsavelRegistrationServiceTest {
 
 	private RegistroResponsavelRequest request() {
 		return new RegistroResponsavelRequest(
-				"Maria Tutor", "12345678900", "maria@arkive.com", "11999999999",
+				"Maria Responsável", TipoDocumentoResponsavel.CPF, "52998224725",
+				"maria@arkive.com", "11999999999",
 				"SenhaSegura1", "SenhaSegura1");
+	}
+
+	private RegistroResponsavelRequest rgRequest(String rg) {
+		return new RegistroResponsavelRequest(
+				"Maria Responsável", TipoDocumentoResponsavel.RG, rg,
+				"maria@arkive.com", null, "SenhaSegura1", "SenhaSegura1");
+	}
+
+	private void assertCpfInvalido(String cpf) {
+		RegistroResponsavelRequest request = new RegistroResponsavelRequest(
+				"Maria", TipoDocumentoResponsavel.CPF, cpf, "maria@arkive.com", null,
+				"SenhaSegura1", "SenhaSegura1");
+		BusinessException ex = assertThrows(BusinessException.class, () -> service.registrar(request));
+		assertEquals("CPF inválido.", ex.getMessage());
 	}
 }

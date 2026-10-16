@@ -22,7 +22,7 @@ Esta aplicação Spring Boot foi preparada para os requisitos da **FIAP Java Adv
 | Requisito da Sprint | Evidência no projeto |
 | --- | --- |
 | Frontend | Controllers MVC, templates Thymeleaf, dashboards, formulários e páginas de consulta de dados |
-| Flyway | Migrations Oracle `V1` a `V6` em `src/main/resources/db/migration` |
+| Flyway | Migrations Oracle `V1` a `V17` em `src/main/resources/db/migration` |
 | Spring Security | Usuários persistidos, BCrypt, form login, HTTP Basic, quatro perfis e proteção de rotas |
 | Fluxos além de CRUD | Consulta clínica assistida e prescrição com registro de adesão |
 | Validação | Bean Validation, `BindingResult`, regras nos services e constraints Oracle |
@@ -94,11 +94,13 @@ Spring Data Repository ──► JPA/Hibernate ──► Oracle
 
 Os usuários são carregados do banco por um `UserDetailsService` e autenticados por um `DaoAuthenticationProvider`. As senhas são persistidas somente como hashes BCrypt. O navegador usa form login em `/login`, enquanto clientes REST podem usar HTTP Basic.
 
-O `SecurityConfig` restringe rotas por perfil. As áreas `/sysadmin/**` exigem `SYSADMIN`; `/admin/**` aceita `SYSADMIN` ou `ADMIN_CLINICA`. A matriz REST também protege explicitamente recursos administrativos: por exemplo, `/api/clinicas/**` e `/api/veterinarios/**` são exclusivos de `SYSADMIN`, e catálogos podem permitir leitura a outros perfis sem liberar suas mutações.
+O `SecurityConfig` restringe rotas por perfil. As áreas `/sysadmin/**` exigem `SYSADMIN`; `/admin/**` aceita `SYSADMIN` ou `ADMIN_CLINICA`. A matriz REST também protege explicitamente recursos administrativos: por exemplo, `/api/clinicas/**` e o CRUD `/api/veterinarios/**` são exclusivos de `SYSADMIN`. A exceção específica `GET /api/veterinarios/me`, declarada antes da regra administrativa, permite apenas ao `VETERINARIO` autenticado consultar o próprio perfil a partir do vínculo presente no principal, sem aceitar ID do cliente.
 
 Além da proteção de rota, `ClinicalAccessService` e os services clínicos validam propriedade e escopo. Assim, o veterinário só altera consultas e prescrições sob sua responsabilidade, o administrador visualiza dados da própria clínica e o responsável acessa vínculos permitidos.
 
 Contas provisionadas automaticamente para clínica ou veterinário recebem uma credencial inicial temporária e ficam marcadas para troca obrigatória. O `MandatoryPasswordChangeFilter` impede o restante da navegação até a alteração em `/alterar-senha`. A nova senha deve ter de 8 a 72 caracteres, com pelo menos uma letra maiúscula, uma minúscula e um número.
+
+O cadastro público mantém rotas separadas e papéis atribuídos pelo servidor: `POST /api/auth/register` cria veterinários e `POST /api/auth/register/responsavel` cria responsáveis. O autocadastro de veterinário exige `senha` e `confirmacaoSenha`, aplica a política de 8–72 caracteres com maiúscula, minúscula e número, armazena BCrypt e cria a conta com `ST_TROCA_SENHA=N`. Isso é independente do cadastro administrativo de veterinários (`POST /sysadmin/veterinarios` ou `POST /api/veterinarios`), que continua provisionando a credencial temporária baseada no e-mail e `ST_TROCA_SENHA=S`. Nenhuma rota pública aceita papel, status ou `trocaSenha` definidos pelo cliente. No cadastro de responsável, `tipoDocumento` é obrigatório e aceita `CPF` ou `RG`. CPF é armazenado sem pontuação após validação dos dois dígitos verificadores; RG é normalizado para maiúsculas, sem pontos, hífens ou espaços, e recebe validação estrutural genérica de 5 a 14 caracteres alfanuméricos, pois não existe um algoritmo nacional único. O telefone é opcional, limitado a 20 caracteres, aparado e preservado em sua forma informada. Registros legados e administrativos podem manter `tipoDocumento=NULL`.
 
 ## Frontend Web com Thymeleaf
 
@@ -127,25 +129,28 @@ Atualmente, as áreas web completas são destinadas a `SYSADMIN` e `ADMIN_CLINIC
 
 ## Fluxos funcionais além de CRUD
 
-### Fluxo 1 — Consulta clínica assistida
+### Fluxo 1 — Consulta clínica com suporte ArkIve opcional
 
 ```text
 AG (Agendada)
   → EP (Em Progresso)
   → narrativa clínica
-  → suporte clínico assistido por IA
-  → AP (Aguardando Parecer)
-  → conclusão do veterinário
-  → FI (Finalizada)
+  ├→ conclusão do veterinário → FI (Finalizada)
+  └→ suporte clínico assistido por IA → AP (Aguardando Parecer)
+       → conclusão do veterinário → FI (Finalizada)
+
+AG / EP / AP → CA (Cancelada)
 ```
 
 1. Uma consulta é criada/agendada, normalmente com status `AG`.
 2. O veterinário responsável inicia o atendimento; o service valida o vínculo, os recursos ativos e a transição `AG → EP`.
 3. A narrativa clínica é registrada e pode ser corrigida enquanto a consulta está em `EP` ou `AP`.
-4. Em `EP`, o veterinário solicita suporte clínico. A aplicação consulta o motor externo e valida a resposta.
-5. A hipótese, severidade, confiança e insight são persistidos como apoio provisório; URLs externas e títulos das referências RAG permanecem separados. O registro nasce com `confirmado=N` e `validacaoVet=NULL`, e a consulta avança para `AP`.
-6. O veterinário informa seu próprio diagnóstico e conclusão. Esse parecer é persistido como confirmado e validado pelo profissional.
-7. A consulta muda para `FI`, e eventos relevantes da jornada são registrados.
+4. O suporte ArkIve é opcional. O veterinário pode finalizar diretamente de `EP` para `FI`, sem criar diagnóstico de IA, ou pode solicitar explicitamente o suporte clínico em `EP`.
+5. Quando solicitado, a aplicação consulta o motor externo. A hipótese, severidade, confiança e insight são persistidos como apoio provisório; URLs externas e referências RAG estruturadas (`fonte` da organização + `titulo`) permanecem separadas. O registro nasce com `confirmado=N` e `validacaoVet=NULL`, e a consulta avança para `AP`.
+6. De `EP` ou `AP`, o veterinário informa sua própria conclusão diagnóstica ou clínica. O registro profissional separado nasce com `confirmado=S`, `validacaoVet=NULL` e sem metadados de IA.
+7. `doencaId` e severidade são opcionais. Conclusões como `Consulta de rotina` e `Nenhuma doença identificada` usam o texto clínico normal, com `doencaId=null` e severidade nula; não existem doenças fictícias no catálogo.
+8. Consultas `AG`, `EP` ou `AP` podem ser canceladas e preservadas no histórico como `CA`. Uma observação do responsável consumida ao iniciar permanece como snapshot mesmo após cancelamento; cancelar ainda em `AG` não a consome.
+9. A API transporta datas e horas em ISO-8601, por exemplo `2026-10-20T14:30:00`; formatação de exibição é responsabilidade do cliente.
 
 Comandos:
 
@@ -155,9 +160,16 @@ PATCH /api/consultas/{id}/narrativa
 POST  /api/consultas/{id}/suporte-clinico
 GET   /api/consultas/{id}/suporte-clinico
 POST  /api/consultas/{id}/finalizar
+POST  /api/consultas/{id}/cancelar
 ```
 
 Esse fluxo não é CRUD simples porque contém uma máquina de estados, regras de transição, autorização pelo veterinário responsável, chamada externa, validação e persistência do resultado provisório, distinção entre hipótese da IA e conclusão profissional e registro de eventos da jornada.
+
+O `POST /api/consultas/{id}/suporte-clinico` é síncrono: a chamada ao motor ocorre fora da transação de banco, e somente depois de uma resposta válida uma transação curta persiste o diagnóstico e muda `EP` para `AP`. Se o cliente parar de aguardar, mas Java e o motor concluírem dentro do timeout do servidor, o resultado ainda é persistido. O cliente deve consultar `GET /api/consultas/{id}/suporte-clinico` antes de tentar gerar novamente; esse GET lê exclusivamente o resultado persistido e não chama o motor.
+
+Enquanto uma geração está em andamento, um segundo POST para a mesma consulta retorna `409` e não inicia outra chamada. Essa proteção usa memória local (`ConcurrentHashMap`) e, portanto, cobre a instância Java atual; o projeto opera como instância única e não introduz bloqueio distribuído. Se a consulta deixar de estar em `EP` enquanto o motor responde, a persistência rejeita o resultado para não anexar suporte a uma consulta cancelada ou já alterada.
+
+Os timeouts padrão são 10 segundos para conexão e 120 segundos para leitura. Podem ser ajustados com `ARKIVE_CLINICAL_ENGINE_CONNECT_TIMEOUT` e `ARKIVE_CLINICAL_ENGINE_READ_TIMEOUT`. Se o motor ultrapassar o timeout Java, a requisição termina com `503` sanitizado e nenhuma resposta posterior daquele pedido pode ser recuperada pelo Java; uma nova geração poderá ser solicitada conforme o estado da consulta.
 
 ### Fluxo 2 — Prescrição e adesão
 
@@ -190,7 +202,37 @@ Esse fluxo não é CRUD simples porque depende do encerramento de outro processo
 
 Consultas e prescrições podem registrar, opcionalmente, `valorConsulta` e `valorMedicamento`. Esses dados são custos informativos associados ao cuidado do paciente; não representam faturamento, pagamento, estoque ou contabilidade. `valorMedicamento` é o custo total estimado ou registrado daquela prescrição/tratamento, e não um preço unitário.
 
-O endpoint `GET /api/animais/{animalId}/custos` reutiliza as regras clínicas de leitura do paciente e retorna somente consultas finalizadas (`FI`) visíveis ao usuário, em ordem da mais recente para a mais antiga. A resposta separa total de consultas, total de medicamentos e total geral, além do detalhamento por consulta. Valores `NULL` significam que nenhum custo foi registrado; eles permanecem nulos no detalhe da consulta e são tratados como zero exclusivamente na agregação.
+O endpoint `GET /api/animais/{animalId}/custos` reutiliza as regras clínicas de leitura do paciente e retorna somente consultas finalizadas (`FI`), em ordem da mais recente para a mais antiga. Para um responsável autorizado, a visão continua abrangendo os custos do paciente. Para um veterinário, consultas, totais e contagens são limitados ao trabalho daquele próprio profissional; acesso clínico compartilhado não concede acesso aos preços de outro veterinário.
+
+O endpoint `GET /api/veterinarios/me/custos` usa exclusivamente o `veterinarioId` da identidade autenticada e apresenta o dashboard financeiro das consultas finalizadas daquele veterinário. Não existe parâmetro de ID de veterinário que permita trocar a titularidade do dashboard. Cada animal é identificado também pelo ArkIve ID.
+
+A resposta separa total de consultas, total de medicamentos e total geral, além do detalhamento por consulta. Nos dashboards próprios, `NULL` significa que nenhum custo foi registrado; no detalhe e no histórico clínico genéricos, um campo monetário nulo também pode significar que o valor foi redigido por privacidade financeira. Valores ausentes contribuem como zero somente nas agregações. Um zero explícito permanece zero e conta como valor registrado.
+
+### Fluxo 4 — Cadastro, busca e observação do paciente pelo responsável
+
+O responsável autenticado pode cadastrar um animal próprio e editar seus dados demográficos enquanto mantiver vínculo ativo e vigente. O cadastro cria atomicamente o primeiro vínculo principal, força o paciente como ativo e não permite que o responsável defina clínica, veterinário de cadastro ou estado administrativo. Raças devem existir previamente; o perfil `RESPONSAVEL` não pode criá-las.
+
+As listagens de animais aceitam `busca` para localizar, sem diferenciar maiúsculas e minúsculas, parte do nome ou do ArkIve ID. O parâmetro legado `nome` continua aceito; quando ambos são enviados, `busca` prevalece. O ArkIve ID é identidade pública permanente do paciente e nunca é credencial de autorização.
+
+O primeiro responsável também pode ser estabelecido pelo resgate de um convite seguro `RESPONSAVEL`. Se não existir vínculo vigente, o resgatante se torna principal; resgates posteriores mantêm a semântica de cuidador não principal. O token continua aleatório, expirável, de uso único e armazenado apenas como hash.
+
+`GET` e `PATCH /api/animais/{animalId}/observacao-responsavel` permitem que somente um responsável atualmente vinculado leia ou altere uma observação pendente de até 2000 caracteres. A observação é copiada para a primeira consulta que efetivamente transicionar de agendada para em progresso e então removida do animal; consultas posteriores não a repetem. O snapshot permanece na consulta histórica.
+
+### Fluxo 5 — Notificações de consultas
+
+Ao criar uma consulta com sucesso, o backend persiste uma notificação `CONSULTA_AGENDADA` para cada usuário `RESPONSAVEL` ativo com vínculo ativo e vigente com o animal. A mensagem identifica o paciente pelo nome e pelo ArkIve ID. Se ainda não existir responsável vigente, nenhuma notificação órfã ou retroativa é criada.
+
+Um agendador consulta, a cada 60 segundos por padrão, somente consultas `AG` compreendidas entre o instante atual e o limite configurado. Para cada resultado, o usuário `VETERINARIO` ativo vinculado ao profissional da consulta recebe `LEMBRETE_CONSULTA`. A antecedência padrão é de 30 minutos e pode ser alterada por `arkive.notifications.consultation-reminder.minutes-before`; a cadência usa `arkive.notifications.consultation-reminder.poll-ms`.
+
+As chaves `CONSULTA_AGENDADA:<consultaId>` e `LEMBRETE_CONSULTA:<consultaId>:<dataHora>` tornam a criação idempotente por destinatário. Assim, varreduras repetidas não duplicam lembretes, enquanto um reagendamento para outro horário pode gerar um novo lembrete quando entrar na janela. A caixa de notificações persistidas permanece a fonte autoritativa; a preferência `ST_NOTIFICACAO=N` suprime apenas o push do responsável. O envio push continua opcional e ocorre somente após o commit da transação.
+
+### Fluxo 6 — Solicitação veterinária de acesso
+
+O ArkIve ID identifica permanentemente o paciente, mas não autoriza acesso. Um `VETERINARIO` autenticado pode enviar `POST /api/solicitacoes-acesso` com o ArkIve ID; isso cria somente uma solicitação `PENDING`, sem revelar metadados clínicos nem conceder acesso. É necessário existir ao menos um responsável ativo e vigente, e não pode haver outra solicitação pendente do mesmo veterinário para o mesmo paciente.
+
+Cada responsável elegível recebe na caixa persistida uma notificação `SOLICITACAO_ACESSO`, vinculada ao recurso da própria solicitação. A criação da solicitação e das notificações usa a mesma transação; o push opcional continua sendo disparado somente depois do commit. A lista e o detalhe são limitados ao veterinário solicitante ou aos responsáveis atualmente vinculados ao animal.
+
+Um responsável vigente pode usar `POST /api/solicitacoes-acesso/{id}/aprovar` ou `/rejeitar`. A aprovação reutiliza o serviço canônico para criar ou recuperar um `PatientAccess` de papel `VETERINARIO`; a rejeição não concede nem revoga acesso. A decisão é serializada por bloqueio pessimista, não duplica paciente, relação de responsável, convite ou acesso efetivo. O acesso clínico aprovado continua independente da privacidade financeira: o veterinário não passa a ver preços registrados por outro profissional. QR code, link HTTPS e código manual do compartilhamento existente permanecem alternativas válidas.
 
 ## Validações
 
@@ -223,6 +265,10 @@ O **Flyway controla o versionamento do schema Oracle**. As migrations ficam em `
 | V11 | `V11__correct_ai_diagnosis_validation_semantics.sql` | Corrige a semântica histórica da avaliação veterinária de insights de IA |
 | V12 | `V12__add_diagnostico_referencias_rag.sql` | Persiste separadamente os títulos das referências RAG |
 | V13 | `V13__add_patient_care_costs.sql` | Adiciona custos assistenciais opcionais de consultas e prescrições |
+| V14 | `V14__normalize_responsavel_identity.sql` | Substitui o tipo normal por `RESPONSAVEL`, preserva registros e adiciona o tipo opcional de documento CPF/RG |
+| V15 | `V15__add_responsavel_pending_observation.sql` | Adiciona a observação pendente do responsável no animal e seu snapshot consumido pela próxima consulta iniciada |
+| V16 | `V16__expand_consulta_notifications.sql` | Expande os tipos de notificação de consulta para agendamento, lembrete e finalização |
+| V17 | `V17__add_patient_access_requests.sql` | Adiciona solicitações autenticadas de acesso veterinário, resolução por responsável vigente e o tipo/recurso de notificação correspondente |
 
 No perfil Oracle:
 
@@ -265,6 +311,8 @@ Nenhum valor real de credencial deve ser versionado. O arquivo `.env.example` se
 | `ARKIVE_DB_PASSWORD` | Senha do usuário Oracle | Sim no perfil `oracle` |
 | `ARKIVE_JPA_SHOW_SQL` | Habilita log SQL; padrão `false` | Não |
 | `ARKIVE_CLINICAL_ENGINE_URL` | URL-base do motor clínico externo; existe uma URL padrão configurada | Não, se a URL padrão for usada |
+| `ARKIVE_CLINICAL_ENGINE_CONNECT_TIMEOUT` | Timeout de conexão com o motor clínico; padrão `10s` | Não |
+| `ARKIVE_CLINICAL_ENGINE_READ_TIMEOUT` | Timeout de leitura da resposta clínica; padrão `120s` | Não |
 | `ARKIVE_BOOTSTRAP_SYSADMIN_ENABLED` | Habilita a criação inicial do SysAdmin; padrão `false` | Não |
 | `ARKIVE_BOOTSTRAP_SYSADMIN_NAME` | Nome do primeiro SysAdmin | Sim quando o bootstrap está habilitado |
 | `ARKIVE_BOOTSTRAP_SYSADMIN_LOGIN` | Login/e-mail do primeiro SysAdmin | Sim quando o bootstrap está habilitado |

@@ -19,12 +19,51 @@ public interface ConsultaRepository extends JpaRepository<Consulta, Long> {
 			select c from Consulta c
 			join fetch c.animal
 			join fetch c.veterinario
+			where c.status = 'AG'
+			and c.dataHora >= :inicio
+			and c.dataHora <= :fim
+			order by c.dataHora asc, c.id asc
+			""")
+	List<Consulta> buscarAgendadasParaLembrete(
+			@Param("inicio") LocalDateTime inicio,
+			@Param("fim") LocalDateTime fim
+	);
+
+	@Query("""
+			select c from Consulta c
+			join fetch c.animal
+			join fetch c.veterinario
 			left join fetch c.clinica
 			where c.animal.id = :animalId
 			and c.status = 'FI'
 			order by c.dataHora desc, c.id desc
 			""")
 	List<Consulta> buscarCustosFinalizadosPorAnimal(@Param("animalId") Long animalId);
+
+	@Query("""
+			select c from Consulta c
+			join fetch c.animal
+			join fetch c.veterinario
+			left join fetch c.clinica
+			where c.animal.id = :animalId
+			and c.veterinario.id = :veterinarioId
+			and c.status = 'FI'
+			order by c.dataHora desc, c.id desc
+			""")
+	List<Consulta> buscarCustosFinalizadosPorAnimalEVeterinario(
+			@Param("animalId") Long animalId,
+			@Param("veterinarioId") Long veterinarioId);
+
+	@Query("""
+			select c from Consulta c
+			join fetch c.animal
+			join fetch c.veterinario
+			left join fetch c.clinica
+			where c.veterinario.id = :veterinarioId
+			and c.status = 'FI'
+			order by c.dataHora desc, c.id desc
+			""")
+	List<Consulta> buscarCustosFinalizadosPorVeterinario(@Param("veterinarioId") Long veterinarioId);
 
 	@Query("""
 			select c from Consulta c

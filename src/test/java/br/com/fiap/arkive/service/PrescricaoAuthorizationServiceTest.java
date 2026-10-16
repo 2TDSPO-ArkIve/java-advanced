@@ -23,6 +23,7 @@ import java.time.LocalDate;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
@@ -53,7 +54,8 @@ class PrescricaoAuthorizationServiceTest {
 				adesaoPrescricaoRepository,
 				consultaService,
 				eventoJornadaService,
-				clinicalAccessService
+				clinicalAccessService,
+				new FinancialVisibilityService()
 		);
 		when(prescricaoRepository.save(any(Prescricao.class))).thenAnswer(invocation -> {
 			Prescricao prescricao = invocation.getArgument(0);
@@ -152,6 +154,28 @@ class PrescricaoAuthorizationServiceTest {
 	}
 
 	@Test
+	void leituraClinicaDePrescricaoDeOutroVeterinarioRedigeSomenteOValor() {
+		Prescricao prescricao = prescricao(consulta("FI", 11L, 30L));
+		prescricao.setValorMedicamento(new BigDecimal("80.00"));
+		when(prescricaoRepository.findById(9L)).thenReturn(Optional.of(prescricao));
+
+		var response = prescricaoService.buscarPorIdAutorizado(9L, veterinario(10L));
+
+		assertEquals("Medicamento", response.medicamento());
+		assertNull(response.valorMedicamento());
+	}
+
+	@Test
+	void leituraDePrescricaoPropriaPreservaZeroRegistrado() {
+		Prescricao prescricao = prescricao(consulta("FI", 10L, 30L));
+		prescricao.setValorMedicamento(new BigDecimal("0.00"));
+		when(prescricaoRepository.findById(9L)).thenReturn(Optional.of(prescricao));
+
+		assertEquals(new BigDecimal("0.00"),
+				prescricaoService.buscarPorIdAutorizado(9L, veterinario(10L)).valorMedicamento());
+	}
+
+	@Test
 	void listagemDeVeterinarioUsaVeterinarioAutenticado() {
 		when(prescricaoRepository.buscarParaVeterinario(eq(10L), eq(1L), eq("med"), any(Pageable.class)))
 				.thenReturn(Page.empty());
@@ -193,6 +217,20 @@ class PrescricaoAuthorizationServiceTest {
 				() -> prescricaoService.atualizar(9L, request(2L), veterinario(10L)));
 
 		assertEquals(HttpStatus.CONFLICT, exception.getStatus());
+		verify(prescricaoRepository, never()).save(any());
+	}
+
+	@Test
+	void outroVeterinarioNaoAtualizaCustoDaPrescricao() {
+		Prescricao prescricao = prescricao(consulta("FI", 10L, 30L));
+		UsuarioPrincipal outroVeterinario = veterinario(22L);
+		when(prescricaoRepository.findById(9L)).thenReturn(Optional.of(prescricao));
+		doThrow(new AccessDeniedException("Veterinario nao autorizado para esta consulta."))
+				.when(clinicalAccessService).exigirEscritaPrescricaoVeterinario(outroVeterinario, prescricao);
+
+		assertThrows(AccessDeniedException.class,
+				() -> prescricaoService.atualizar(9L, request(1L), outroVeterinario));
+
 		verify(prescricaoRepository, never()).save(any());
 	}
 
@@ -289,7 +327,7 @@ class PrescricaoAuthorizationServiceTest {
 	}
 
 	private UsuarioPrincipal responsavel(Long responsavelId) {
-		return new UsuarioPrincipal(2L, "Tutor", "tutor@arkive.com", "$2a$10$hash", TipoUsuario.RESPONSAVEL, "S", false, responsavelId, null, null);
+		return new UsuarioPrincipal(2L, "Responsável", "responsavel@arkive.com", "$2a$10$hash", TipoUsuario.RESPONSAVEL, "S", false, responsavelId, null, null);
 	}
 
 	private UsuarioPrincipal adminClinica(Long clinicaId) {

@@ -14,12 +14,21 @@ public record AlertaResponse(
 		String canal,
 		Long animalId,
 		String animalNome,
+		String animalArkivePatientId,
 		Long responsavelId,
 		String responsavelNome,
 		Long clinicaId,
 		String clinicaNome,
 		Long eventoPreventivoId
 ) {
+	public AlertaResponse(Long id, String tipo, String mensagem, LocalDateTime dataEnvio,
+			LocalDateTime dataLeitura, String status, String canal, Long animalId, String animalNome,
+			Long responsavelId, String responsavelNome, Long clinicaId, String clinicaNome,
+			Long eventoPreventivoId) {
+		this(id, tipo, mensagem, dataEnvio, dataLeitura, status, canal, animalId, animalNome, null,
+				responsavelId, responsavelNome, clinicaId, clinicaNome, eventoPreventivoId);
+	}
+
 	public static AlertaResponse fromEntity(Alerta alerta) {
 		Long responsavelId = alerta.getResponsavel() == null ? null : alerta.getResponsavel().getId();
 		String responsavelNome = alerta.getResponsavel() == null ? null : alerta.getResponsavel().getNome();
@@ -36,6 +45,7 @@ public record AlertaResponse(
 				alerta.getCanal(),
 				alerta.getAnimal().getId(),
 				alerta.getAnimal().getNome(),
+				alerta.getAnimal().getArkivePatientId(),
 				responsavelId,
 				responsavelNome,
 				clinicaId,

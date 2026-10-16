@@ -1,6 +1,7 @@
 package br.com.fiap.arkive.dto.response;
 
 import br.com.fiap.arkive.entity.Prescricao;
+import io.swagger.v3.oas.annotations.media.Schema;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -15,6 +16,7 @@ public record PrescricaoResponse(
 		LocalDate dataFim,
 		String instrucoes,
 		Long consultaId,
+		@Schema(description = "Custo total do tratamento. Para veterinarios, nulo também pode indicar redacao por privacidade financeira.")
 		BigDecimal valorMedicamento
 ) {
 	public PrescricaoResponse(Long id, String medicamento, String dosagem, String frequencia,
@@ -25,6 +27,10 @@ public record PrescricaoResponse(
 	}
 
 	public static PrescricaoResponse fromEntity(Prescricao prescricao) {
+		return fromEntity(prescricao, true);
+	}
+
+	public static PrescricaoResponse fromEntity(Prescricao prescricao, boolean mostrarCustos) {
 		return new PrescricaoResponse(
 				prescricao.getId(),
 				prescricao.getMedicamento(),
@@ -35,7 +41,7 @@ public record PrescricaoResponse(
 				prescricao.getDataFim(),
 				prescricao.getInstrucoes(),
 				prescricao.getConsulta().getId(),
-				prescricao.getValorMedicamento()
+				mostrarCustos ? prescricao.getValorMedicamento() : null
 		);
 	}
 }

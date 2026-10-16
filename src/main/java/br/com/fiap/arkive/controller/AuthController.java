@@ -8,6 +8,7 @@ import br.com.fiap.arkive.dto.response.VeterinarioResponse;
 import br.com.fiap.arkive.dto.response.RegistroResponsavelResponse;
 import br.com.fiap.arkive.security.UsuarioPrincipal;
 import br.com.fiap.arkive.service.AuthService;
+import io.swagger.v3.oas.annotations.Operation;
 import jakarta.validation.Valid;
 import org.springframework.context.annotation.Profile;
 import org.springframework.http.HttpStatus;
@@ -49,6 +50,8 @@ public class AuthController {
 	 * exact method+path; the caller cannot choose a role or clinic.
 	 */
 	@PostMapping("/register")
+	@Operation(summary = "Realiza o autocadastro público de veterinário",
+			description = "Cria uma conta VETERINARIO com a senha escolhida, sem clínica associada e sem exigir troca de senha no primeiro acesso. Papel, status e trocaSenha não são aceitos do cliente.")
 	public ResponseEntity<VeterinarioResponse> registrar(@Valid @RequestBody RegistroVeterinarioRequest request) {
 		return ResponseEntity.status(HttpStatus.CREATED).body(authService.registrarVeterinario(request));
 	}

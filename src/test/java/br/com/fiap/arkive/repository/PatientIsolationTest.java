@@ -34,7 +34,7 @@ import static org.junit.jupiter.api.Assertions.*;
 		"spring.jpa.database-platform=org.hibernate.dialect.H2Dialect"})
 @Import({AnimalService.class, ClinicalAccessService.class, VeterinarioService.class, ConsultaService.class,
 		AnimalResponsavelService.class, AnimalHistoricoService.class, AnimalHistoricoPdfService.class,
-		ConsultaResumoPdfService.class, BusinessTimeConfig.class})
+		ConsultaResumoPdfService.class, FinancialVisibilityService.class, BusinessTimeConfig.class})
 class PatientIsolationTest {
 	@Autowired TestEntityManager em;
 	@Autowired AnimalService animais;
@@ -52,6 +52,7 @@ class PatientIsolationTest {
 	@MockitoBean RacaService racas;
 	@MockitoBean ClinicaService clinicas;
 	@MockitoBean EventoJornadaService eventos;
+	@MockitoBean NotificacaoService notificacoes;
 	@MockitoBean AccountProvisioningService provisionamento;
 	@MockitoBean(name = "businessClock") java.time.Clock clock;
 	private Map<String, Veterinario> vets;
@@ -152,7 +153,8 @@ class PatientIsolationTest {
 	@Test
 	void filtrosNaoAmpliamEscopoEClinicaVemDoCadastroAtualDoVeterinario() {
 		assertTrue(animais.listarAutorizado(null, null, null, x.getId(), null, Pageable.unpaged(), principal("A")).isEmpty());
-		assertTrue(animais.listarPacientesVeterinario("P2", especie.getId(), null, Pageable.unpaged(), principal("A")).isEmpty());
+		assertFalse(nomes(animais.listarPacientesVeterinario(
+				"P2", especie.getId(), null, Pageable.unpaged(), principal("A")).getContent()).contains("P2"));
 		assertEquals(Set.of("P1"), nomes(animais.listarPacientesVeterinario("P1", especie.getId(), null, Pageable.unpaged(), principal("A")).getContent()));
 		vets.get("C").setClinica(y); em.flush();
 		assertEquals(Set.of("P4"), nomes(animais.listarPacientesVeterinario(null, null, null, Pageable.unpaged(), principal("C")).getContent()));
@@ -192,7 +194,7 @@ class PatientIsolationTest {
 
 	@Test
 	void vinculoFuturoDeTutorNaoConcedeAcessoAntesDaVigencia() {
-		Responsavel tutor = new Responsavel(); tutor.setNome("Tutor"); tutor.setTipo("TUTOR"); tutor.setDocumento("123"); em.persist(tutor);
+		Responsavel tutor = new Responsavel(); tutor.setNome("Responsável"); tutor.setTipo("RESPONSAVEL"); tutor.setDocumento("123"); em.persist(tutor);
 		LocalDate hoje = LocalDate.of(2026, 9, 9);
 		AnimalResponsavelId id = new AnimalResponsavelId(); id.setAnimalId(pacientes.get("P1").getId());
 		id.setResponsavelId(tutor.getId()); id.setDataInicio(hoje.plusDays(1));

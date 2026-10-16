@@ -5,6 +5,7 @@ import br.com.fiap.arkive.dto.request.AtualizarNarrativaConsultaRequest;
 import br.com.fiap.arkive.dto.request.ConsultaRequest;
 import br.com.fiap.arkive.dto.response.ClinicalSupportResponse;
 import br.com.fiap.arkive.dto.response.ConsultaResponse;
+import br.com.fiap.arkive.dto.response.RagReferenceResponse;
 import br.com.fiap.arkive.entity.TipoUsuario;
 import br.com.fiap.arkive.exception.BusinessException;
 import br.com.fiap.arkive.exception.GlobalExceptionHandler;
@@ -40,6 +41,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
@@ -138,10 +140,10 @@ class ClinicalWorkflowApiMvcTest {
 	}
 
 	@Test
-	void veterinarioCriaConsultaParaSiERecebeStatusAg() throws Exception {
+	void veterinarioCriaConsultaParaSiComDataIsoDe2026ERecebeStatusAg() throws Exception {
 		when(consultaService.criar(any(ConsultaRequest.class), any(UsuarioPrincipal.class))).thenReturn(new ConsultaResponse(
 				100L,
-				LocalDateTime.parse("2026-09-01T10:00:00"),
+				LocalDateTime.parse("2026-10-20T14:30:00"),
 				"PRESENCIAL",
 				"Avaliacao",
 				null,
@@ -163,7 +165,7 @@ class ClinicalWorkflowApiMvcTest {
 						.contentType(MediaType.APPLICATION_JSON)
 						.content("""
 								{
-								  "dataHora": "2026-09-01T10:00:00",
+								  "dataHora": "2026-10-20T14:30:00",
 								  "modalidade": "PRESENCIAL",
 								  "motivo": "Avaliacao",
 								  "status": "AG",
@@ -179,6 +181,7 @@ class ClinicalWorkflowApiMvcTest {
 
 		verify(consultaService).criar(
 				argThat(request -> Long.valueOf(10L).equals(request.veterinarioId())
+						&& LocalDateTime.parse("2026-10-20T14:30:00").equals(request.dataHora())
 						&& BigDecimal.ZERO.compareTo(request.valorConsulta()) == 0),
 				argThat(principal -> Long.valueOf(10L).equals(principal.getVeterinarioId()))
 		);
@@ -292,6 +295,18 @@ class ClinicalWorkflowApiMvcTest {
 	}
 
 	@Test
+	void cancelamentoExigeMotivoNaoVazio() throws Exception {
+		mockMvc.perform(post("/api/consultas/100/cancelar")
+						.with(user(veterinario()))
+						.contentType(MediaType.APPLICATION_JSON)
+						.content("{\"motivo\":\"   \"}"))
+				.andExpect(status().isBadRequest())
+				.andExpect(jsonPath("$.fields.motivo").exists());
+
+		verify(consultaWorkflowService, never()).cancelar(eq(100L), any(), any(UsuarioPrincipal.class));
+	}
+
+	@Test
 	void suporteClinicoBemSucedidoRetornaApSemExporContratoBrutoDoProvider() throws Exception {
 		when(clinicalSupportService.gerarSuporte(eq(100L), any(UsuarioPrincipal.class))).thenReturn(new ClinicalSupportResponse(
 				501L,
@@ -303,7 +318,9 @@ class ClinicalWorkflowApiMvcTest {
 				"Avaliar apoio, dor e amplitude articular.",
 				72,
 				null,
-				List.of("Feline calicivirus infection", "Cryptococcosis"),
+				List.of(
+						new RagReferenceResponse("ABCD", "Feline calicivirus infection"),
+						new RagReferenceResponse("CFSPH", "Cryptococcosis")),
 				List.of("https://source-one.example", "https://source-two.example")
 		));
 
@@ -314,8 +331,10 @@ class ClinicalWorkflowApiMvcTest {
 				.andExpect(jsonPath("$.hipoteseDiagnostica").value("Entorse leve"))
 				.andExpect(jsonPath("$.confianca").value(72))
 				.andExpect(jsonPath("$.validacaoVet").isEmpty())
-				.andExpect(jsonPath("$.referenciasRag[0]").value("Feline calicivirus infection"))
-				.andExpect(jsonPath("$.referenciasRag[1]").value("Cryptococcosis"))
+				.andExpect(jsonPath("$.referenciasRag[0].fonte").value("ABCD"))
+				.andExpect(jsonPath("$.referenciasRag[0].titulo").value("Feline calicivirus infection"))
+				.andExpect(jsonPath("$.referenciasRag[1].fonte").value("CFSPH"))
+				.andExpect(jsonPath("$.referenciasRag[1].titulo").value("Cryptococcosis"))
 				.andExpect(jsonPath("$.fontesPesquisadas[0]").value("https://source-one.example"))
 				.andExpect(jsonPath("$.fontesPesquisadas[1]").value("https://source-two.example"));
 	}
@@ -332,7 +351,9 @@ class ClinicalWorkflowApiMvcTest {
 				"Avaliar apoio, dor e amplitude articular.",
 				72,
 				"S",
-				List.of("Feline calicivirus infection", "Cryptococcosis"),
+				List.of(
+						new RagReferenceResponse("ABCD", "Feline calicivirus infection"),
+						new RagReferenceResponse("CFSPH", "Cryptococcosis")),
 				List.of("https://source-one.example", "https://source-two.example")
 		));
 
@@ -340,8 +361,10 @@ class ClinicalWorkflowApiMvcTest {
 				.andExpect(status().isOk())
 				.andExpect(jsonPath("$.diagnosticoId").value(501))
 				.andExpect(jsonPath("$.validacaoVet").value("S"))
-				.andExpect(jsonPath("$.referenciasRag[0]").value("Feline calicivirus infection"))
-				.andExpect(jsonPath("$.referenciasRag[1]").value("Cryptococcosis"))
+				.andExpect(jsonPath("$.referenciasRag[0].fonte").value("ABCD"))
+				.andExpect(jsonPath("$.referenciasRag[0].titulo").value("Feline calicivirus infection"))
+				.andExpect(jsonPath("$.referenciasRag[1].fonte").value("CFSPH"))
+				.andExpect(jsonPath("$.referenciasRag[1].titulo").value("Cryptococcosis"))
 				.andExpect(jsonPath("$.fontesPesquisadas[0]").value("https://source-one.example"))
 				.andExpect(jsonPath("$.fontesPesquisadas[1]").value("https://source-two.example"));
 	}

@@ -130,6 +130,7 @@ public class PatientShareService {
 	private void ensureResponsibleRelationship(Animal animal, Responsavel responsible) {
 		LocalDate today = LocalDate.now();
 		if (relationshipRepository.existsVinculoAtivoVigente(animal.getId(), responsible.getId(), today)) return;
+		boolean firstResponsible = !relationshipRepository.existsQualquerVinculoAtivoVigente(animal.getId(), today);
 		AnimalResponsavelId id = new AnimalResponsavelId();
 		id.setAnimalId(animal.getId());
 		id.setResponsavelId(responsible.getId());
@@ -138,9 +139,9 @@ public class PatientShareService {
 		relationship.setId(id);
 		relationship.setAnimal(animal);
 		relationship.setResponsavel(responsible);
-		relationship.setTipoVinculo("CUIDADOR");
+		relationship.setTipoVinculo(firstResponsible ? "TUTOR_LEGAL" : "CUIDADOR");
 		relationship.setDataFim(null);
-		relationship.setPrincipal("N");
+		relationship.setPrincipal(firstResponsible ? "S" : "N");
 		relationship.setAtivo("S");
 		relationshipRepository.save(relationship);
 	}

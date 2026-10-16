@@ -47,15 +47,19 @@ class ClinicalSupportResponseTest {
 	}
 
 	@Test
-	void leReferenciasRagPersistidasSemMisturarFontesExternas() {
+	void leReferenciasRagEstruturadasSemMisturarFontesExternas() {
 		Diagnostico diagnostico = diagnostico(
 				"[\"https://pubmed.ncbi.nlm.nih.gov/31325462/\"]",
-				"[\"Feline calicivirus infection\",\"Cryptococcosis\"]"
+				"[{\"fonte\":\"ABCD\",\"titulo\":\"Feline calicivirus infection\"},"
+						+ "{\"fonte\":\"CFSPH\",\"titulo\":\"Cryptococcosis\"}]"
 		);
 
 		ClinicalSupportResponse response = ClinicalSupportResponse.fromEntities(consulta(), diagnostico);
 
-		assertEquals(List.of("Feline calicivirus infection", "Cryptococcosis"), response.referenciasRag());
+		assertEquals(List.of(
+				new RagReferenceResponse("ABCD", "Feline calicivirus infection"),
+				new RagReferenceResponse("CFSPH", "Cryptococcosis")
+		), response.referenciasRag());
 		assertEquals(List.of("https://pubmed.ncbi.nlm.nih.gov/31325462/"), response.fontesPesquisadas());
 	}
 
@@ -68,7 +72,33 @@ class ClinicalSupportResponseTest {
 
 		ClinicalSupportResponse response = ClinicalSupportResponse.fromEntities(consulta(), diagnostico);
 
-		assertEquals(List.of("Feline calicivirus infection", "Cryptococcosis"), response.referenciasRag());
+		assertEquals(List.of(
+				new RagReferenceResponse(null, "Feline calicivirus infection"),
+				new RagReferenceResponse(null, "Cryptococcosis")
+		), response.referenciasRag());
+	}
+
+	@Test
+	void referenciasEstruturadasSaoNormalizadasSemColapsarOrganizacoesDiferentes() {
+		Diagnostico diagnostico = diagnostico(null, """
+				[
+				  {"fonte":" ABCD ","titulo":" Reference "},
+				  {"fonte":"ABCD","titulo":"Reference"},
+				  {"fonte":"OUTRA","titulo":"Reference"},
+				  {"fonte":"   ","titulo":"Sem organização"},
+				  {"fonte":"IGNORADA","titulo":"   "},
+				  null,
+				  42
+				]
+				""");
+
+		ClinicalSupportResponse response = ClinicalSupportResponse.fromEntities(consulta(), diagnostico);
+
+		assertEquals(List.of(
+				new RagReferenceResponse("ABCD", "Reference"),
+				new RagReferenceResponse("OUTRA", "Reference"),
+				new RagReferenceResponse(null, "Sem organização")
+		), response.referenciasRag());
 	}
 
 	@Test
@@ -89,9 +119,11 @@ class ClinicalSupportResponseTest {
 
 	@Test
 	void jsonPersistidoMalformadoRetornaListaVazia() {
-		ClinicalSupportResponse response = ClinicalSupportResponse.fromEntities(consulta(), diagnostico("{"));
+		ClinicalSupportResponse response = ClinicalSupportResponse.fromEntities(
+				consulta(), diagnostico("{", "{"));
 
 		assertEquals(List.of(), response.fontesPesquisadas());
+		assertEquals(List.of(), response.referenciasRag());
 	}
 
 	private Consulta consulta() {

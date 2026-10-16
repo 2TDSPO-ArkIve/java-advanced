@@ -1,6 +1,7 @@
 package br.com.fiap.arkive.service;
 
 import br.com.fiap.arkive.dto.response.ClinicalSupportResponse;
+import br.com.fiap.arkive.dto.response.RagReferenceResponse;
 import br.com.fiap.arkive.entity.Animal;
 import br.com.fiap.arkive.entity.Consulta;
 import br.com.fiap.arkive.entity.Diagnostico;
@@ -10,6 +11,7 @@ import br.com.fiap.arkive.exception.BusinessException;
 import br.com.fiap.arkive.repository.ConsultaRepository;
 import br.com.fiap.arkive.security.UsuarioPrincipal;
 import br.com.fiap.arkive.service.clinical.ClinicalSupportProviderResult;
+import br.com.fiap.arkive.service.clinical.RagReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -59,13 +61,15 @@ class ClinicalSupportPersistenceServiceTest {
 		UsuarioPrincipal principal = veterinario(10L);
 		ClinicalSupportProviderResult result = result();
 		when(consultaService.buscarEntidade(6L)).thenReturn(consulta);
-		when(diagnosticoService.criarSuporteClinicoIa(consulta, result.diagnostico(), result.severidade(), result.insightIa(), result.confianca(), "[\"https://source-one.example\",\"https://source-two.example\"]", "[\"Feline calicivirus infection\",\"Cryptococcosis\"]"))
+		String referenciasJson = "[{\"fonte\":\"ABCD\",\"titulo\":\"Feline calicivirus infection\"},"
+				+ "{\"fonte\":\"CFSPH\",\"titulo\":\"Cryptococcosis\"}]";
+		when(diagnosticoService.criarSuporteClinicoIa(consulta, result.diagnostico(), result.severidade(), result.insightIa(), result.confianca(), "[\"https://source-one.example\",\"https://source-two.example\"]", referenciasJson))
 				.thenReturn(diagnostico);
 
 		ClinicalSupportResponse response = persistenceService.persistirSuporte(6L, result, principal);
 
 		verify(clinicalAccessService).exigirEscritaClinicaVeterinario(principal, consulta);
-		verify(diagnosticoService).criarSuporteClinicoIa(consulta, result.diagnostico(), result.severidade(), result.insightIa(), result.confianca(), "[\"https://source-one.example\",\"https://source-two.example\"]", "[\"Feline calicivirus infection\",\"Cryptococcosis\"]");
+		verify(diagnosticoService).criarSuporteClinicoIa(consulta, result.diagnostico(), result.severidade(), result.insightIa(), result.confianca(), "[\"https://source-one.example\",\"https://source-two.example\"]", referenciasJson);
 		verify(consultaRepository).save(consulta);
 		assertEquals("AP", consulta.getStatus());
 		assertEquals("AP", response.statusConsulta());
@@ -73,7 +77,10 @@ class ClinicalSupportPersistenceServiceTest {
 		assertEquals("Hipotese", response.hipoteseDiagnostica());
 		assertEquals(50L, response.diagnosticoId());
 		assertNull(response.validacaoVet());
-		assertEquals(List.of("Feline calicivirus infection", "Cryptococcosis"), response.referenciasRag());
+		assertEquals(List.of(
+				new RagReferenceResponse("ABCD", "Feline calicivirus infection"),
+				new RagReferenceResponse("CFSPH", "Cryptococcosis")
+		), response.referenciasRag());
 		assertEquals(List.of("https://source-one.example", "https://source-two.example"), response.fontesPesquisadas());
 	}
 
@@ -123,7 +130,11 @@ class ClinicalSupportPersistenceServiceTest {
 				"Insight clinico",
 				65,
 				List.of("https://source-one.example", "https://source-two.example"),
-				java.util.Arrays.asList(" Feline calicivirus infection ", null, "Feline calicivirus infection", "Cryptococcosis")
+				java.util.Arrays.asList(
+						new RagReference(" ABCD ", " Feline calicivirus infection "),
+						null,
+						new RagReference("ABCD", "Feline calicivirus infection"),
+						new RagReference("CFSPH", "Cryptococcosis"))
 		);
 	}
 
@@ -134,7 +145,8 @@ class ClinicalSupportPersistenceServiceTest {
 		diagnostico.setSeveridade("MODERADA");
 		diagnostico.setInsightIa("Insight clinico");
 		diagnostico.setFontesIaJson("[\"https://source-one.example\",\"https://source-two.example\"]");
-		diagnostico.setReferenciasRagJson("[\"Feline calicivirus infection\",\"Cryptococcosis\"]");
+		diagnostico.setReferenciasRagJson("[{\"fonte\":\"ABCD\",\"titulo\":\"Feline calicivirus infection\"},"
+				+ "{\"fonte\":\"CFSPH\",\"titulo\":\"Cryptococcosis\"}]");
 		diagnostico.setConfianca(BigDecimal.valueOf(65));
 		diagnostico.setConfirmado("N");
 		diagnostico.setValidacaoVet(null);

@@ -5,9 +5,12 @@ import br.com.fiap.arkive.entity.Consulta;
 import br.com.fiap.arkive.entity.Diagnostico;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.swagger.v3.oas.annotations.media.Schema;
 
+
+import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Objects;
@@ -32,8 +35,8 @@ public record ClinicalSupportResponse(
 		Integer confianca,
 		@Schema(description = "Avaliacao de utilidade feita pelo veterinario: S para util, N para nao util e nulo quando ainda nao avaliado.", example = "S")
 		String validacaoVet,
-		@Schema(description = "Titulos legiveis das referencias recuperadas da base de conhecimento RAG.")
-		List<String> referenciasRag,
+		@Schema(description = "Organização de origem e título das referências recuperadas da base de conhecimento RAG.")
+		List<RagReferenceResponse> referenciasRag,
 		@Schema(description = "Fontes consultadas pelo motor clinico externo.")
 		List<String> fontesPesquisadas
 ) {
@@ -56,7 +59,7 @@ public record ClinicalSupportResponse(
 			String severidadeSugerida,
 			String insightClinico,
 			Integer confianca,
-			List<String> referenciasRag,
+			List<RagReferenceResponse> referenciasRag,
 			List<String> fontesPesquisadas
 	) {
 		this(null, consultaId, statusConsulta, statusDescricao, hipoteseDiagnostica, severidadeSugerida,
@@ -103,12 +106,12 @@ public record ClinicalSupportResponse(
 				diagnostico.getInsightIa(),
 				confianca,
 				diagnostico.getValidacaoVet(),
-				lerLista(diagnostico.getReferenciasRagJson()),
-				lerLista(diagnostico.getFontesIaJson())
+				lerReferenciasRag(diagnostico.getReferenciasRagJson()),
+				lerListaTexto(diagnostico.getFontesIaJson())
 		);
 	}
 
-	private static List<String> lerLista(String json) {
+	private static List<String> lerListaTexto(String json) {
 		if (json == null || json.isBlank()) {
 			return List.of();
 		}
@@ -120,16 +123,46 @@ public record ClinicalSupportResponse(
 		}
 	}
 
-	private static List<String> normalizarReferenciasRag(List<String> referenciasRag) {
+	private static List<RagReferenceResponse> lerReferenciasRag(String json) {
+		if (json == null || json.isBlank()) {
+			return List.of();
+		}
+		try {
+			JsonNode root = OBJECT_MAPPER.readTree(json);
+			if (root == null || !root.isArray()) {
+				return List.of();
+			}
+			List<RagReferenceResponse> referencias = new ArrayList<>();
+			for (JsonNode entry : root) {
+				if (entry.isTextual()) {
+					referencias.add(new RagReferenceResponse(null, entry.textValue()));
+			} else if (entry.isObject()) {
+					referencias.add(new RagReferenceResponse(
+						texto(entry.get("fonte")), texto(entry.get("titulo"))));
+			}
+			}
+			return normalizarReferenciasRag(referencias);
+		} catch (JsonProcessingException | IllegalArgumentException ex) {
+			return List.of();
+		}
+	}
+
+	private static String texto(JsonNode node) {
+		return node != null && node.isTextual() ? node.textValue() : null;
+	}
+
+	private static List<RagReferenceResponse> normalizarReferenciasRag(
+			List<RagReferenceResponse> referenciasRag
+	) {
 		if (referenciasRag == null || referenciasRag.isEmpty()) {
 			return List.of();
 		}
-		LinkedHashSet<String> titulos = new LinkedHashSet<>();
-		for (String titulo : referenciasRag) {
-			if (titulo != null && !titulo.isBlank()) {
-				titulos.add(titulo.strip());
+		LinkedHashSet<RagReferenceResponse> referencias = new LinkedHashSet<>();
+		for (RagReferenceResponse referencia : referenciasRag) {
+			if (referencia != null && referencia.titulo() != null && !referencia.titulo().isBlank()) {
+				referencias.add(new RagReferenceResponse(referencia.fonte(), referencia.titulo()));
 			}
 		}
-		return List.copyOf(titulos);
+		return List.copyOf(referencias);
 	}
 }

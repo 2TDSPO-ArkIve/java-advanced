@@ -26,14 +26,15 @@ public interface AnimalRepository extends JpaRepository<Animal, Long> {
 
 	@Query("""
 			select a from Animal a
-			where (:nome is null or lower(a.nome) like lower(concat('%', :nome, '%')))
+			where (:busca is null or lower(a.nome) like lower(concat('%', :busca, '%'))
+			or lower(a.arkivePatientId) like lower(concat('%', :busca, '%')))
 			and (:especieId is null or a.especie.id = :especieId)
 			and (:racaId is null or a.raca.id = :racaId)
 			and (:clinicaId is null or a.clinica.id = :clinicaId)
 			and (:ativo is null or a.ativo = :ativo)
 			""")
 	Page<Animal> buscar(
-			@Param("nome") String nome,
+			@Param("busca") String busca,
 			@Param("especieId") Long especieId,
 			@Param("racaId") Long racaId,
 			@Param("clinicaId") Long clinicaId,
@@ -56,7 +57,8 @@ public interface AnimalRepository extends JpaRepository<Animal, Long> {
 				and pa.revokedAt is null
 				and (pa.expiresAt is null or pa.expiresAt > current_timestamp)
 			))
-			and (:nome is null or lower(a.nome) like lower(concat('%', :nome, '%')))
+			and (:busca is null or lower(a.nome) like lower(concat('%', :busca, '%'))
+			or lower(a.arkivePatientId) like lower(concat('%', :busca, '%')))
 			and (:especieId is null or a.especie.id = :especieId)
 			and (:racaId is null or a.raca.id = :racaId)
 			and (:clinicaId is null or a.clinica.id = :clinicaId)
@@ -65,7 +67,7 @@ public interface AnimalRepository extends JpaRepository<Animal, Long> {
 	Page<Animal> buscarParaResponsavel(
 			@Param("responsavelId") Long responsavelId,
 			@Param("dataAtual") LocalDate dataAtual,
-			@Param("nome") String nome,
+			@Param("busca") String busca,
 			@Param("especieId") Long especieId,
 			@Param("racaId") Long racaId,
 			@Param("clinicaId") Long clinicaId,
@@ -97,7 +99,8 @@ public interface AnimalRepository extends JpaRepository<Animal, Long> {
 					and (pa.expiresAt is null or pa.expiresAt > current_timestamp)
 				)
 			)
-			and (:nome is null or lower(a.nome) like lower(concat('%', :nome, '%')))
+			and (:busca is null or lower(a.nome) like lower(concat('%', :busca, '%'))
+			or lower(a.arkivePatientId) like lower(concat('%', :busca, '%')))
 			and (:especieId is null or a.especie.id = :especieId)
 			and (:racaId is null or a.raca.id = :racaId)
 			and (:clinicaId is null or a.clinica.id = :clinicaId)
@@ -106,7 +109,7 @@ public interface AnimalRepository extends JpaRepository<Animal, Long> {
 	Page<Animal> buscarParaVeterinario(
 			@Param("veterinarioId") Long veterinarioId,
 			@Param("clinicaVeterinarioId") Long clinicaVeterinarioId,
-			@Param("nome") String nome,
+			@Param("busca") String busca,
 			@Param("especieId") Long especieId,
 			@Param("racaId") Long racaId,
 			@Param("clinicaId") Long clinicaId,
@@ -118,13 +121,14 @@ public interface AnimalRepository extends JpaRepository<Animal, Long> {
 			select a from Animal a
 			where a.clinica.id = :clinicaId
 			and a.ativo = 'S'
-			and (:nome is null or lower(a.nome) like lower(concat('%', :nome, '%')))
+			and (:busca is null or lower(a.nome) like lower(concat('%', :busca, '%'))
+			or lower(a.arkivePatientId) like lower(concat('%', :busca, '%')))
 			and (:especieId is null or a.especie.id = :especieId)
 			and (:racaId is null or a.raca.id = :racaId)
 			""")
 	Page<Animal> buscarAtivosParaClinica(
 			@Param("clinicaId") Long clinicaId,
-			@Param("nome") String nome,
+			@Param("busca") String busca,
 			@Param("especieId") Long especieId,
 			@Param("racaId") Long racaId,
 			Pageable pageable

@@ -33,7 +33,7 @@ class AnimalResponsavelServiceTest {
 	@BeforeEach void setup() {
 		animal = new Animal(); animal.setId(1L); animal.setNome("Paciente");
 		Veterinario dono = new Veterinario(); dono.setId(10L); animal.setVeterinarioCadastro(dono);
-		tutor = new Responsavel(); tutor.setId(20L); tutor.setNome("Tutor");
+		tutor = new Responsavel(); tutor.setId(20L); tutor.setNome("Responsável");
 		when(animais.findById(1L)).thenReturn(Optional.of(animal));
 		when(animais.buscarParaAtualizarVinculos(1L)).thenReturn(Optional.of(animal));
 		when(responsaveis.findById(20L)).thenReturn(Optional.of(tutor));

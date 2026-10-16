@@ -24,7 +24,7 @@ import java.util.Set;
 public class ResponsavelService {
 
 	private static final Set<String> TIPOS = Set.of(
-			"TUTOR",
+			"RESPONSAVEL",
 			"FUNCIONARIO_CLINICA",
 			"FUNCIONARIO_ZOO",
 			"ONG",

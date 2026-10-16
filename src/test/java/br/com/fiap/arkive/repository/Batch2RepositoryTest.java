@@ -40,7 +40,7 @@ class Batch2RepositoryTest {
 	@Test
 	void vinculoFuturoNaoConcedeAcessoAoTutor() {
 		Animal animal = new Animal(); animal.setNome("Paciente futuro"); animal.setEspecie(especie("Especie futura")); em.persist(animal);
-		Responsavel tutor = responsavel("Tutor futuro", "futuro@example.test", "4", "S");
+		Responsavel tutor = responsavel("Responsável futuro", "futuro@example.test", "4", "S");
 		AnimalResponsavelId id = new AnimalResponsavelId(); id.setAnimalId(animal.getId()); id.setResponsavelId(tutor.getId()); id.setDataInicio(java.time.LocalDate.now().plusDays(1));
 		AnimalResponsavel ar = new AnimalResponsavel(); ar.setId(id); ar.setAnimal(animal); ar.setResponsavel(tutor); ar.setTipoVinculo("TUTOR_LEGAL"); ar.setPrincipal("S"); em.persistAndFlush(ar);
 		assertFalse(vinculos.existsVinculoAtivoVigente(animal.getId(), tutor.getId(), java.time.LocalDate.now()));
@@ -53,7 +53,7 @@ class Batch2RepositoryTest {
 		var tx = new org.springframework.transaction.support.TransactionTemplate(transactionManager);
 		Long[] ids = tx.execute(status -> {
 			Animal animal = new Animal(); animal.setNome("Paciente concorrente"); animal.setEspecie(especie("Especie concorrente")); em.persist(animal);
-			return new Long[] {animal.getId(), responsavel("Tutor concorrente A", null, "conc-a", "S").getId(), responsavel("Tutor concorrente B", null, "conc-b", "S").getId()};
+			return new Long[] {animal.getId(), responsavel("Responsável concorrente A", null, "conc-a", "S").getId(), responsavel("Responsável concorrente B", null, "conc-b", "S").getId()};
 		});
 		var acesso = new br.com.fiap.arkive.service.ClinicalAccessService(vinculos, consultas, org.mockito.Mockito.mock(br.com.fiap.arkive.service.VeterinarioService.class));
 		var service = new br.com.fiap.arkive.service.AnimalResponsavelService(vinculos, animais, responsaveis, org.mockito.Mockito.mock(br.com.fiap.arkive.service.EventoJornadaService.class), acesso);
@@ -94,7 +94,7 @@ class Batch2RepositoryTest {
 	void buscaTutorPorNomeOuEmailExatoSomenteAtivos() {
 		Responsavel ana = responsavel("Ana Silva", "ana@example.test", "1", "S");
 		responsavel("Ana Inativa", "inativa@example.test", "2", "N");
-		responsavel("Outro Tutor", "outro@example.test", "3", "S");
+		responsavel("Outro Responsável", "outro@example.test", "3", "S");
 		em.flush();
 		assertEquals(java.util.List.of(ana.getId()), responsaveis.buscarParaVinculo("ana", Pageable.unpaged()).map(Responsavel::getId).getContent());
 		assertEquals(1, responsaveis.buscarParaVinculo("ANA@example.test", Pageable.unpaged()).getTotalElements());
@@ -110,6 +110,6 @@ class Batch2RepositoryTest {
 	}
 	private Responsavel responsavel(String nome, String email, String documento, String ativo) {
 		Responsavel r = new Responsavel(); r.setNome(nome); r.setEmail(email); r.setDocumento(documento);
-		r.setTipo("TUTOR"); r.setAtivo(ativo); return em.persist(r);
+		r.setTipo("RESPONSAVEL"); r.setAtivo(ativo); return em.persist(r);
 	}
 }

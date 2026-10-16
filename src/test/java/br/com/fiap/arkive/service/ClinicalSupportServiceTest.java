@@ -1,6 +1,7 @@
 package br.com.fiap.arkive.service;
 
 import br.com.fiap.arkive.dto.response.ClinicalSupportResponse;
+import br.com.fiap.arkive.dto.response.RagReferenceResponse;
 import br.com.fiap.arkive.entity.Animal;
 import br.com.fiap.arkive.entity.Consulta;
 import br.com.fiap.arkive.entity.Diagnostico;
@@ -11,12 +12,14 @@ import br.com.fiap.arkive.exception.ResourceNotFoundException;
 import br.com.fiap.arkive.security.UsuarioPrincipal;
 import br.com.fiap.arkive.service.clinical.ClinicalSupportProvider;
 import br.com.fiap.arkive.service.clinical.ClinicalSupportProviderResult;
+import br.com.fiap.arkive.service.clinical.RagReference;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.access.AccessDeniedException;
 
 import java.math.BigDecimal;
+import java.util.List;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
@@ -135,6 +138,26 @@ class ClinicalSupportServiceTest {
 	}
 
 	@Test
+	void respostaValidaNaoCriaSuporteSeConsultaMudarDeEstadoAntesDaPersistencia() {
+		Consulta consulta = consulta("EP", 10L);
+		UsuarioPrincipal principal = veterinario(10L);
+		ClinicalSupportProviderResult result = result();
+		when(consultaService.buscarEntidade(6L)).thenReturn(consulta);
+		when(clinicalSupportProvider.gerarSuporte(6L)).thenReturn(result);
+		when(persistenceService.persistirSuporte(6L, result, principal)).thenThrow(
+				new BusinessException(
+						"Consulta mudou de estado antes da persistencia do suporte clinico.",
+						HttpStatus.CONFLICT));
+
+		BusinessException exception = assertThrows(BusinessException.class,
+				() -> clinicalSupportService.gerarSuporte(6L, principal));
+
+		assertEquals(HttpStatus.CONFLICT, exception.getStatus());
+		verify(clinicalSupportProvider).gerarSuporte(6L);
+		verify(persistenceService).persistirSuporte(6L, result, principal);
+	}
+
+	@Test
 	void consultaEmProcessamentoNaoChamaProviderDuasVezes() throws Exception {
 		Consulta consulta = consulta("EP", 10L);
 		UsuarioPrincipal principal = veterinario(10L);
@@ -163,6 +186,53 @@ class ClinicalSupportServiceTest {
 			executor.shutdownNow();
 		}
 		verify(clinicalSupportProvider, times(1)).gerarSuporte(6L);
+		verify(persistenceService, times(1)).persistirSuporte(6L, result(), principal);
+	}
+
+	@Test
+	void respostaAtrasadaQueChegaComSucessoEhPersistidaERecuperadaPeloGet() throws Exception {
+		Consulta consulta = consulta("EP", 10L);
+		UsuarioPrincipal principal = veterinario(10L);
+		ClinicalSupportProviderResult providerResult = new ClinicalSupportProviderResult(
+				"Hipotese", "MODERADA", "Insight clinico", 65,
+				List.of("https://source.example"),
+				List.of(new RagReference("ABCD", "Feline calicivirus infection")));
+		Diagnostico persistido = diagnosticoIa(consulta);
+		persistido.setReferenciasRagJson(
+				"[{\"fonte\":\"ABCD\",\"titulo\":\"Feline calicivirus infection\"}]");
+		persistido.setFontesIaJson("[\"https://source.example\"]");
+		CountDownLatch providerIniciado = new CountDownLatch(1);
+		CountDownLatch liberarProvider = new CountDownLatch(1);
+		when(consultaService.buscarEntidade(6L)).thenReturn(consulta);
+		when(clinicalSupportProvider.gerarSuporte(6L)).thenAnswer(invocation -> {
+			providerIniciado.countDown();
+			assertTrue(liberarProvider.await(2, TimeUnit.SECONDS));
+			return providerResult;
+		});
+		when(persistenceService.persistirSuporte(6L, providerResult, principal)).thenAnswer(invocation -> {
+			consulta.setStatus("AP");
+			return ClinicalSupportResponse.fromEntities(consulta, persistido);
+		});
+		when(diagnosticoService.buscarSuporteClinico(6L)).thenReturn(persistido);
+
+		var executor = Executors.newSingleThreadExecutor();
+		try {
+			var post = executor.submit(() -> clinicalSupportService.gerarSuporte(6L, principal));
+			assertTrue(providerIniciado.await(2, TimeUnit.SECONDS));
+			liberarProvider.countDown();
+			ClinicalSupportResponse criada = post.get(2, TimeUnit.SECONDS);
+
+			assertEquals("AP", criada.statusConsulta());
+			assertEquals(List.of(new RagReferenceResponse(
+					"ABCD", "Feline calicivirus infection")), criada.referenciasRag());
+			ClinicalSupportResponse recuperada = clinicalSupportService.buscarSuporte(6L, principal);
+			assertEquals(criada, recuperada);
+		} finally {
+			liberarProvider.countDown();
+			executor.shutdownNow();
+		}
+		verify(clinicalSupportProvider, times(1)).gerarSuporte(6L);
+		verify(persistenceService, times(1)).persistirSuporte(6L, providerResult, principal);
 	}
 
 	@Test

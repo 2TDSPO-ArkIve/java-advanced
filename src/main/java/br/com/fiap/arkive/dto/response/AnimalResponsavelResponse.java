@@ -7,6 +7,7 @@ import java.time.LocalDate;
 public record AnimalResponsavelResponse(
 		Long animalId,
 		String animalNome,
+		String animalArkivePatientId,
 		Long responsavelId,
 		String responsavelNome,
 		String tipoVinculo,
@@ -15,10 +16,18 @@ public record AnimalResponsavelResponse(
 		String principal,
 		String ativo
 ) {
+	public AnimalResponsavelResponse(Long animalId, String animalNome, Long responsavelId,
+			String responsavelNome, String tipoVinculo, LocalDate dataInicio, LocalDate dataFim,
+			String principal, String ativo) {
+		this(animalId, animalNome, null, responsavelId, responsavelNome, tipoVinculo,
+				dataInicio, dataFim, principal, ativo);
+	}
+
 	public static AnimalResponsavelResponse fromEntity(AnimalResponsavel animalResponsavel) {
 		return new AnimalResponsavelResponse(
 				animalResponsavel.getAnimal().getId(),
 				animalResponsavel.getAnimal().getNome(),
+				animalResponsavel.getAnimal().getArkivePatientId(),
 				animalResponsavel.getResponsavel().getId(),
 				animalResponsavel.getResponsavel().getNome(),
 				animalResponsavel.getTipoVinculo(),

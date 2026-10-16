@@ -280,7 +280,7 @@ class ClinicalAccessServiceTest {
 	}
 
 	private UsuarioPrincipal responsavel(Long responsavelId) {
-		return new UsuarioPrincipal(2L, "Tutor", "tutor@arkive.com", "$2a$10$hash", TipoUsuario.RESPONSAVEL, "S", false, responsavelId, null, null);
+		return new UsuarioPrincipal(2L, "Responsável", "responsavel@arkive.com", "$2a$10$hash", TipoUsuario.RESPONSAVEL, "S", false, responsavelId, null, null);
 	}
 
 	private UsuarioPrincipal adminClinica(Long clinicaId) {

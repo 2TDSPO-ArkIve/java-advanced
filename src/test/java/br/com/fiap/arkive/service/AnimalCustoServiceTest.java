@@ -21,6 +21,7 @@ import java.util.Optional;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -40,13 +41,14 @@ class AnimalCustoServiceTest {
 		prescricaoRepository = mock(PrescricaoRepository.class);
 		clinicalAccessService = mock(ClinicalAccessService.class);
 		service = new AnimalCustoService(
-				animalRepository, consultaRepository, prescricaoRepository, clinicalAccessService);
+				animalRepository, consultaRepository, prescricaoRepository, clinicalAccessService,
+				new FinancialVisibilityService());
 		animal = new Animal();
 		animal.setId(50L);
 		animal.setNome("Epona");
 		animal.assignArkivePatientId("ARK-PET-EPONA");
-		principal = new UsuarioPrincipal(1L, "Dra", "vet@arkive.com", "hash",
-				TipoUsuario.VETERINARIO, "S", false, null, 10L, null);
+		principal = new UsuarioPrincipal(1L, "Responsável", "responsavel@arkive.com", "hash",
+				TipoUsuario.RESPONSAVEL, "S", false, 40L, null, null);
 		when(animalRepository.findById(50L)).thenReturn(Optional.of(animal));
 	}
 
@@ -179,6 +181,46 @@ class AnimalCustoServiceTest {
 		service.buscar(50L, principal);
 
 		verify(clinicalAccessService).exigirLeituraAnimal(principal, animal);
+	}
+
+	@Test
+	void veterinarioUsaAgregacaoRestritaAsPropriasConsultas() {
+		UsuarioPrincipal veterinario = new UsuarioPrincipal(2L, "Dra", "vet@arkive.com", "hash",
+				TipoUsuario.VETERINARIO, "S", false, null, 10L, null);
+		Consulta propria = consulta(42L, "2026-10-12T14:30:00", "FI", "100.00");
+		when(consultaRepository.buscarCustosFinalizadosPorAnimalEVeterinario(50L, 10L))
+				.thenReturn(List.of(propria));
+		when(clinicalAccessService.podeLerConsulta(veterinario, propria)).thenReturn(true);
+		when(prescricaoRepository.somarCustosMedicamentosFinalizadosPorAnimalEVeterinario(50L, 10L))
+				.thenReturn(List.of(agregado(42L, "40.00", 1L)));
+
+		AnimalCustoResponse response = service.buscar(50L, veterinario);
+
+		assertEquals(new BigDecimal("140.00"), response.totalGeral());
+		assertEquals(List.of(42L), response.consultas().stream()
+				.map(AnimalCustoResponse.ConsultaCusto::consultaId).toList());
+		verify(consultaRepository, never()).buscarCustosFinalizadosPorAnimal(50L);
+		verify(prescricaoRepository, never()).somarCustosMedicamentosFinalizadosPorAnimal(50L);
+	}
+
+	@Test
+	void responsavelAutorizadoMantemVisaoFinanceiraCompletaDoPaciente() {
+		Consulta consultaVetA = consulta(41L, "2026-10-12T14:30:00", "FI", "100.00");
+		Consulta consultaVetB = consulta(42L, "2026-10-13T14:30:00", "FI", "200.00");
+		consultaVetB.getVeterinario().setId(11L);
+		when(consultaRepository.buscarCustosFinalizadosPorAnimal(50L))
+				.thenReturn(List.of(consultaVetB, consultaVetA));
+		when(clinicalAccessService.podeLerConsulta(principal, consultaVetA)).thenReturn(true);
+		when(clinicalAccessService.podeLerConsulta(principal, consultaVetB)).thenReturn(true);
+		when(prescricaoRepository.somarCustosMedicamentosFinalizadosPorAnimal(50L)).thenReturn(List.of(
+				agregado(41L, "40.00", 1L), agregado(42L, "80.00", 1L)));
+
+		AnimalCustoResponse response = service.buscar(50L, principal);
+
+		assertEquals(new BigDecimal("300.00"), response.totalConsultas());
+		assertEquals(new BigDecimal("120.00"), response.totalMedicamentos());
+		assertEquals(new BigDecimal("420.00"), response.totalGeral());
+		assertEquals(2, response.consultas().size());
 	}
 
 	private Consulta consulta(Long id, String dataHora, String status, String valor) {

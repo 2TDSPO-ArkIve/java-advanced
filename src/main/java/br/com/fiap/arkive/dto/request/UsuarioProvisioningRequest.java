@@ -16,7 +16,7 @@ public record UsuarioProvisioningRequest(
 
 		@NotBlank
 		@Email
-		@Size(max = 72)
+		@Size(max = 200)
 		String login,
 
 		Long responsavelId,

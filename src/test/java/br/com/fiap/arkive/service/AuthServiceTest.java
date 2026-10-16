@@ -7,9 +7,11 @@ import br.com.fiap.arkive.dto.response.AuthMeResponse;
 import br.com.fiap.arkive.dto.response.VeterinarioResponse;
 import br.com.fiap.arkive.dto.response.RegistroResponsavelResponse;
 import br.com.fiap.arkive.entity.TipoUsuario;
+import br.com.fiap.arkive.entity.TipoDocumentoResponsavel;
 import br.com.fiap.arkive.entity.Usuario;
 import br.com.fiap.arkive.entity.Veterinario;
 import br.com.fiap.arkive.repository.UsuarioRepository;
+import br.com.fiap.arkive.security.PasswordPolicy;
 import br.com.fiap.arkive.security.UsuarioPrincipal;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
@@ -18,9 +20,11 @@ import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -32,7 +36,7 @@ class AuthServiceTest {
 		PasswordLifecycleService passwordLifecycleService = mock(PasswordLifecycleService.class);
 		VeterinarioService veterinarioService = mock(VeterinarioService.class);
 		AuthService authService = new AuthService(usuarioRepository, passwordLifecycleService, veterinarioService,
-				mock(ResponsavelRegistrationService.class));
+				mock(ResponsavelRegistrationService.class), new PasswordPolicy());
 		Usuario usuario = usuarioVeterinario();
 		when(usuarioRepository.findById(123L)).thenReturn(Optional.of(usuario));
 
@@ -55,7 +59,7 @@ class AuthServiceTest {
 		PasswordLifecycleService passwordLifecycleService = mock(PasswordLifecycleService.class);
 		VeterinarioService veterinarioService = mock(VeterinarioService.class);
 		AuthService authService = new AuthService(usuarioRepository, passwordLifecycleService, veterinarioService,
-				mock(ResponsavelRegistrationService.class));
+				mock(ResponsavelRegistrationService.class), new PasswordPolicy());
 
 		authService.alterarSenha(principal(true), "NovaSenha1");
 
@@ -68,16 +72,17 @@ class AuthServiceTest {
 		PasswordLifecycleService passwordLifecycleService = mock(PasswordLifecycleService.class);
 		VeterinarioService veterinarioService = mock(VeterinarioService.class);
 		AuthService authService = new AuthService(usuarioRepository, passwordLifecycleService, veterinarioService,
-				mock(ResponsavelRegistrationService.class));
+				mock(ResponsavelRegistrationService.class), new PasswordPolicy());
 		VeterinarioResponse resposta = new VeterinarioResponse(77L, "Dra Nova", "CRMV999", null, "nova@arkive.com", null, null, "S");
-		when(veterinarioService.criar(any(VeterinarioRequest.class))).thenReturn(resposta);
+		when(veterinarioService.criarAutocadastro(any(VeterinarioRequest.class), any())).thenReturn(resposta);
 		ArgumentCaptor<VeterinarioRequest> captor = ArgumentCaptor.forClass(VeterinarioRequest.class);
 
 		VeterinarioResponse resultado = authService.registrarVeterinario(
-				new RegistroVeterinarioRequest("Dra Nova", "CRMV999", "nova@arkive.com")
+				new RegistroVeterinarioRequest(
+						"Dra Nova", "CRMV999", "nova@arkive.com", "SenhaSegura1", "SenhaSegura1")
 		);
 
-		verify(veterinarioService).criar(captor.capture());
+		verify(veterinarioService).criarAutocadastro(captor.capture(), org.mockito.Mockito.eq("SenhaSegura1"));
 		assertEquals("Dra Nova", captor.getValue().nome());
 		assertEquals("CRMV999", captor.getValue().crmv());
 		assertEquals("nova@arkive.com", captor.getValue().email());
@@ -88,15 +93,36 @@ class AuthServiceTest {
 	}
 
 	@Test
+	void registrarVeterinarioAplicaPoliticaEConfirmacaoAntesDePersistir() {
+		VeterinarioService veterinarioService = mock(VeterinarioService.class);
+		AuthService authService = new AuthService(
+				mock(UsuarioRepository.class),
+				mock(PasswordLifecycleService.class),
+				veterinarioService,
+				mock(ResponsavelRegistrationService.class),
+				new PasswordPolicy());
+
+		assertThrows(br.com.fiap.arkive.exception.BusinessException.class,
+				() -> authService.registrarVeterinario(new RegistroVeterinarioRequest(
+						"Dra Nova", "CRMV999", "nova@arkive.com", "senhasemnumero", "senhasemnumero")));
+		assertThrows(br.com.fiap.arkive.exception.BusinessException.class,
+				() -> authService.registrarVeterinario(new RegistroVeterinarioRequest(
+						"Dra Nova", "CRMV999", "nova@arkive.com", "SenhaSegura1", "SenhaSegura2")));
+
+		verify(veterinarioService, never()).criarAutocadastro(any(), any());
+	}
+
+	@Test
 	void registrarResponsavelDelegaParaFluxoEspecificoSemPermitirEscolhaDePerfil() {
 		UsuarioRepository usuarioRepository = mock(UsuarioRepository.class);
 		PasswordLifecycleService passwordLifecycleService = mock(PasswordLifecycleService.class);
 		VeterinarioService veterinarioService = mock(VeterinarioService.class);
 		ResponsavelRegistrationService registrationService = mock(ResponsavelRegistrationService.class);
 		AuthService authService = new AuthService(usuarioRepository, passwordLifecycleService, veterinarioService,
-				registrationService);
+				registrationService, new PasswordPolicy());
 		RegistroResponsavelRequest request = new RegistroResponsavelRequest(
-				"Maria", "12345678900", "maria@arkive.com", "11999999999", "SenhaSegura1", "SenhaSegura1");
+				"Maria", TipoDocumentoResponsavel.CPF, "52998224725", "maria@arkive.com",
+				"11999999999", "SenhaSegura1", "SenhaSegura1");
 		RegistroResponsavelResponse expected = new RegistroResponsavelResponse(
 				10L, 20L, "Maria", "maria@arkive.com", TipoUsuario.RESPONSAVEL, "S", false);
 		when(registrationService.registrar(request)).thenReturn(expected);

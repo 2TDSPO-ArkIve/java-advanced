@@ -43,7 +43,7 @@
 						<label for="tipo">Tipo</label>
 						<select id="tipo" th:field="*{tipo}" th:attr="aria-invalid=${#fields.hasErrors('tipo')}" required>
 							<option value="">Selecione...</option>
-							<option th:each="tipo : ${tiposResponsavel}" th:value="${tipo}" th:text="${tipo}">TUTOR</option>
+							<option th:each="tipo : ${tiposResponsavel}" th:value="${tipo}" th:text="${tipo}">RESPONSAVEL</option>
 						</select>
 						<span class="field-error" th:if="${#fields.hasErrors('tipo')}" th:errors="*{tipo}">Erro</span>
 					</div>

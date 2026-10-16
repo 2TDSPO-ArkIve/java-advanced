@@ -16,6 +16,15 @@ import java.time.LocalDate;
 @Profile("!local-nodb")
 public interface UsuarioRepository extends JpaRepository<Usuario, Long> {
 
+	@Query("""
+			select u from Usuario u
+			join fetch u.veterinario v
+			where v.id = :veterinarioId
+			and u.tipo = br.com.fiap.arkive.entity.TipoUsuario.VETERINARIO
+			and u.ativo = 'S'
+			""")
+	Optional<Usuario> findUsuarioVeterinarioAtivo(@Param("veterinarioId") Long veterinarioId);
+
 	Optional<Usuario> findByLogin(String login);
 
 	Optional<Usuario> findByLoginIgnoreCase(String login);

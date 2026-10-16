@@ -2,6 +2,7 @@ package br.com.fiap.arkive.controller;
 
 import br.com.fiap.arkive.config.SecurityConfig;
 import br.com.fiap.arkive.dto.response.AnimalResponse;
+import br.com.fiap.arkive.dto.response.ObservacaoResponsavelResponse;
 import br.com.fiap.arkive.entity.TipoUsuario;
 import br.com.fiap.arkive.exception.GlobalExceptionHandler;
 import br.com.fiap.arkive.security.ArkiveUserDetailsService;
@@ -30,6 +31,8 @@ import static org.mockito.Mockito.when;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -129,5 +132,57 @@ class AnimalControllerMvcTest {
 				.andExpect(status().isOk()).andExpect(jsonPath("$.content[0].id").value(50));
 		verify(animalService).listarPacientesVeterinario(eq("Bilu"), eq(1L), eq(2L), any(Pageable.class),
 				org.mockito.Mockito.same(principal));
+	}
+
+	@Test
+	void buscaTemPrecedenciaSobreNomeEDelegaFiltroUnificado() throws Exception {
+		when(animalService.listarPacientesClinicaVeterinario(eq("ARK-PET-ABC"), eq(null), eq(null),
+				any(Pageable.class), any(UsuarioPrincipal.class))).thenReturn(new PageImpl<>(List.of()));
+
+		mockMvc.perform(get("/api/animais/clinica").with(user(veterinario()))
+				.param("busca", "ARK-PET-ABC").param("nome", "Nome ignorado"))
+				.andExpect(status().isOk());
+
+		verify(animalService).listarPacientesClinicaVeterinario(eq("ARK-PET-ABC"), eq(null), eq(null),
+				any(Pageable.class), any(UsuarioPrincipal.class));
+	}
+
+	@Test
+	void responsavelCriaAnimalComRacaExistente() throws Exception {
+		var principal = responsavel();
+		String patientId = "ARK-PET-11111-22222-33333-44444-555555";
+		when(animalService.criar(any(), eq(principal))).thenReturn(new AnimalResponse(
+				50L, patientId, "Epona", 1L, "Equino", 2L, "Mangalarga", "F", "N",
+				null, null, "S", LocalDate.of(2020, 1, 1)));
+
+		mockMvc.perform(post("/api/animais").with(user(principal)).contentType(MediaType.APPLICATION_JSON)
+				.content("""
+						{"nome":"Epona","especieId":1,"racaId":2,"sexo":"F","castrado":"N","dataNascimento":"2020-01-01"}
+						"""))
+				.andExpect(status().isCreated())
+				.andExpect(jsonPath("$.arkivePatientId").value(patientId));
+	}
+
+	@Test
+	void observacaoPendenteExigeResponsavelEUsaContratoDedicado() throws Exception {
+		var principal = responsavel();
+		when(animalService.atualizarObservacaoResponsavel(eq(50L), any(), eq(principal)))
+				.thenReturn(new ObservacaoResponsavelResponse(50L, "Esta comendo menos."));
+
+		mockMvc.perform(patch("/api/animais/50/observacao-responsavel").with(user(principal))
+				.contentType(MediaType.APPLICATION_JSON)
+				.content("{\"observacao\":\"Esta comendo menos.\"}"))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.animalId").value(50))
+				.andExpect(jsonPath("$.observacao").value("Esta comendo menos."));
+
+		mockMvc.perform(patch("/api/animais/50/observacao-responsavel").with(user(veterinario()))
+				.contentType(MediaType.APPLICATION_JSON).content("{\"observacao\":\"nota\"}"))
+				.andExpect(status().isForbidden());
+	}
+
+	private UsuarioPrincipal responsavel() {
+		return new UsuarioPrincipal(2L, "Responsavel", "resp@arkive.com", "$2a$10$hash",
+				TipoUsuario.RESPONSAVEL, "S", false, 40L, null, null);
 	}
 }

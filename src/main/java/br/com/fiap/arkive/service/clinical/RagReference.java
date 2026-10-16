@@ -13,6 +13,15 @@ public record RagReference(
 		String fonte,
 		String titulo
 ) {
+	public RagReference {
+		fonte = normalizarOpcional(fonte);
+		titulo = titulo == null ? null : titulo.strip();
+	}
+
+	private static String normalizarOpcional(String valor) {
+		return valor == null || valor.isBlank() ? null : valor.strip();
+	}
+
 	public static final class Deserializer extends JsonDeserializer<RagReference> {
 		@Override
 		public RagReference deserialize(JsonParser parser, DeserializationContext context) throws IOException {
