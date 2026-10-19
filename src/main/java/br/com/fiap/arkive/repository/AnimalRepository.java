@@ -43,12 +43,15 @@ public interface AnimalRepository extends JpaRepository<Animal, Long> {
 	);
 
 	@Query("""
-			select distinct a from Animal a
-			left join AnimalResponsavel ar on ar.animal = a
-			where ((ar.responsavel.id = :responsavelId
-			and ar.ativo = 'S'
-			and ar.id.dataInicio <= :dataAtual
-			and (ar.dataFim is null or ar.dataFim >= :dataAtual))
+			select a from Animal a
+			where (exists (
+				select ar from AnimalResponsavel ar
+				where ar.animal = a
+				and ar.responsavel.id = :responsavelId
+				and ar.ativo = 'S'
+				and ar.id.dataInicio <= :dataAtual
+				and (ar.dataFim is null or ar.dataFim >= :dataAtual)
+			)
 			or exists (
 				select pa from PatientAccess pa
 				where pa.animal = a
@@ -76,7 +79,7 @@ public interface AnimalRepository extends JpaRepository<Animal, Long> {
 	);
 
 	@Query("""
-			select distinct a from Animal a
+			select a from Animal a
 			where a.ativo = 'S'
 			and :veterinarioId is not null
 			and (
