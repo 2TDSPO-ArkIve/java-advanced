@@ -23,7 +23,10 @@ public record RenderClinicalEngineResponse(
 		List<String> fontesPesquisadas,
 
 		@JsonProperty("fontes_rag")
-		List<RagReference> fontesRag
+		List<RagReference> fontesRag,
+
+		@JsonProperty("tokens")
+		ClinicalSupportTokenUsage tokens
 ) {
 	public RenderClinicalEngineResponse {
 		fontesPesquisadas = fontesPesquisadas == null
@@ -41,7 +44,8 @@ public record RenderClinicalEngineResponse(
 				insightIa,
 				confianca,
 				fontesPesquisadas,
-				fontesRag
+				fontesRag,
+				tokens
 		);
 	}
 }

@@ -11,6 +11,7 @@ import br.com.fiap.arkive.exception.BusinessException;
 import br.com.fiap.arkive.repository.ConsultaRepository;
 import br.com.fiap.arkive.security.UsuarioPrincipal;
 import br.com.fiap.arkive.service.clinical.ClinicalSupportProviderResult;
+import br.com.fiap.arkive.service.clinical.ClinicalSupportTokenUsage;
 import br.com.fiap.arkive.service.clinical.RagReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
@@ -63,13 +64,13 @@ class ClinicalSupportPersistenceServiceTest {
 		when(consultaService.buscarEntidade(6L)).thenReturn(consulta);
 		String referenciasJson = "[{\"fonte\":\"ABCD\",\"titulo\":\"Feline calicivirus infection\"},"
 				+ "{\"fonte\":\"CFSPH\",\"titulo\":\"Cryptococcosis\"}]";
-		when(diagnosticoService.criarSuporteClinicoIa(consulta, result.diagnostico(), result.severidade(), result.insightIa(), result.confianca(), "[\"https://source-one.example\",\"https://source-two.example\"]", referenciasJson))
+		when(diagnosticoService.criarSuporteClinicoIa(consulta, result.diagnostico(), result.severidade(), result.insightIa(), result.confianca(), "[\"https://source-one.example\",\"https://source-two.example\"]", referenciasJson, 1000L, 500L, 1500L))
 				.thenReturn(diagnostico);
 
 		ClinicalSupportResponse response = persistenceService.persistirSuporte(6L, result, principal);
 
 		verify(clinicalAccessService).exigirEscritaClinicaVeterinario(principal, consulta);
-		verify(diagnosticoService).criarSuporteClinicoIa(consulta, result.diagnostico(), result.severidade(), result.insightIa(), result.confianca(), "[\"https://source-one.example\",\"https://source-two.example\"]", referenciasJson);
+		verify(diagnosticoService).criarSuporteClinicoIa(consulta, result.diagnostico(), result.severidade(), result.insightIa(), result.confianca(), "[\"https://source-one.example\",\"https://source-two.example\"]", referenciasJson, 1000L, 500L, 1500L);
 		verify(consultaRepository).save(consulta);
 		assertEquals("AP", consulta.getStatus());
 		assertEquals("AP", response.statusConsulta());
@@ -77,6 +78,9 @@ class ClinicalSupportPersistenceServiceTest {
 		assertEquals("Hipotese", response.hipoteseDiagnostica());
 		assertEquals(50L, response.diagnosticoId());
 		assertNull(response.validacaoVet());
+		assertEquals(1000L, response.tokens().entrada());
+		assertEquals(500L, response.tokens().saida());
+		assertEquals(1500L, response.tokens().total());
 		assertEquals(List.of(
 				new RagReferenceResponse("ABCD", "Feline calicivirus infection"),
 				new RagReferenceResponse("CFSPH", "Cryptococcosis")
@@ -90,12 +94,12 @@ class ClinicalSupportPersistenceServiceTest {
 		Diagnostico diagnostico = diagnosticoIa(consulta);
 		ClinicalSupportProviderResult result = new ClinicalSupportProviderResult("Hipotese", "MODERADA", "Insight clinico", 65, List.of());
 		when(consultaService.buscarEntidade(6L)).thenReturn(consulta);
-		when(diagnosticoService.criarSuporteClinicoIa(consulta, result.diagnostico(), result.severidade(), result.insightIa(), result.confianca(), null, null))
+		when(diagnosticoService.criarSuporteClinicoIa(consulta, result.diagnostico(), result.severidade(), result.insightIa(), result.confianca(), null, null, null, null, null))
 				.thenReturn(diagnostico);
 
 		persistenceService.persistirSuporte(6L, result, veterinario(10L));
 
-		verify(diagnosticoService).criarSuporteClinicoIa(consulta, result.diagnostico(), result.severidade(), result.insightIa(), result.confianca(), null, null);
+		verify(diagnosticoService).criarSuporteClinicoIa(consulta, result.diagnostico(), result.severidade(), result.insightIa(), result.confianca(), null, null, null, null, null);
 	}
 
 	@Test
@@ -105,7 +109,7 @@ class ClinicalSupportPersistenceServiceTest {
 
 		assertThrows(BusinessException.class, () -> persistenceService.persistirSuporte(6L, result(), veterinario(10L)));
 
-		verify(diagnosticoService, never()).criarSuporteClinicoIa(any(), any(), any(), any(), any(), any(), any());
+		verify(diagnosticoService, never()).criarSuporteClinicoIa(any(), any(), any(), any(), any(), any(), any(), any(), any(), any());
 		verify(consultaRepository, never()).save(any());
 	}
 
@@ -119,7 +123,7 @@ class ClinicalSupportPersistenceServiceTest {
 
 		assertThrows(AccessDeniedException.class, () -> persistenceService.persistirSuporte(6L, result(), principal));
 
-		verify(diagnosticoService, never()).criarSuporteClinicoIa(any(), any(), any(), any(), any(), any(), any());
+		verify(diagnosticoService, never()).criarSuporteClinicoIa(any(), any(), any(), any(), any(), any(), any(), any(), any(), any());
 		verify(consultaRepository, never()).save(any());
 	}
 
@@ -134,7 +138,8 @@ class ClinicalSupportPersistenceServiceTest {
 						new RagReference(" ABCD ", " Feline calicivirus infection "),
 						null,
 						new RagReference("ABCD", "Feline calicivirus infection"),
-						new RagReference("CFSPH", "Cryptococcosis"))
+						new RagReference("CFSPH", "Cryptococcosis")),
+				new ClinicalSupportTokenUsage(1000L, 500L, 1500L)
 		);
 	}
 
@@ -150,6 +155,9 @@ class ClinicalSupportPersistenceServiceTest {
 		diagnostico.setConfianca(BigDecimal.valueOf(65));
 		diagnostico.setConfirmado("N");
 		diagnostico.setValidacaoVet(null);
+		diagnostico.setTokensEntrada(1000L);
+		diagnostico.setTokensSaida(500L);
+		diagnostico.setTokensTotal(1500L);
 		diagnostico.setConsulta(consulta);
 		return diagnostico;
 	}

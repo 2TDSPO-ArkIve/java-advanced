@@ -30,6 +30,7 @@ class RenderClinicalSupportProviderTest {
 		assertEquals("Suspeita de Displasia Coxofemoral em Golden Retriever", response.diagnostico());
 		assertEquals("MODERADA", response.severidade());
 		assertEquals(65, response.confianca());
+		assertEquals(new ClinicalSupportTokenUsage(1000L, 500L, 1500L), response.tokens());
 		assertEquals(List.of(
 				new RagReference("ABCD", "Feline calicivirus infection"),
 				new RagReference("AAZV", "Herpesviridae · Alpha · Varicellovirus · Felid alphaherpesvirus 1"),
@@ -50,6 +51,7 @@ class RenderClinicalSupportProviderTest {
 				new RagReference("CFSPH", "Cryptococcosis")
 		), result.referenciasRag());
 		assertEquals(fontesPesquisadasFixture(), result.fontesPesquisadas());
+		assertEquals(new ClinicalSupportTokenUsage(1000L, 500L, 1500L), result.tokens());
 	}
 
 	@Test
@@ -90,6 +92,39 @@ class RenderClinicalSupportProviderTest {
 
 		assertEquals(List.of(), semCampo.fontesPesquisadas());
 		assertEquals(List.of(), campoNulo.fontesPesquisadas());
+	}
+
+	@Test
+	void tokensAusentesSaoMantidosComoNulosParaCompatibilidade() throws Exception {
+		RenderClinicalEngineResponse response = objectMapper.readValue("""
+				{
+				  "ds_diagnostico": "Hipotese",
+				  "tp_severidade": "AUSENTE",
+				  "ds_insight_ia": "Insight",
+				  "pc_confianca": 65
+				}
+				""", RenderClinicalEngineResponse.class);
+
+		assertEquals("AUSENTE", response.toProviderResult().severidade());
+		assertEquals(null, response.tokens());
+		assertEquals(null, response.toProviderResult().tokens());
+	}
+
+	@Test
+	void rejeitaTokenNegativoSemRejeitarMetadadosAusentes() {
+		RenderClinicalSupportProvider provider = providerRespondendo("""
+				{
+				  "ds_diagnostico": "Hipotese",
+				  "tp_severidade": "AUSENTE",
+				  "ds_insight_ia": "Insight",
+				  "pc_confianca": 65,
+				  "tokens": {"entrada": -1, "saida": 2, "total": 1}
+				}
+				""");
+
+		BusinessException exception = assertThrows(BusinessException.class, () -> provider.gerarSuporte(6L));
+
+		assertEquals(HttpStatus.BAD_GATEWAY, exception.getStatus());
 	}
 
 	@Test
@@ -177,6 +212,7 @@ class RenderClinicalSupportProviderTest {
 		assertEquals("Suspeita de Displasia Coxofemoral em Golden Retriever", result.diagnostico());
 		assertEquals("MODERADA", result.severidade());
 		assertEquals(65, result.confianca());
+		assertEquals(new ClinicalSupportTokenUsage(1000L, 500L, 1500L), result.tokens());
 		assertEquals(List.of(
 				new RagReference("ABCD", "Feline calicivirus infection"),
 				new RagReference("AAZV", "Herpesviridae · Alpha · Varicellovirus · Felid alphaherpesvirus 1"),

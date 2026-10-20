@@ -28,6 +28,7 @@ import br.com.fiap.arkive.repository.VeterinarioRepository;
 import br.com.fiap.arkive.security.UsuarioPrincipal;
 import br.com.fiap.arkive.service.clinical.ClinicalSupportProvider;
 import br.com.fiap.arkive.service.clinical.ClinicalSupportProviderResult;
+import br.com.fiap.arkive.service.clinical.ClinicalSupportTokenUsage;
 import br.com.fiap.arkive.service.clinical.RagReference;
 import br.com.fiap.arkive.dto.response.RagReferenceResponse;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -268,6 +269,59 @@ class ClinicalWorkflowEndToEndServiceTest {
 		verify(eventoJornadaService).registrarEvento(eq("PRESCRICAO_CRIADA"), eq("VETERINARIO"), eq(null), eq(10L), eq(50L), eq(30L), eq("Prescricao criada."), any());
 		verify(eventoJornadaService).registrarEvento(eq("ADESAO_REGISTRADA"), eq("RESPONSAVEL"), eq(40L), eq(null), eq(50L), eq(null), eq("Adesao de prescricao registrada."), any());
 		assertTrue(diagnosticos.size() >= 2);
+	}
+
+	@Test
+	void suporteAusenteComTokensAvancaParaApEPodeSerRecuperado() {
+		when(clinicalSupportProvider.gerarSuporte(100L)).thenReturn(new ClinicalSupportProviderResult(
+				"Nenhuma alteracao relevante",
+				"AUSENTE",
+				"Manter acompanhamento preventivo.",
+				90,
+				List.of(),
+				List.of(),
+				new ClinicalSupportTokenUsage(1000L, 500L, 1500L)
+		));
+		UsuarioPrincipal principal = veterinarioPrincipal();
+		var criada = consultaService.criar(consultaRequest(), principal);
+		consultaWorkflowService.iniciar(criada.id(), principal);
+
+		var gerado = clinicalSupportService.gerarSuporte(criada.id(), principal);
+		var finalizada = consultaWorkflowService.finalizar(
+				criada.id(),
+				new FinalizarConsultaRequest("Consulta de rotina", "AUSENTE", null, "Sem alteracoes."),
+				principal);
+		var recuperado = clinicalSupportService.buscarSuporte(criada.id(), principal);
+
+		assertEquals("AP", gerado.statusConsulta());
+		assertEquals("FI", finalizada.status());
+		assertEquals("FI", recuperado.statusConsulta());
+		assertEquals("AUSENTE", gerado.severidadeSugerida());
+		assertEquals(new br.com.fiap.arkive.dto.response.ClinicalSupportTokenResponse(1000L, 500L, 1500L), gerado.tokens());
+		assertEquals(gerado.tokens(), recuperado.tokens());
+		assertEquals(1000L, diagnosticos.get(0).getTokensEntrada());
+		assertEquals(500L, diagnosticos.get(0).getTokensSaida());
+		assertEquals(1500L, diagnosticos.get(0).getTokensTotal());
+		verify(clinicalSupportProvider, times(1)).gerarSuporte(criada.id());
+	}
+
+	@Test
+	void conclusaoVeterinariaComSeveridadeAusentePersisteSeparadamente() {
+		UsuarioPrincipal principal = veterinarioPrincipal();
+		var criada = consultaService.criar(consultaRequest(), principal);
+		consultaWorkflowService.iniciar(criada.id(), principal);
+
+		var finalizada = consultaWorkflowService.finalizar(
+				criada.id(),
+				new FinalizarConsultaRequest("Consulta de rotina", "AUSENTE", null, "Sem alteracoes."),
+				principal);
+
+		assertEquals("FI", finalizada.status());
+		assertEquals(1, diagnosticos.size());
+		assertEquals("AUSENTE", diagnosticos.get(0).getSeveridade());
+		assertEquals("S", diagnosticos.get(0).getConfirmado());
+		assertNull(diagnosticos.get(0).getTokensEntrada());
+		assertNull(diagnosticos.get(0).getValidacaoVet());
 	}
 
 	@ParameterizedTest

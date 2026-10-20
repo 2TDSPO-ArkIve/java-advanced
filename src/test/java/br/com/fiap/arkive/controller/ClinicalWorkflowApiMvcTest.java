@@ -4,6 +4,7 @@ import br.com.fiap.arkive.config.SecurityConfig;
 import br.com.fiap.arkive.dto.request.AtualizarNarrativaConsultaRequest;
 import br.com.fiap.arkive.dto.request.ConsultaRequest;
 import br.com.fiap.arkive.dto.response.ClinicalSupportResponse;
+import br.com.fiap.arkive.dto.response.ClinicalSupportTokenResponse;
 import br.com.fiap.arkive.dto.response.ConsultaResponse;
 import br.com.fiap.arkive.dto.response.RagReferenceResponse;
 import br.com.fiap.arkive.entity.TipoUsuario;
@@ -104,7 +105,7 @@ class ClinicalWorkflowApiMvcTest {
 
 	@Test
 	void consultaListaAceitaPageSizeSemSortEOmiteOrdenacao() throws Exception {
-		when(consultaService.listarAutorizado(isNull(), isNull(), isNull(), isNull(), isNull(), any(Pageable.class), any(UsuarioPrincipal.class)))
+		when(consultaService.listarAutorizado(isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), any(Pageable.class), any(UsuarioPrincipal.class)))
 				.thenReturn(new PageImpl<>(List.of()));
 		ArgumentCaptor<Pageable> pageableCaptor = ArgumentCaptor.forClass(Pageable.class);
 
@@ -114,7 +115,7 @@ class ClinicalWorkflowApiMvcTest {
 						.param("size", "20"))
 				.andExpect(status().isOk());
 
-		verify(consultaService).listarAutorizado(isNull(), isNull(), isNull(), isNull(), isNull(), pageableCaptor.capture(), any(UsuarioPrincipal.class));
+		verify(consultaService).listarAutorizado(isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), pageableCaptor.capture(), any(UsuarioPrincipal.class));
 		assertEquals(0, pageableCaptor.getValue().getPageNumber());
 		assertEquals(20, pageableCaptor.getValue().getPageSize());
 		assertFalse(pageableCaptor.getValue().getSort().isSorted());
@@ -122,7 +123,7 @@ class ClinicalWorkflowApiMvcTest {
 
 	@Test
 	void consultaListaAceitaSortSpringDataPadrao() throws Exception {
-		when(consultaService.listarAutorizado(isNull(), isNull(), isNull(), isNull(), isNull(), any(Pageable.class), any(UsuarioPrincipal.class)))
+		when(consultaService.listarAutorizado(isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), any(Pageable.class), any(UsuarioPrincipal.class)))
 				.thenReturn(new PageImpl<>(List.of()));
 		ArgumentCaptor<Pageable> pageableCaptor = ArgumentCaptor.forClass(Pageable.class);
 
@@ -133,10 +134,34 @@ class ClinicalWorkflowApiMvcTest {
 						.param("sort", "dataHora,desc"))
 				.andExpect(status().isOk());
 
-		verify(consultaService).listarAutorizado(isNull(), isNull(), isNull(), isNull(), isNull(), pageableCaptor.capture(), any(UsuarioPrincipal.class));
+		verify(consultaService).listarAutorizado(isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), pageableCaptor.capture(), any(UsuarioPrincipal.class));
 		assertEquals(0, pageableCaptor.getValue().getPageNumber());
 		assertEquals(20, pageableCaptor.getValue().getPageSize());
 		assertEquals("dataHora: DESC", pageableCaptor.getValue().getSort().toString());
+	}
+
+	@Test
+	void consultaListaEncaminhaFiltrosDePacienteIdEIntervaloTipado() throws Exception {
+		when(consultaService.listarAutorizado(any(), any(), any(), any(), any(), any(), any(), any(), any(), any(),
+				any(Pageable.class), any(UsuarioPrincipal.class))).thenReturn(new PageImpl<>(List.of()));
+
+		mockMvc.perform(get("/api/consultas")
+						.with(user(veterinario()))
+						.param("consultaId", "321")
+						.param("pacienteNome", "Epona")
+						.param("arkivePatientId", "ARK-PET-ABC")
+						.param("dataHoraInicio", "2026-10-01T00:00:00")
+						.param("dataHoraFim", "2026-10-31T23:59:59")
+						.param("animalId", "50")
+						.param("status", "FI"))
+				.andExpect(status().isOk());
+
+		verify(consultaService).listarAutorizado(
+				eq(321L), eq("Epona"), eq("ARK-PET-ABC"),
+				eq(LocalDateTime.parse("2026-10-01T00:00:00")),
+				eq(LocalDateTime.parse("2026-10-31T23:59:59")),
+				eq(50L), isNull(), isNull(), eq("FI"), isNull(),
+				any(Pageable.class), any(UsuarioPrincipal.class));
 	}
 
 	@Test
@@ -314,10 +339,11 @@ class ClinicalWorkflowApiMvcTest {
 				"AP",
 				"Aguardando Parecer",
 				"Entorse leve",
-				"LEVE",
+				"AUSENTE",
 				"Avaliar apoio, dor e amplitude articular.",
 				72,
 				null,
+				new ClinicalSupportTokenResponse(1000L, 500L, 1500L),
 				List.of(
 						new RagReferenceResponse("ABCD", "Feline calicivirus infection"),
 						new RagReferenceResponse("CFSPH", "Cryptococcosis")),
@@ -329,8 +355,12 @@ class ClinicalWorkflowApiMvcTest {
 				.andExpect(jsonPath("$.diagnosticoId").value(501))
 				.andExpect(jsonPath("$.statusConsulta").value("AP"))
 				.andExpect(jsonPath("$.hipoteseDiagnostica").value("Entorse leve"))
+				.andExpect(jsonPath("$.severidadeSugerida").value("AUSENTE"))
 				.andExpect(jsonPath("$.confianca").value(72))
 				.andExpect(jsonPath("$.validacaoVet").isEmpty())
+				.andExpect(jsonPath("$.tokens.entrada").value(1000))
+				.andExpect(jsonPath("$.tokens.saida").value(500))
+				.andExpect(jsonPath("$.tokens.total").value(1500))
 				.andExpect(jsonPath("$.referenciasRag[0].fonte").value("ABCD"))
 				.andExpect(jsonPath("$.referenciasRag[0].titulo").value("Feline calicivirus infection"))
 				.andExpect(jsonPath("$.referenciasRag[1].fonte").value("CFSPH"))

@@ -27,7 +27,8 @@ public record ClinicalSupportResponse(
 		String statusDescricao,
 		@Schema(description = "Hipotese diagnostica gerada como apoio clinico, ainda nao confirmada.", example = "Otite externa")
 		String hipoteseDiagnostica,
-		@Schema(example = "MODERADA")
+		@Schema(description = "Severidade sugerida. AUSENTE e diferente de nulo, que significa nao informado.", example = "MODERADA",
+				allowableValues = {"AUSENTE", "LEVE", "MODERADA", "GRAVE"})
 		String severidadeSugerida,
 		@Schema(description = "Insight clinico investigativo retornado pelo motor externo.", example = "Avaliar ouvido externo e historico de prurido.")
 		String insightClinico,
@@ -35,6 +36,8 @@ public record ClinicalSupportResponse(
 		Integer confianca,
 		@Schema(description = "Avaliacao de utilidade feita pelo veterinario: S para util, N para nao util e nulo quando ainda nao avaliado.", example = "S")
 		String validacaoVet,
+		@Schema(description = "Metadados opcionais de tokens informados pelo motor clinico; nulo quando ausentes na resposta original.", nullable = true)
+		ClinicalSupportTokenResponse tokens,
 		@Schema(description = "Organização de origem e título das referências recuperadas da base de conhecimento RAG.")
 		List<RagReferenceResponse> referenciasRag,
 		@Schema(description = "Fontes consultadas pelo motor clinico externo.")
@@ -63,7 +66,7 @@ public record ClinicalSupportResponse(
 			List<String> fontesPesquisadas
 	) {
 		this(null, consultaId, statusConsulta, statusDescricao, hipoteseDiagnostica, severidadeSugerida,
-				insightClinico, confianca, null, referenciasRag, fontesPesquisadas);
+				insightClinico, confianca, null, null, referenciasRag, fontesPesquisadas);
 	}
 
 	public ClinicalSupportResponse(
@@ -77,7 +80,7 @@ public record ClinicalSupportResponse(
 			List<String> fontesPesquisadas
 	) {
 		this(null, consultaId, statusConsulta, statusDescricao, hipoteseDiagnostica, severidadeSugerida,
-				insightClinico, confianca, null, List.of(), fontesPesquisadas);
+				insightClinico, confianca, null, null, List.of(), fontesPesquisadas);
 	}
 
 	public ClinicalSupportResponse(
@@ -90,7 +93,25 @@ public record ClinicalSupportResponse(
 			Integer confianca
 	) {
 		this(null, consultaId, statusConsulta, statusDescricao, hipoteseDiagnostica, severidadeSugerida,
-				insightClinico, confianca, null, List.of(), List.of());
+				insightClinico, confianca, null, null, List.of(), List.of());
+	}
+
+	public ClinicalSupportResponse(
+			Long diagnosticoId,
+			Long consultaId,
+			String statusConsulta,
+			String statusDescricao,
+			String hipoteseDiagnostica,
+			String severidadeSugerida,
+			String insightClinico,
+			Integer confianca,
+			String validacaoVet,
+			List<RagReferenceResponse> referenciasRag,
+			List<String> fontesPesquisadas
+	) {
+		this(diagnosticoId, consultaId, statusConsulta, statusDescricao, hipoteseDiagnostica,
+				severidadeSugerida, insightClinico, confianca, validacaoVet, null,
+				referenciasRag, fontesPesquisadas);
 	}
 
 	public static ClinicalSupportResponse fromEntities(Consulta consulta, Diagnostico diagnostico) {
@@ -106,6 +127,7 @@ public record ClinicalSupportResponse(
 				diagnostico.getInsightIa(),
 				confianca,
 				diagnostico.getValidacaoVet(),
+				ClinicalSupportTokenResponse.fromEntity(diagnostico),
 				lerReferenciasRag(diagnostico.getReferenciasRagJson()),
 				lerListaTexto(diagnostico.getFontesIaJson())
 		);
