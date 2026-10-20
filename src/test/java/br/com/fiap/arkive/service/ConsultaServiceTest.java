@@ -252,12 +252,14 @@ class ConsultaServiceTest {
 				1L, "Dra Vera", "vera@arkive.com", "$2a$10$hash",
 				br.com.fiap.arkive.entity.TipoUsuario.VETERINARIO, "S", false, null, 20L, null
 		);
-		when(consultaRepository.buscar(null, 20L, null, null, null, org.springframework.data.domain.Pageable.unpaged()))
+		when(consultaRepository.buscar(null, null, null, null, null, null, 20L, null, null, null,
+				org.springframework.data.domain.Pageable.unpaged()))
 				.thenReturn(org.springframework.data.domain.Page.empty());
 
 		consultaService.listarAutorizado(null, null, null, null, null, org.springframework.data.domain.Pageable.unpaged(), principal);
 
-		verify(consultaRepository).buscar(null, 20L, null, null, null, org.springframework.data.domain.Pageable.unpaged());
+		verify(consultaRepository).buscar(null, null, null, null, null, null, 20L, null, null, null,
+				org.springframework.data.domain.Pageable.unpaged());
 	}
 
 	@Test
@@ -270,7 +272,36 @@ class ConsultaServiceTest {
 		var resultado = consultaService.listarAutorizado(null, 22L, null, null, null, org.springframework.data.domain.Pageable.unpaged(), principal);
 
 		assertEquals(0, resultado.getTotalElements());
-		verify(consultaRepository, never()).buscar(null, 22L, null, null, null, org.springframework.data.domain.Pageable.unpaged());
+		verify(consultaRepository, never()).buscar(null, null, null, null, null, null, 22L, null, null, null,
+				org.springframework.data.domain.Pageable.unpaged());
+	}
+
+	@Test
+	void filtrosNovosSaoCombinadosSemRemoverEscopoDoVeterinario() {
+		var principal = veterinarioPrincipal(20L);
+		LocalDateTime inicio = LocalDateTime.parse("2026-10-01T00:00:00");
+		LocalDateTime fim = LocalDateTime.parse("2026-10-31T23:59:59");
+		when(consultaRepository.buscar(321L, "Epona", "ARK-PET-ABC", inicio, fim,
+				10L, 20L, 30L, "FI", "PRESENCIAL", org.springframework.data.domain.Pageable.unpaged()))
+				.thenReturn(org.springframework.data.domain.Page.empty());
+
+		consultaService.listarAutorizado(321L, " Epona ", " ARK-PET-ABC ", inicio, fim,
+				10L, null, 30L, "FI", "PRESENCIAL", org.springframework.data.domain.Pageable.unpaged(), principal);
+
+		verify(consultaRepository).buscar(321L, "Epona", "ARK-PET-ABC", inicio, fim,
+				10L, 20L, 30L, "FI", "PRESENCIAL", org.springframework.data.domain.Pageable.unpaged());
+	}
+
+	@Test
+	void intervaloInvertidoEhRejeitadoAntesDaConsultaAoBanco() {
+		LocalDateTime inicio = LocalDateTime.parse("2026-10-31T23:59:59");
+		LocalDateTime fim = LocalDateTime.parse("2026-10-01T00:00:00");
+
+		BusinessException exception = assertThrows(BusinessException.class, () -> consultaService.listarAutorizado(
+				null, null, null, inicio, fim, null, null, null, null, null,
+				org.springframework.data.domain.Pageable.unpaged(), veterinarioPrincipal(20L)));
+
+		assertEquals("Data e hora inicial nao podem ser posteriores a data e hora final.", exception.getMessage());
 	}
 
 	@Test

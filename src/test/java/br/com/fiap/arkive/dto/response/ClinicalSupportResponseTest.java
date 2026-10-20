@@ -47,6 +47,19 @@ class ClinicalSupportResponseTest {
 	}
 
 	@Test
+	void expoeTokensPersistidosESemMetadadosRetornaNulo() {
+		Diagnostico comTokens = diagnostico(null);
+		comTokens.setTokensEntrada(1000L);
+		comTokens.setTokensSaida(500L);
+		comTokens.setTokensTotal(1500L);
+
+		ClinicalSupportResponse response = ClinicalSupportResponse.fromEntities(consulta(), comTokens);
+
+		assertEquals(new ClinicalSupportTokenResponse(1000L, 500L, 1500L), response.tokens());
+		assertNull(ClinicalSupportResponse.fromEntities(consulta(), diagnostico(null)).tokens());
+	}
+
+	@Test
 	void leReferenciasRagEstruturadasSemMisturarFontesExternas() {
 		Diagnostico diagnostico = diagnostico(
 				"[\"https://pubmed.ncbi.nlm.nih.gov/31325462/\"]",

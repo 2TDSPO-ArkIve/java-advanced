@@ -58,7 +58,10 @@ public class ClinicalSupportPersistenceService {
 				result.insightIa(),
 				result.confianca(),
 				serializarLista(result.fontesPesquisadas()),
-				serializarLista(result.referenciasRag())
+				serializarLista(result.referenciasRag()),
+				result.tokens() == null ? null : result.tokens().entrada(),
+				result.tokens() == null ? null : result.tokens().saida(),
+				result.tokens() == null ? null : result.tokens().total()
 		);
 		consulta.setStatus(StatusConsulta.AP.getCodigo());
 		consultaRepository.save(consulta);

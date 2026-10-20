@@ -139,6 +139,8 @@ class AnimalHistoricoControllerMvcTest {
 		byte[] bytes = pdf();
 		try (var document = Loader.loadPDF(bytes)) {
 			String text = new PDFTextStripper().getText(document);
+			assertTrue(text.contains("Consultas"));
+			assertFalse(text.contains("Consultas (mais recentes primeiro)"));
 			for (String esperado : List.of("ArkIve", "Bilu", "17/04/2021", "05/09/2026 14:30", "Responsável Ana",
 					"Dermatite confirmada", "Retorno em sete dias.", "Medicamento registrado", "5 mg", "12 horas",
 					"ORAL", "05/09/2026", "12/09/2026", "Administrar com alimento.", "Rua do Atendimento, 10")) {

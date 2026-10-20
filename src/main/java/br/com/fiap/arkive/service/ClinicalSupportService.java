@@ -79,7 +79,8 @@ public class ClinicalSupportService {
 				|| result.insightIa() == null || result.insightIa().isBlank()
 				|| result.confianca() == null
 				|| result.confianca() < 0
-				|| result.confianca() > 100) {
+				|| result.confianca() > 100
+				|| result.tokens() != null && result.tokens().possuiValorNegativo()) {
 			throw new BusinessException("Resposta invalida do motor clinico.", HttpStatus.BAD_GATEWAY);
 		}
 	}

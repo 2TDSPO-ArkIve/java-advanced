@@ -22,7 +22,7 @@ Esta aplicação Spring Boot foi preparada para os requisitos da **FIAP Java Adv
 | Requisito da Sprint | Evidência no projeto |
 | --- | --- |
 | Frontend | Controllers MVC, templates Thymeleaf, dashboards, formulários e páginas de consulta de dados |
-| Flyway | Migrations Oracle `V1` a `V18` em `src/main/resources/db/migration` |
+| Flyway | Migrations Oracle `V1` a `V19` em `src/main/resources/db/migration` |
 | Spring Security | Usuários persistidos, BCrypt, form login, HTTP Basic, quatro perfis e proteção de rotas |
 | Fluxos além de CRUD | Consulta clínica assistida e prescrição com registro de adesão |
 | Validação | Bean Validation, `BindingResult`, regras nos services e constraints Oracle |
@@ -146,9 +146,9 @@ AG / EP / AP → CA (Cancelada)
 2. O veterinário responsável inicia o atendimento; o service valida o vínculo, os recursos ativos e a transição `AG → EP`.
 3. A narrativa clínica é registrada e pode ser corrigida enquanto a consulta está em `EP` ou `AP`.
 4. O suporte ArkIve é opcional. O veterinário pode finalizar diretamente de `EP` para `FI`, sem criar diagnóstico de IA, ou pode solicitar explicitamente o suporte clínico em `EP`.
-5. Quando solicitado, a aplicação consulta o motor externo. A hipótese, severidade, confiança e insight são persistidos como apoio provisório; URLs externas e referências RAG estruturadas (`fonte` da organização + `titulo`) permanecem separadas. O registro nasce com `confirmado=N` e `validacaoVet=NULL`, e a consulta avança para `AP`.
+5. Quando solicitado, a aplicação consulta o motor externo. A hipótese, severidade, confiança, insight e os metadados opcionais de tokens (`entrada`, `saida`, `total`) são persistidos como apoio provisório; URLs externas e referências RAG estruturadas (`fonte` da organização + `titulo`) permanecem separadas. O registro nasce com `confirmado=N` e `validacaoVet=NULL`, e a consulta avança para `AP`.
 6. De `EP` ou `AP`, o veterinário informa sua própria conclusão diagnóstica ou clínica. O registro profissional separado nasce com `confirmado=S`, `validacaoVet=NULL` e sem metadados de IA.
-7. `doencaId` e severidade são opcionais. Conclusões como `Consulta de rotina` e `Nenhuma doença identificada` usam o texto clínico normal, com `doencaId=null` e severidade nula; não existem doenças fictícias no catálogo.
+7. `doencaId` e severidade são opcionais. A severidade aceita `AUSENTE`, `LEVE`, `MODERADA` ou `GRAVE`; `AUSENTE` registra explicitamente ausência de severidade, enquanto `null` significa não informado. Não existem doenças fictícias no catálogo.
 8. Consultas `AG`, `EP` ou `AP` podem ser canceladas e preservadas no histórico como `CA`. Uma observação do responsável consumida ao iniciar permanece como snapshot mesmo após cancelamento; cancelar ainda em `AG` não a consome.
 9. A API transporta datas e horas em ISO-8601, por exemplo `2026-10-20T14:30:00`; formatação de exibição é responsabilidade do cliente.
 
@@ -162,6 +162,8 @@ GET   /api/consultas/{id}/suporte-clinico
 POST  /api/consultas/{id}/finalizar
 POST  /api/consultas/{id}/cancelar
 ```
+
+`GET /api/consultas` aceita os filtros combináveis `consultaId` (igualdade exata), `pacienteNome` (trecho, sem diferenciar maiúsculas/minúsculas), `arkivePatientId` (igualdade exata sem diferenciar maiúsculas/minúsculas), `dataHoraInicio` e `dataHoraFim` (limites inclusivos em ISO-8601), além dos filtros existentes `animalId`, `veterinarioId`, `clinicaId`, `status` e `modalidade`. Os filtros são aplicados no banco antes da paginação e nunca ampliam o escopo autorizado do usuário.
 
 Esse fluxo não é CRUD simples porque contém uma máquina de estados, regras de transição, autorização pelo veterinário responsável, chamada externa, validação e persistência do resultado provisório, distinção entre hipótese da IA e conclusão profissional e registro de eventos da jornada.
 
@@ -278,6 +280,7 @@ O **Flyway controla o versionamento do schema Oracle**. As migrations ficam em `
 | V16 | `V16__expand_consulta_notifications.sql` | Expande os tipos de notificação de consulta para agendamento, lembrete e finalização |
 | V17 | `V17__add_patient_access_requests.sql` | Adiciona solicitações autenticadas de acesso veterinário, resolução por responsável vigente e o tipo/recurso de notificação correspondente |
 | V18 | `V18__add_permanent_animal_reports.sql` | Adiciona o histórico permanente e pesquisável de relatos dos responsáveis por animal |
+| V19 | `V19__add_diagnostico_severity_and_token_usage.sql` | Adiciona `AUSENTE` à severidade e persiste metadados opcionais e não negativos de tokens do suporte clínico |
 
 No perfil Oracle:
 

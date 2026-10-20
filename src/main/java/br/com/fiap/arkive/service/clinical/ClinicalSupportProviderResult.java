@@ -11,7 +11,8 @@ public record ClinicalSupportProviderResult(
 		String insightIa,
 		Integer confianca,
 		List<String> fontesPesquisadas,
-		List<RagReference> referenciasRag
+		List<RagReference> referenciasRag,
+		ClinicalSupportTokenUsage tokens
 ) {
 	public ClinicalSupportProviderResult {
 		fontesPesquisadas = fontesPesquisadas == null
@@ -27,11 +28,22 @@ public record ClinicalSupportProviderResult(
 			Integer confianca,
 			List<String> fontesPesquisadas
 	) {
-		this(diagnostico, severidade, insightIa, confianca, fontesPesquisadas, List.of());
+		this(diagnostico, severidade, insightIa, confianca, fontesPesquisadas, List.of(), null);
+	}
+
+	public ClinicalSupportProviderResult(
+			String diagnostico,
+			String severidade,
+			String insightIa,
+			Integer confianca,
+			List<String> fontesPesquisadas,
+			List<RagReference> referenciasRag
+	) {
+		this(diagnostico, severidade, insightIa, confianca, fontesPesquisadas, referenciasRag, null);
 	}
 
 	public ClinicalSupportProviderResult(String diagnostico, String severidade, String insightIa, Integer confianca) {
-		this(diagnostico, severidade, insightIa, confianca, List.of(), List.of());
+		this(diagnostico, severidade, insightIa, confianca, List.of(), List.of(), null);
 	}
 
 	private static List<RagReference> normalizarReferenciasRag(List<RagReference> referenciasRag) {

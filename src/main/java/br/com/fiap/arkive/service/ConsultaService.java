@@ -103,9 +103,29 @@ public class ConsultaService {
 
 	@Transactional(readOnly = true)
 	public Page<ConsultaResponse> listar(Long animalId, Long veterinarioId, Long clinicaId, String status, String modalidade, Pageable pageable) {
+		return listar(null, null, null, null, null, animalId, veterinarioId, clinicaId, status, modalidade, pageable);
+	}
+
+	@Transactional(readOnly = true)
+	public Page<ConsultaResponse> listar(
+			Long consultaId,
+			String pacienteNome,
+			String arkivePatientId,
+			LocalDateTime dataHoraInicio,
+			LocalDateTime dataHoraFim,
+			Long animalId,
+			Long veterinarioId,
+			Long clinicaId,
+			String status,
+			String modalidade,
+			Pageable pageable
+	) {
 		validarStatusQuandoInformado(status);
 		validarModalidadeQuandoInformada(modalidade);
-		return consultaRepository.buscar(animalId, veterinarioId, clinicaId, vazioParaNulo(status), vazioParaNulo(modalidade), pageable)
+		validarIntervalo(dataHoraInicio, dataHoraFim);
+		return consultaRepository.buscar(
+				consultaId, normalizarTextoFiltro(pacienteNome), normalizarTextoFiltro(arkivePatientId), dataHoraInicio, dataHoraFim,
+				animalId, veterinarioId, clinicaId, vazioParaNulo(status), vazioParaNulo(modalidade), pageable)
 				.map(ConsultaResponse::fromEntity);
 	}
 
@@ -119,18 +139,48 @@ public class ConsultaService {
 			Pageable pageable,
 			UsuarioPrincipal principal
 	) {
+		return listarAutorizado(null, null, null, null, null, animalId, veterinarioId, clinicaId,
+				status, modalidade, pageable, principal);
+	}
+
+	@Transactional(readOnly = true)
+	public Page<ConsultaResponse> listarAutorizado(
+			Long consultaId,
+			String pacienteNome,
+			String arkivePatientId,
+			LocalDateTime dataHoraInicio,
+			LocalDateTime dataHoraFim,
+			Long animalId,
+			Long veterinarioId,
+			Long clinicaId,
+			String status,
+			String modalidade,
+			Pageable pageable,
+			UsuarioPrincipal principal
+	) {
 		if (principal == null) {
 			throw new AccessDeniedException("Usuario autenticado invalido.");
 		}
 		validarStatusQuandoInformado(status);
 		validarModalidadeQuandoInformada(modalidade);
+		validarIntervalo(dataHoraInicio, dataHoraFim);
+		String nomeNormalizado = normalizarTextoFiltro(pacienteNome);
+		String arkiveIdNormalizado = normalizarTextoFiltro(arkivePatientId);
 		return switch (principal.getTipoUsuario()) {
-			case SYSADMIN -> consultaRepository.buscar(animalId, veterinarioId, clinicaId, vazioParaNulo(status), vazioParaNulo(modalidade), pageable)
+			case SYSADMIN -> consultaRepository.buscar(
+					consultaId, nomeNormalizado, arkiveIdNormalizado, dataHoraInicio, dataHoraFim,
+					animalId, veterinarioId, clinicaId, vazioParaNulo(status), vazioParaNulo(modalidade), pageable)
 					.map(consulta -> respostaAutorizada(consulta, principal));
-			case VETERINARIO -> listarParaVeterinario(animalId, veterinarioId, clinicaId, status, modalidade, pageable, principal);
+			case VETERINARIO -> listarParaVeterinario(consultaId, nomeNormalizado, arkiveIdNormalizado,
+					dataHoraInicio, dataHoraFim, animalId, veterinarioId, clinicaId, status, modalidade, pageable, principal);
 			case RESPONSAVEL -> consultaRepository.buscarParaResponsavel(
 					principal.getResponsavelId(),
 					LocalDate.now(),
+					consultaId,
+					nomeNormalizado,
+					arkiveIdNormalizado,
+					dataHoraInicio,
+					dataHoraFim,
 					animalId,
 					veterinarioId,
 					clinicaId,
@@ -138,7 +188,8 @@ public class ConsultaService {
 					vazioParaNulo(modalidade),
 					pageable
 			).map(consulta -> respostaAutorizada(consulta, principal));
-			case ADMIN_CLINICA -> listarParaClinica(animalId, veterinarioId, clinicaId, status, modalidade, pageable, principal);
+			case ADMIN_CLINICA -> listarParaClinica(consultaId, nomeNormalizado, arkiveIdNormalizado,
+					dataHoraInicio, dataHoraFim, animalId, veterinarioId, clinicaId, status, modalidade, pageable, principal);
 		};
 	}
 
@@ -196,6 +247,11 @@ public class ConsultaService {
 	}
 
 	private Page<ConsultaResponse> listarParaVeterinario(
+			Long consultaId,
+			String pacienteNome,
+			String arkivePatientId,
+			LocalDateTime dataHoraInicio,
+			LocalDateTime dataHoraFim,
 			Long animalId,
 			Long veterinarioId,
 			Long clinicaId,
@@ -208,11 +264,18 @@ public class ConsultaService {
 		if (veterinarioAutenticadoId == null || (veterinarioId != null && !veterinarioId.equals(veterinarioAutenticadoId))) {
 			return Page.empty(pageable);
 		}
-		return consultaRepository.buscar(animalId, veterinarioAutenticadoId, clinicaId, vazioParaNulo(status), vazioParaNulo(modalidade), pageable)
+		return consultaRepository.buscar(
+				consultaId, pacienteNome, arkivePatientId, dataHoraInicio, dataHoraFim,
+				animalId, veterinarioAutenticadoId, clinicaId, vazioParaNulo(status), vazioParaNulo(modalidade), pageable)
 				.map(consulta -> respostaAutorizada(consulta, principal));
 	}
 
 	private Page<ConsultaResponse> listarParaClinica(
+			Long consultaId,
+			String pacienteNome,
+			String arkivePatientId,
+			LocalDateTime dataHoraInicio,
+			LocalDateTime dataHoraFim,
 			Long animalId,
 			Long veterinarioId,
 			Long clinicaId,
@@ -225,7 +288,9 @@ public class ConsultaService {
 		if (clinicaAutenticadaId == null || (clinicaId != null && !clinicaId.equals(clinicaAutenticadaId))) {
 			return Page.empty(pageable);
 		}
-		return consultaRepository.buscar(animalId, veterinarioId, clinicaAutenticadaId, vazioParaNulo(status), vazioParaNulo(modalidade), pageable)
+		return consultaRepository.buscar(
+				consultaId, pacienteNome, arkivePatientId, dataHoraInicio, dataHoraFim,
+				animalId, veterinarioId, clinicaAutenticadaId, vazioParaNulo(status), vazioParaNulo(modalidade), pageable)
 				.map(consulta -> respostaAutorizada(consulta, principal));
 	}
 
@@ -351,6 +416,12 @@ public class ConsultaService {
 		}
 	}
 
+	private void validarIntervalo(LocalDateTime dataHoraInicio, LocalDateTime dataHoraFim) {
+		if (dataHoraInicio != null && dataHoraFim != null && dataHoraInicio.isAfter(dataHoraFim)) {
+			throw new BusinessException("Data e hora inicial nao podem ser posteriores a data e hora final.");
+		}
+	}
+
 	private void exigirVeterinarioAutenticado(UsuarioPrincipal principal) {
 		if (principal == null || !TipoUsuario.VETERINARIO.equals(principal.getTipoUsuario()) || principal.getVeterinarioId() == null) {
 			throw new AccessDeniedException("Operacao permitida apenas ao veterinario autenticado.");
@@ -370,6 +441,10 @@ public class ConsultaService {
 
 	private String vazioParaNulo(String valor) {
 		return valor == null || valor.isBlank() ? null : valor;
+	}
+
+	private String normalizarTextoFiltro(String valor) {
+		return valor == null || valor.isBlank() ? null : valor.trim();
 	}
 
 }

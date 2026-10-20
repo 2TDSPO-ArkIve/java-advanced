@@ -47,12 +47,15 @@ public interface DiagnosticoRepository extends JpaRepository<Diagnostico, Long> 
 	);
 
 	@Query("""
-			select distinct d from Diagnostico d
-			join AnimalResponsavel ar on ar.animal = d.consulta.animal
-			where ar.responsavel.id = :responsavelId
-			and ar.ativo = 'S'
-			and ar.id.dataInicio <= :dataAtual
-			and (ar.dataFim is null or ar.dataFim >= :dataAtual)
+			select d from Diagnostico d
+			where exists (
+				select ar.id from AnimalResponsavel ar
+				where ar.animal = d.consulta.animal
+				and ar.responsavel.id = :responsavelId
+				and ar.ativo = 'S'
+				and ar.id.dataInicio <= :dataAtual
+				and (ar.dataFim is null or ar.dataFim >= :dataAtual)
+			)
 			and (:consultaId is null or d.consulta.id = :consultaId)
 			and (:doencaId is null or d.doenca.id = :doencaId)
 			and (:severidade is null or d.severidade = :severidade)

@@ -46,7 +46,7 @@ public class AnimalHistoricoPdfService {
 		pdf.field("Castrado", "S".equals(paciente.castrado()) ? "Sim" : "N".equals(paciente.castrado()) ? "N\u00e3o" : null);
 		pdf.field("Data de nascimento", paciente.dataNascimento() == null ? null : DATA.format(paciente.dataNascimento()));
 		pdf.field("Respons\u00e1vel atual", paciente.responsavelNome());
-		pdf.section("Consultas (mais recentes primeiro)");
+		pdf.section("Consultas");
 		if (historico.consultas().isEmpty()) {
 			pdf.paragraph("Hist\u00f3rico", "Nenhuma consulta dispon\u00edvel no hist\u00f3rico deste paciente.");
 		}

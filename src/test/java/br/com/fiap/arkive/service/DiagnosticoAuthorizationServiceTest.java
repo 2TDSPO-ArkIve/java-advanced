@@ -125,6 +125,47 @@ class DiagnosticoAuthorizationServiceTest {
 	}
 
 	@Test
+	void aceitaSeveridadeAusenteSemConfundirComNulo() {
+		Consulta consulta = consulta();
+
+		Diagnostico confirmado = diagnosticoService.criarConfirmadoPeloVeterinario(
+				consulta, "Nenhuma doenca identificada", "AUSENTE", null);
+		Diagnostico suporte = diagnosticoService.criarSuporteClinicoIa(
+				consulta, "Sem achados relevantes", "AUSENTE", "Manter acompanhamento", 80);
+
+		assertEquals("AUSENTE", confirmado.getSeveridade());
+		assertEquals("AUSENTE", suporte.getSeveridade());
+	}
+
+	@Test
+	void persisteTokensDoMotorERejeitaValoresNegativos() {
+		Consulta consulta = consulta();
+
+		Diagnostico suporte = diagnosticoService.criarSuporteClinicoIa(
+				consulta, "Hipotese", "MODERADA", "Insight", 65,
+				null, null, 1000L, 500L, 1500L);
+
+		assertEquals(1000L, suporte.getTokensEntrada());
+		assertEquals(500L, suporte.getTokensSaida());
+		assertEquals(1500L, suporte.getTokensTotal());
+		assertThrows(BusinessException.class, () -> diagnosticoService.criarSuporteClinicoIa(
+				consulta, "Hipotese", "MODERADA", "Insight", 65,
+				null, null, -1L, 1L, 0L));
+	}
+
+	@Test
+	void mantemSeveridadesAnterioresERejeitaValorDesconhecido() {
+		Consulta consulta = consulta();
+
+		assertEquals("LEVE", diagnosticoService.criarConfirmadoPeloVeterinario(consulta, "Leve", "LEVE", null).getSeveridade());
+		assertEquals("MODERADA", diagnosticoService.criarConfirmadoPeloVeterinario(consulta, "Moderada", "MODERADA", null).getSeveridade());
+		assertEquals("GRAVE", diagnosticoService.criarConfirmadoPeloVeterinario(consulta, "Grave", "GRAVE", null).getSeveridade());
+		BusinessException exception = assertThrows(BusinessException.class,
+				() -> diagnosticoService.criarConfirmadoPeloVeterinario(consulta, "Invalida", "CRITICA", null));
+		assertEquals("Severidade deve ser AUSENTE, LEVE, MODERADA ou GRAVE.", exception.getMessage());
+	}
+
+	@Test
 	void criaSuporteClinicoIaPersisteJsonDeFontesQuandoInformado() {
 		Consulta consulta = consulta();
 

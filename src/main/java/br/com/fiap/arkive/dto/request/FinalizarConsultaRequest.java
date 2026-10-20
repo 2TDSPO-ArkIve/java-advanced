@@ -11,7 +11,8 @@ public record FinalizarConsultaRequest(
 		String diagnostico,
 
 		@Size(max = 20)
-		@Schema(description = "Severidade opcional da conclusao veterinaria. Quando informada: LEVE, MODERADA ou GRAVE. Pode ser nula em consultas de rotina ou sem doenca identificada.", example = "MODERADA", nullable = true)
+		@Schema(description = "Severidade opcional da conclusao veterinaria. AUSENTE significa ausencia clinica de severidade; nulo significa nao informado.", example = "AUSENTE", nullable = true,
+				allowableValues = {"AUSENTE", "LEVE", "MODERADA", "GRAVE"})
 		String severidade,
 
 		@Schema(description = "Doenca catalogada opcional, associada somente quando aplicavel. Nulo representa uma conclusao sem vinculo obrigatorio ao catalogo de doencas.", example = "7", nullable = true)
