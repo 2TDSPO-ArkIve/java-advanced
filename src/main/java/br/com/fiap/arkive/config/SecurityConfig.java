@@ -163,6 +163,9 @@ public class SecurityConfig {
 						.requestMatchers("/api/veterinarios", "/api/veterinarios/**")
 						.hasRole("SYSADMIN")
 
+						.requestMatchers(HttpMethod.GET, "/api/indicadores/pacientes-ativos")
+						.hasRole("SYSADMIN")
+
 						.requestMatchers(HttpMethod.GET, "/api/especies", "/api/especies/**",
 								"/api/protocolos-preventivos", "/api/protocolos-preventivos/**")
 						.hasAnyRole("SYSADMIN", "ADMIN_CLINICA", "VETERINARIO", "RESPONSAVEL")
