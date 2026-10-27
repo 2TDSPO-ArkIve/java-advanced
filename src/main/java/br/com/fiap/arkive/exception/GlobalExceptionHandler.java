@@ -31,6 +31,12 @@ public class GlobalExceptionHandler {
 		return buildResponse(ex.getStatus(), ex.getMessage(), request.getRequestURI());
 	}
 
+	@ExceptionHandler(IndicadoresDatabaseException.class)
+	public ResponseEntity<ErrorResponse> handleIndicadoresDatabase(IndicadoresDatabaseException ex,
+			HttpServletRequest request) {
+		return buildResponse(HttpStatus.SERVICE_UNAVAILABLE, ex.getMessage(), request.getRequestURI());
+	}
+
 	@ExceptionHandler(MethodArgumentNotValidException.class)
 	public ResponseEntity<ErrorResponse> handleValidation(MethodArgumentNotValidException ex, HttpServletRequest request) {
 		Map<String, String> fields = new LinkedHashMap<>();
