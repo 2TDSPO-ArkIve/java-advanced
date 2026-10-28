@@ -4,8 +4,9 @@ import br.com.fiap.arkive.config.SecurityConfig;
 import br.com.fiap.arkive.dto.request.AtualizarNarrativaConsultaRequest;
 import br.com.fiap.arkive.dto.request.ConsultaRequest;
 import br.com.fiap.arkive.dto.response.ClinicalSupportResponse;
+import br.com.fiap.arkive.dto.response.ClinicalSupportTokenResponse;
 import br.com.fiap.arkive.dto.response.ConsultaResponse;
-import br.com.fiap.arkive.dto.response.ConsultaWorkflowResponse;
+import br.com.fiap.arkive.dto.response.RagReferenceResponse;
 import br.com.fiap.arkive.entity.TipoUsuario;
 import br.com.fiap.arkive.exception.BusinessException;
 import br.com.fiap.arkive.exception.GlobalExceptionHandler;
@@ -31,6 +32,7 @@ import org.springframework.security.access.AccessDeniedException;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
 
@@ -40,6 +42,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
@@ -102,7 +105,7 @@ class ClinicalWorkflowApiMvcTest {
 
 	@Test
 	void consultaListaAceitaPageSizeSemSortEOmiteOrdenacao() throws Exception {
-		when(consultaService.listarAutorizado(isNull(), isNull(), isNull(), isNull(), isNull(), any(Pageable.class), any(UsuarioPrincipal.class)))
+		when(consultaService.listarAutorizado(isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), any(Pageable.class), any(UsuarioPrincipal.class)))
 				.thenReturn(new PageImpl<>(List.of()));
 		ArgumentCaptor<Pageable> pageableCaptor = ArgumentCaptor.forClass(Pageable.class);
 
@@ -112,7 +115,7 @@ class ClinicalWorkflowApiMvcTest {
 						.param("size", "20"))
 				.andExpect(status().isOk());
 
-		verify(consultaService).listarAutorizado(isNull(), isNull(), isNull(), isNull(), isNull(), pageableCaptor.capture(), any(UsuarioPrincipal.class));
+		verify(consultaService).listarAutorizado(isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), pageableCaptor.capture(), any(UsuarioPrincipal.class));
 		assertEquals(0, pageableCaptor.getValue().getPageNumber());
 		assertEquals(20, pageableCaptor.getValue().getPageSize());
 		assertFalse(pageableCaptor.getValue().getSort().isSorted());
@@ -120,7 +123,7 @@ class ClinicalWorkflowApiMvcTest {
 
 	@Test
 	void consultaListaAceitaSortSpringDataPadrao() throws Exception {
-		when(consultaService.listarAutorizado(isNull(), isNull(), isNull(), isNull(), isNull(), any(Pageable.class), any(UsuarioPrincipal.class)))
+		when(consultaService.listarAutorizado(isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), any(Pageable.class), any(UsuarioPrincipal.class)))
 				.thenReturn(new PageImpl<>(List.of()));
 		ArgumentCaptor<Pageable> pageableCaptor = ArgumentCaptor.forClass(Pageable.class);
 
@@ -131,17 +134,41 @@ class ClinicalWorkflowApiMvcTest {
 						.param("sort", "dataHora,desc"))
 				.andExpect(status().isOk());
 
-		verify(consultaService).listarAutorizado(isNull(), isNull(), isNull(), isNull(), isNull(), pageableCaptor.capture(), any(UsuarioPrincipal.class));
+		verify(consultaService).listarAutorizado(isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), pageableCaptor.capture(), any(UsuarioPrincipal.class));
 		assertEquals(0, pageableCaptor.getValue().getPageNumber());
 		assertEquals(20, pageableCaptor.getValue().getPageSize());
 		assertEquals("dataHora: DESC", pageableCaptor.getValue().getSort().toString());
 	}
 
 	@Test
-	void veterinarioCriaConsultaParaSiERecebeStatusAg() throws Exception {
+	void consultaListaEncaminhaFiltrosDePacienteIdEIntervaloTipado() throws Exception {
+		when(consultaService.listarAutorizado(any(), any(), any(), any(), any(), any(), any(), any(), any(), any(),
+				any(Pageable.class), any(UsuarioPrincipal.class))).thenReturn(new PageImpl<>(List.of()));
+
+		mockMvc.perform(get("/api/consultas")
+						.with(user(veterinario()))
+						.param("consultaId", "321")
+						.param("pacienteNome", "Epona")
+						.param("arkivePatientId", "ARK-PET-ABC")
+						.param("dataHoraInicio", "2026-10-01T00:00:00")
+						.param("dataHoraFim", "2026-10-31T23:59:59")
+						.param("animalId", "50")
+						.param("status", "FI"))
+				.andExpect(status().isOk());
+
+		verify(consultaService).listarAutorizado(
+				eq(321L), eq("Epona"), eq("ARK-PET-ABC"),
+				eq(LocalDateTime.parse("2026-10-01T00:00:00")),
+				eq(LocalDateTime.parse("2026-10-31T23:59:59")),
+				eq(50L), isNull(), isNull(), eq("FI"), isNull(),
+				any(Pageable.class), any(UsuarioPrincipal.class));
+	}
+
+	@Test
+	void veterinarioCriaConsultaParaSiComDataIsoDe2026ERecebeStatusAg() throws Exception {
 		when(consultaService.criar(any(ConsultaRequest.class), any(UsuarioPrincipal.class))).thenReturn(new ConsultaResponse(
 				100L,
-				LocalDateTime.parse("2026-09-01T10:00:00"),
+				LocalDateTime.parse("2026-10-20T14:30:00"),
 				"PRESENCIAL",
 				"Avaliacao",
 				null,
@@ -163,13 +190,14 @@ class ClinicalWorkflowApiMvcTest {
 						.contentType(MediaType.APPLICATION_JSON)
 						.content("""
 								{
-								  "dataHora": "2026-09-01T10:00:00",
+								  "dataHora": "2026-10-20T14:30:00",
 								  "modalidade": "PRESENCIAL",
 								  "motivo": "Avaliacao",
 								  "status": "AG",
 								  "animalId": 50,
 								  "veterinarioId": 10,
-								  "clinicaId": 30
+								  "clinicaId": 30,
+								  "valorConsulta": 0.00
 								}
 								"""))
 				.andExpect(status().isCreated())
@@ -177,9 +205,80 @@ class ClinicalWorkflowApiMvcTest {
 				.andExpect(jsonPath("$.status").value("AG"));
 
 		verify(consultaService).criar(
-				argThat(request -> Long.valueOf(10L).equals(request.veterinarioId())),
+				argThat(request -> Long.valueOf(10L).equals(request.veterinarioId())
+						&& LocalDateTime.parse("2026-10-20T14:30:00").equals(request.dataHora())
+						&& BigDecimal.ZERO.compareTo(request.valorConsulta()) == 0),
 				argThat(principal -> Long.valueOf(10L).equals(principal.getVeterinarioId()))
 		);
+	}
+
+	@Test
+	void valorConsultaNegativoEhRejeitado() throws Exception {
+		mockMvc.perform(post("/api/consultas")
+						.with(user(veterinario()))
+						.contentType(MediaType.APPLICATION_JSON)
+						.content("""
+								{
+								  "dataHora": "2026-09-01T10:00:00",
+								  "modalidade": "PRESENCIAL",
+								  "motivo": "Avaliacao",
+								  "animalId": 50,
+								  "valorConsulta": -0.01
+								}
+								"""))
+				.andExpect(status().isBadRequest())
+				.andExpect(jsonPath("$.fields.valorConsulta").exists());
+	}
+
+	@Test
+	void valoresMonetariosRespeitamPrecisaoEEscala() throws Exception {
+		mockMvc.perform(post("/api/consultas")
+						.with(user(veterinario()))
+						.contentType(MediaType.APPLICATION_JSON)
+						.content("""
+								{
+								  "dataHora": "2026-09-01T10:00:00",
+								  "modalidade": "PRESENCIAL",
+								  "motivo": "Avaliacao",
+								  "animalId": 50,
+								  "valorConsulta": 100000000.00
+								}
+								"""))
+				.andExpect(status().isBadRequest())
+				.andExpect(jsonPath("$.fields.valorConsulta").exists());
+
+		mockMvc.perform(post("/api/prescricoes")
+						.with(user(veterinario()))
+						.contentType(MediaType.APPLICATION_JSON)
+						.content("""
+								{
+								  "medicamento": "Medicamento",
+								  "dosagem": "1 comprimido",
+								  "dataInicio": "2026-09-01",
+								  "consultaId": 100,
+								  "valorMedicamento": 1.001
+								}
+								"""))
+				.andExpect(status().isBadRequest())
+				.andExpect(jsonPath("$.fields.valorMedicamento").exists());
+	}
+
+	@Test
+	void valorMedicamentoNegativoEhRejeitado() throws Exception {
+		mockMvc.perform(post("/api/prescricoes")
+						.with(user(veterinario()))
+						.contentType(MediaType.APPLICATION_JSON)
+						.content("""
+								{
+								  "medicamento": "Medicamento",
+								  "dosagem": "1 comprimido",
+								  "dataInicio": "2026-09-01",
+								  "consultaId": 100,
+								  "valorMedicamento": -0.01
+								}
+								"""))
+				.andExpect(status().isBadRequest())
+				.andExpect(jsonPath("$.fields.valorMedicamento").exists());
 	}
 
 	@Test
@@ -221,23 +320,51 @@ class ClinicalWorkflowApiMvcTest {
 	}
 
 	@Test
+	void cancelamentoExigeMotivoNaoVazio() throws Exception {
+		mockMvc.perform(post("/api/consultas/100/cancelar")
+						.with(user(veterinario()))
+						.contentType(MediaType.APPLICATION_JSON)
+						.content("{\"motivo\":\"   \"}"))
+				.andExpect(status().isBadRequest())
+				.andExpect(jsonPath("$.fields.motivo").exists());
+
+		verify(consultaWorkflowService, never()).cancelar(eq(100L), any(), any(UsuarioPrincipal.class));
+	}
+
+	@Test
 	void suporteClinicoBemSucedidoRetornaApSemExporContratoBrutoDoProvider() throws Exception {
 		when(clinicalSupportService.gerarSuporte(eq(100L), any(UsuarioPrincipal.class))).thenReturn(new ClinicalSupportResponse(
+				501L,
 				100L,
 				"AP",
 				"Aguardando Parecer",
 				"Entorse leve",
-				"LEVE",
+				"AUSENTE",
 				"Avaliar apoio, dor e amplitude articular.",
 				72,
+				null,
+				new ClinicalSupportTokenResponse(1000L, 500L, 1500L),
+				List.of(
+						new RagReferenceResponse("ABCD", "Feline calicivirus infection"),
+						new RagReferenceResponse("CFSPH", "Cryptococcosis")),
 				List.of("https://source-one.example", "https://source-two.example")
 		));
 
 		mockMvc.perform(post("/api/consultas/100/suporte-clinico").with(user(veterinario())))
 				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.diagnosticoId").value(501))
 				.andExpect(jsonPath("$.statusConsulta").value("AP"))
 				.andExpect(jsonPath("$.hipoteseDiagnostica").value("Entorse leve"))
+				.andExpect(jsonPath("$.severidadeSugerida").value("AUSENTE"))
 				.andExpect(jsonPath("$.confianca").value(72))
+				.andExpect(jsonPath("$.validacaoVet").isEmpty())
+				.andExpect(jsonPath("$.tokens.entrada").value(1000))
+				.andExpect(jsonPath("$.tokens.saida").value(500))
+				.andExpect(jsonPath("$.tokens.total").value(1500))
+				.andExpect(jsonPath("$.referenciasRag[0].fonte").value("ABCD"))
+				.andExpect(jsonPath("$.referenciasRag[0].titulo").value("Feline calicivirus infection"))
+				.andExpect(jsonPath("$.referenciasRag[1].fonte").value("CFSPH"))
+				.andExpect(jsonPath("$.referenciasRag[1].titulo").value("Cryptococcosis"))
 				.andExpect(jsonPath("$.fontesPesquisadas[0]").value("https://source-one.example"))
 				.andExpect(jsonPath("$.fontesPesquisadas[1]").value("https://source-two.example"));
 	}
@@ -245,6 +372,7 @@ class ClinicalWorkflowApiMvcTest {
 	@Test
 	void buscaSuporteClinicoPersistidoExpoeFontesPesquisadas() throws Exception {
 		when(clinicalSupportService.buscarSuporte(eq(100L), any(UsuarioPrincipal.class))).thenReturn(new ClinicalSupportResponse(
+				501L,
 				100L,
 				"AP",
 				"Aguardando Parecer",
@@ -252,11 +380,21 @@ class ClinicalWorkflowApiMvcTest {
 				"LEVE",
 				"Avaliar apoio, dor e amplitude articular.",
 				72,
+				"S",
+				List.of(
+						new RagReferenceResponse("ABCD", "Feline calicivirus infection"),
+						new RagReferenceResponse("CFSPH", "Cryptococcosis")),
 				List.of("https://source-one.example", "https://source-two.example")
 		));
 
 		mockMvc.perform(get("/api/consultas/100/suporte-clinico").with(user(veterinario())))
 				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.diagnosticoId").value(501))
+				.andExpect(jsonPath("$.validacaoVet").value("S"))
+				.andExpect(jsonPath("$.referenciasRag[0].fonte").value("ABCD"))
+				.andExpect(jsonPath("$.referenciasRag[0].titulo").value("Feline calicivirus infection"))
+				.andExpect(jsonPath("$.referenciasRag[1].fonte").value("CFSPH"))
+				.andExpect(jsonPath("$.referenciasRag[1].titulo").value("Cryptococcosis"))
 				.andExpect(jsonPath("$.fontesPesquisadas[0]").value("https://source-one.example"))
 				.andExpect(jsonPath("$.fontesPesquisadas[1]").value("https://source-two.example"));
 	}

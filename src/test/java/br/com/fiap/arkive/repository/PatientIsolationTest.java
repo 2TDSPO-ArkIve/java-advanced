@@ -34,11 +34,12 @@ import static org.junit.jupiter.api.Assertions.*;
 		"spring.jpa.database-platform=org.hibernate.dialect.H2Dialect"})
 @Import({AnimalService.class, ClinicalAccessService.class, VeterinarioService.class, ConsultaService.class,
 		AnimalResponsavelService.class, AnimalHistoricoService.class, AnimalHistoricoPdfService.class,
-		ConsultaResumoPdfService.class, BusinessTimeConfig.class})
+		ConsultaResumoPdfService.class, FinancialVisibilityService.class, BusinessTimeConfig.class})
 class PatientIsolationTest {
 	@Autowired TestEntityManager em;
 	@Autowired AnimalService animais;
 	@Autowired AnimalRepository animalRepository;
+	@Autowired PatientAccessRepository patientAccessRepository;
 	@Autowired ConsultaRepository consultas;
 	@Autowired ConsultaService consultaService;
 	@Autowired ClinicalAccessService acesso;
@@ -51,6 +52,7 @@ class PatientIsolationTest {
 	@MockitoBean RacaService racas;
 	@MockitoBean ClinicaService clinicas;
 	@MockitoBean EventoJornadaService eventos;
+	@MockitoBean NotificacaoService notificacoes;
 	@MockitoBean AccountProvisioningService provisionamento;
 	@MockitoBean(name = "businessClock") java.time.Clock clock;
 	private Map<String, Veterinario> vets;
@@ -100,6 +102,34 @@ class PatientIsolationTest {
 	}
 
 	@Test
+	void concessaoExplicitaApareceNasListasELeituraEDesapareceAoRevogar() {
+		Usuario grantor = contaVeterinario("grantor", vets.get("A"));
+		Usuario recipient = contaVeterinario("recipient", vets.get("B"));
+		PatientAccess grant = new PatientAccess();
+		grant.setAnimal(pacientes.get("P1"));
+		grant.setUsuario(recipient);
+		grant.setAccessRole(PatientAccessRole.VETERINARIO);
+		grant.setGrantedBy(grantor);
+		grant.setGrantedAt(LocalDateTime.of(2026, 9, 9, 10, 0));
+		patientAccessRepository.saveAndFlush(grant);
+		UsuarioPrincipal principal = new UsuarioPrincipal(recipient.getId(), recipient.getNome(), recipient.getLogin(),
+				recipient.getSenhaHash(), TipoUsuario.VETERINARIO, "S", false, null, vets.get("B").getId(), null);
+
+		assertEquals(Set.of("P1", "P2"), nomes(animais.listarPacientesVeterinario(
+				null, null, null, Pageable.unpaged(), principal).getContent()));
+		assertDoesNotThrow(() -> animais.buscarPorIdAutorizado(pacientes.get("P1").getId(), principal));
+
+		grant.setRevokedAt(LocalDateTime.of(2026, 9, 9, 11, 0));
+		grant.setRevokedBy(grantor);
+		patientAccessRepository.saveAndFlush(grant);
+
+		assertEquals(Set.of("P2"), nomes(animais.listarPacientesVeterinario(
+				null, null, null, Pageable.unpaged(), principal).getContent()));
+		assertThrows(AccessDeniedException.class,
+				() -> animais.buscarPorIdAutorizado(pacientes.get("P1").getId(), principal));
+	}
+
+	@Test
 	void atribuicaoDeConsultaAgendadaMantemPoliticaExistenteSemCompartilharComOutros() {
 		Consulta consulta = consulta("P2", "A", "AG"); consulta.setDataHora(LocalDateTime.of(2099, 1, 1, 10, 0)); em.flush();
 		assertDoesNotThrow(() -> animais.buscarPorIdAutorizado(pacientes.get("P2").getId(), principal("A")));
@@ -123,7 +153,8 @@ class PatientIsolationTest {
 	@Test
 	void filtrosNaoAmpliamEscopoEClinicaVemDoCadastroAtualDoVeterinario() {
 		assertTrue(animais.listarAutorizado(null, null, null, x.getId(), null, Pageable.unpaged(), principal("A")).isEmpty());
-		assertTrue(animais.listarPacientesVeterinario("P2", especie.getId(), null, Pageable.unpaged(), principal("A")).isEmpty());
+		assertFalse(nomes(animais.listarPacientesVeterinario(
+				"P2", especie.getId(), null, Pageable.unpaged(), principal("A")).getContent()).contains("P2"));
 		assertEquals(Set.of("P1"), nomes(animais.listarPacientesVeterinario("P1", especie.getId(), null, Pageable.unpaged(), principal("A")).getContent()));
 		vets.get("C").setClinica(y); em.flush();
 		assertEquals(Set.of("P4"), nomes(animais.listarPacientesVeterinario(null, null, null, Pageable.unpaged(), principal("C")).getContent()));
@@ -163,7 +194,7 @@ class PatientIsolationTest {
 
 	@Test
 	void vinculoFuturoDeTutorNaoConcedeAcessoAntesDaVigencia() {
-		Responsavel tutor = new Responsavel(); tutor.setNome("Tutor"); tutor.setTipo("TUTOR"); tutor.setDocumento("123"); em.persist(tutor);
+		Responsavel tutor = new Responsavel(); tutor.setNome("Responsável"); tutor.setTipo("RESPONSAVEL"); tutor.setDocumento("123"); em.persist(tutor);
 		LocalDate hoje = LocalDate.of(2026, 9, 9);
 		AnimalResponsavelId id = new AnimalResponsavelId(); id.setAnimalId(pacientes.get("P1").getId());
 		id.setResponsavelId(tutor.getId()); id.setDataInicio(hoje.plusDays(1));
@@ -182,6 +213,15 @@ class PatientIsolationTest {
 	}
 	private UsuarioPrincipal usuario(TipoUsuario tipo, Long vet, Long clinica) {
 		return new UsuarioPrincipal(1L, "Usuario", "user@example.test", "hash", tipo, "S", false, null, vet, clinica);
+	}
+	private Usuario contaVeterinario(String login, Veterinario veterinario) {
+		Usuario usuario = new Usuario();
+		usuario.setNome("Usuario " + login);
+		usuario.setTipo(TipoUsuario.VETERINARIO);
+		usuario.setVeterinario(veterinario);
+		usuario.setLogin(login + "@example.test");
+		usuario.setSenhaHash("hash");
+		return em.persist(usuario);
 	}
 	private Clinica clinica(String nome, String cnpj) {
 		Clinica clinica = new Clinica(); clinica.setNome(nome); clinica.setCnpj(cnpj); return em.persist(clinica);

@@ -38,7 +38,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 @WebMvcTest(AnimalHistoricoController.class)
 @Import({SecurityConfig.class, GlobalExceptionHandler.class, AnimalHistoricoService.class,
-		AnimalHistoricoPdfService.class, ClinicalAccessService.class})
+		AnimalHistoricoPdfService.class, ClinicalAccessService.class, FinancialVisibilityService.class})
 class AnimalHistoricoControllerMvcTest {
 	@Autowired MockMvc mvc;
 	@Autowired ClinicalAccessService acesso;
@@ -48,6 +48,7 @@ class AnimalHistoricoControllerMvcTest {
 	@MockitoBean DiagnosticoRepository diagnosticos;
 	@MockitoBean PrescricaoRepository prescricoes;
 	@MockitoBean AnimalResponsavelRepository responsaveis;
+	@MockitoBean PatientAccessRepository acessosExplicitos;
 	@MockitoBean VeterinarioService veterinarios;
 	private Animal animal;
 	private Consulta consulta;
@@ -65,6 +66,7 @@ class AnimalHistoricoControllerMvcTest {
 		consulta.setClinica(clinica); consulta.setDataHora(LocalDateTime.parse("2026-09-05T14:30:00"));
 		consulta.setModalidade("PRESENCIAL"); consulta.setEndereco("Rua do Atendimento, 10");
 		consulta.setMotivo("Retorno para acompanhamento"); consulta.setStatus("FI");
+		consulta.setValorConsulta(new BigDecimal("180.00"));
 		consulta.setObservacao("Retorno em sete dias."); consulta.setTranscricao("SECRET_TRANSCRICAO");
 		consulta.setSintomas("SECRET_NARRATIVA");
 		Diagnostico diagnostico = new Diagnostico(); diagnostico.setDiagnostico("Dermatite confirmada");
@@ -75,7 +77,8 @@ class AnimalHistoricoControllerMvcTest {
 		prescricao.setDosagem("5 mg"); prescricao.setFrequencia("12 horas"); prescricao.setViaAdministracao("ORAL");
 		prescricao.setDataInicio(LocalDate.parse("2026-09-05")); prescricao.setDataFim(LocalDate.parse("2026-09-12"));
 		prescricao.setInstrucoes("Administrar com alimento.");
-		Responsavel tutor = new Responsavel(); tutor.setNome("Tutora Ana"); tutor.setDocumento("SECRET_CPF");
+		prescricao.setValorMedicamento(new BigDecimal("95.50"));
+		Responsavel tutor = new Responsavel(); tutor.setNome("Responsável Ana"); tutor.setDocumento("SECRET_CPF");
 		tutor.setEmail("SECRET_EMAIL");
 		AnimalResponsavel vinculo = new AnimalResponsavel(); vinculo.setResponsavel(tutor);
 		when(animais.findById(50L)).thenReturn(Optional.of(animal));
@@ -93,13 +96,14 @@ class AnimalHistoricoControllerMvcTest {
 				.andExpect(jsonPath("$.paciente.especie").value("Cachorro")).andExpect(jsonPath("$.paciente.raca").value("Poodle"))
 				.andExpect(jsonPath("$.paciente.sexo").value("M")).andExpect(jsonPath("$.paciente.castrado").value("S"))
 				.andExpect(jsonPath("$.paciente.dataNascimento").value("2021-04-17"))
-				.andExpect(jsonPath("$.paciente.responsavelNome").value("Tutora Ana"))
+				.andExpect(jsonPath("$.paciente.responsavelNome").value("Responsável Ana"))
 				.andExpect(jsonPath("$.consultas[0].dataHora").value("2026-09-05T14:30:00"))
 				.andExpect(jsonPath("$.consultas[0].modalidade").value("PRESENCIAL"))
 				.andExpect(jsonPath("$.consultas[0].endereco").value("Rua do Atendimento, 10"))
 				.andExpect(jsonPath("$.consultas[0].veterinarioNome").value("Dra. Vera"))
 				.andExpect(jsonPath("$.consultas[0].crmv").value("SP12345"))
 				.andExpect(jsonPath("$.consultas[0].clinicaNome").value("Clinica ArkIve"))
+				.andExpect(jsonPath("$.consultas[0].valorConsulta").value(180.00))
 				.andExpect(jsonPath("$.consultas[0].diagnosticoConfirmado").value("Dermatite confirmada"))
 				.andExpect(jsonPath("$.consultas[0].severidadeFinal").value("LEVE"))
 				.andExpect(jsonPath("$.consultas[0].conclusao").value("Retorno em sete dias."))
@@ -110,6 +114,7 @@ class AnimalHistoricoControllerMvcTest {
 				.andExpect(jsonPath("$.consultas[0].prescricoes[0].dataInicio").value("2026-09-05"))
 				.andExpect(jsonPath("$.consultas[0].prescricoes[0].dataFim").value("2026-09-12"))
 				.andExpect(jsonPath("$.consultas[0].prescricoes[0].instrucoes").value("Administrar com alimento."))
+				.andExpect(jsonPath("$.consultas[0].prescricoes[0].valorMedicamento").value(95.50))
 				.andExpect(jsonPath("$.consultas[0].id").doesNotExist())
 				.andExpect(content().string(not(containsString("SECRET"))))
 				.andExpect(content().string(not(containsString("confianca"))))
@@ -134,12 +139,15 @@ class AnimalHistoricoControllerMvcTest {
 		byte[] bytes = pdf();
 		try (var document = Loader.loadPDF(bytes)) {
 			String text = new PDFTextStripper().getText(document);
-			for (String esperado : List.of("ArkIve", "Bilu", "17/04/2021", "05/09/2026 14:30", "Tutora Ana",
+			assertTrue(text.contains("Consultas"));
+			assertFalse(text.contains("Consultas (mais recentes primeiro)"));
+			for (String esperado : List.of("ArkIve", "Bilu", "17/04/2021", "05/09/2026 14:30", "Responsável Ana",
 					"Dermatite confirmada", "Retorno em sete dias.", "Medicamento registrado", "5 mg", "12 horas",
 					"ORAL", "05/09/2026", "12/09/2026", "Administrar com alimento.", "Rua do Atendimento, 10")) {
 				assertTrue(text.contains(esperado), esperado);
 			}
-			for (String proibido : List.of("SECRET", "0.876543", "validacaoVet", "consultaId", "animalId")) {
+			for (String proibido : List.of("SECRET", "0.876543", "validacaoVet", "consultaId", "animalId",
+					"180,00", "180.00", "95,50", "95.50")) {
 				assertFalse(text.contains(proibido), proibido);
 			}
 			var consultaService = mock(ConsultaService.class);
@@ -175,7 +183,7 @@ class AnimalHistoricoControllerMvcTest {
 
 	@Test
 	void pdfLongoPreservaFimDosTextosEConsultasPosteriores() throws Exception {
-		consulta.setObservacao("Acompanhamento semanal e hidrata\u00e7\u00e3o. ".repeat(500) + "FIM_CONCLUSAO");
+		consulta.setObservacao("Acompanhamento semanal e hidratação. ".repeat(500) + "FIM_CONCLUSAO");
 		Consulta antiga = outraConsulta(); antiga.setDataHora(consulta.getDataHora().minusYears(1));
 		antiga.setMotivo("ULTIMA_CONSULTA"); antiga.setVeterinario(consulta.getVeterinario());
 		when(consultas.buscarHistoricoPorAnimal(50L)).thenReturn(List.of(consulta, antiga));
@@ -259,6 +267,31 @@ class AnimalHistoricoControllerMvcTest {
 		}
 		verify(diagnosticos, never()).buscarDiagnosticosConfirmadosVeterinario(eq(64L), any());
 		verify(prescricoes, never()).buscarPorConsulta(64L);
+	}
+
+	@Test
+	void acessoClinicoExplicitoMantemHistoricoDeOutroVeterinarioMasRedigePrecos() throws Exception {
+		Consulta outra = outraConsulta();
+		outra.setValorConsulta(new BigDecimal("200.00"));
+		Prescricao prescricaoOutroVet = new Prescricao();
+		prescricaoOutroVet.setMedicamento("Tratamento de outro veterinário");
+		prescricaoOutroVet.setValorMedicamento(new BigDecimal("80.00"));
+		when(acessosExplicitos.existsEffective(eq(50L), eq(1L), eq(PatientAccessRole.VETERINARIO), any()))
+				.thenReturn(true);
+		when(consultas.buscarHistoricoPorAnimal(50L)).thenReturn(List.of(consulta, outra));
+		when(diagnosticos.buscarDiagnosticosConfirmadosVeterinario(eq(64L), any())).thenReturn(List.of());
+		when(prescricoes.buscarPorConsulta(64L)).thenReturn(List.of(prescricaoOutroVet));
+
+		mvc.perform(get("/api/animais/50/historico").with(user(principal(TipoUsuario.VETERINARIO))))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.consultas.length()").value(2))
+				.andExpect(jsonPath("$.consultas[0].valorConsulta").value(180.00))
+				.andExpect(jsonPath("$.consultas[0].prescricoes[0].valorMedicamento").value(95.50))
+				.andExpect(jsonPath("$.consultas[1].motivo").value("SECRET_OUTRA_CONSULTA"))
+				.andExpect(jsonPath("$.consultas[1].valorConsulta").isEmpty())
+				.andExpect(jsonPath("$.consultas[1].prescricoes[0].medicamento")
+						.value("Tratamento de outro veterinário"))
+				.andExpect(jsonPath("$.consultas[1].prescricoes[0].valorMedicamento").isEmpty());
 	}
 
 	@Test

@@ -11,7 +11,6 @@ import org.springframework.context.annotation.Profile;
 import org.springframework.http.HttpMethod;
 import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
-import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
@@ -49,7 +48,7 @@ public class SecurityConfig {
 			PasswordEncoder passwordEncoder
 	) {
 		DaoAuthenticationProvider provider =
-				new DaoAuthenticationProvider((UserDetailsService) userDetailsService);
+				new DaoAuthenticationProvider(userDetailsService);
 
 		provider.setPasswordEncoder(passwordEncoder);
 		return provider;
@@ -136,12 +135,17 @@ public class SecurityConfig {
 								"/login"
 						).permitAll()
 
-						// The one deliberate public exception on /api/**: a veterinarian
-						// self-registration endpoint. Method-specific on purpose — this
-						// must never accidentally open GET/PUT/DELETE on /api/auth/register
-						// (there are none today, but a future addition to this controller
-						// must not silently inherit this permitAll).
+						// Deliberate public self-registration endpoints. Method-specific on
+						// purpose so future auth-controller operations never inherit permitAll.
 						.requestMatchers(HttpMethod.POST, "/api/auth/register")
+						.permitAll()
+						.requestMatchers(HttpMethod.POST, "/api/auth/register/responsavel")
+						.permitAll()
+
+						// A bearer invitation may be previewed before account creation. This
+						// exact endpoint returns only minimal patient/inviter metadata and
+						// never consumes the token; redemption remains authenticated below.
+						.requestMatchers(HttpMethod.POST, "/api/compartilhamentos/preview")
 						.permitAll()
 
 						.requestMatchers("/sysadmin/**")
@@ -152,7 +156,14 @@ public class SecurityConfig {
 
 						.requestMatchers("/api/clinicas", "/api/clinicas/**")
 						.hasRole("SYSADMIN")
+						.requestMatchers(HttpMethod.GET, "/api/veterinarios/me/custos")
+						.hasRole("VETERINARIO")
+						.requestMatchers(HttpMethod.GET, "/api/veterinarios/me")
+						.hasRole("VETERINARIO")
 						.requestMatchers("/api/veterinarios", "/api/veterinarios/**")
+						.hasRole("SYSADMIN")
+
+						.requestMatchers(HttpMethod.GET, "/api/indicadores/pacientes-ativos")
 						.hasRole("SYSADMIN")
 
 						.requestMatchers(HttpMethod.GET, "/api/especies", "/api/especies/**",
@@ -215,6 +226,40 @@ public class SecurityConfig {
 						.hasAnyRole("SYSADMIN", "ADMIN_CLINICA", "RESPONSAVEL")
 						.requestMatchers("/api/responsaveis", "/api/responsaveis/**")
 						.hasAnyRole("SYSADMIN", "ADMIN_CLINICA")
+
+						.requestMatchers(HttpMethod.GET, "/api/animais/*/observacao-responsavel")
+						.hasRole("RESPONSAVEL")
+						.requestMatchers(HttpMethod.PATCH, "/api/animais/*/observacao-responsavel")
+						.hasRole("RESPONSAVEL")
+						.requestMatchers(HttpMethod.POST, "/api/animais/*/relatos")
+						.hasRole("RESPONSAVEL")
+						.requestMatchers(HttpMethod.GET, "/api/animais/*/relatos")
+						.hasAnyRole("SYSADMIN", "ADMIN_CLINICA", "VETERINARIO", "RESPONSAVEL")
+						.requestMatchers("/api/animais/*/relatos", "/api/animais/*/relatos/**")
+						.denyAll()
+
+						.requestMatchers(HttpMethod.POST, "/api/transcricoes")
+						.hasAnyRole("VETERINARIO", "RESPONSAVEL")
+						.requestMatchers("/api/transcricoes", "/api/transcricoes/**")
+						.denyAll()
+
+						.requestMatchers(HttpMethod.POST,
+								"/api/solicitacoes-acesso/*/aprovar",
+								"/api/solicitacoes-acesso/*/rejeitar")
+						.hasRole("RESPONSAVEL")
+						.requestMatchers(HttpMethod.POST, "/api/solicitacoes-acesso")
+						.hasRole("VETERINARIO")
+						.requestMatchers(HttpMethod.GET,
+								"/api/solicitacoes-acesso",
+								"/api/solicitacoes-acesso/*")
+						.hasAnyRole("VETERINARIO", "RESPONSAVEL")
+						.requestMatchers("/api/solicitacoes-acesso", "/api/solicitacoes-acesso/**")
+						.denyAll()
+
+						// Private account inbox and device registrations. Administration and
+						// clinic roles do not receive global access to another user's inbox.
+						.requestMatchers("/api/notificacoes", "/api/notificacoes/**")
+						.hasAnyRole("VETERINARIO", "RESPONSAVEL")
 
 						.requestMatchers("/api/**")
 						.authenticated()

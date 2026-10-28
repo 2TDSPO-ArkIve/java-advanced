@@ -14,6 +14,7 @@ import br.com.fiap.arkive.repository.ClinicaRepository;
 import br.com.fiap.arkive.repository.EventoJornadaRepository;
 import br.com.fiap.arkive.repository.ResponsavelRepository;
 import br.com.fiap.arkive.repository.VeterinarioRepository;
+import br.com.fiap.arkive.security.UsuarioPrincipal;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.context.annotation.Profile;
@@ -41,6 +42,7 @@ public class EventoJornadaService {
 	private final AnimalRepository animalRepository;
 	private final ClinicaRepository clinicaRepository;
 	private final ObjectMapper objectMapper;
+	private final ClinicalAccessService clinicalAccessService;
 
 	public EventoJornadaService(
 			EventoJornadaRepository eventoJornadaRepository,
@@ -48,7 +50,8 @@ public class EventoJornadaService {
 			VeterinarioRepository veterinarioRepository,
 			AnimalRepository animalRepository,
 			ClinicaRepository clinicaRepository,
-			ObjectMapper objectMapper
+			ObjectMapper objectMapper,
+			ClinicalAccessService clinicalAccessService
 	) {
 		this.eventoJornadaRepository = eventoJornadaRepository;
 		this.responsavelRepository = responsavelRepository;
@@ -56,6 +59,7 @@ public class EventoJornadaService {
 		this.animalRepository = animalRepository;
 		this.clinicaRepository = clinicaRepository;
 		this.objectMapper = objectMapper;
+		this.clinicalAccessService = clinicalAccessService;
 	}
 
 	@Transactional
@@ -98,8 +102,9 @@ public class EventoJornadaService {
 	}
 
 	@Transactional(readOnly = true)
-	public Page<EventoJornadaResponse> timelinePorAnimal(Long animalId, Pageable pageable) {
-		buscarAnimal(animalId);
+	public Page<EventoJornadaResponse> timelinePorAnimal(Long animalId, Pageable pageable, UsuarioPrincipal principal) {
+		Animal animal = buscarAnimal(animalId);
+		clinicalAccessService.exigirLeituraAnimal(principal, animal);
 		return eventoJornadaRepository.findByAnimalId(animalId, pageable).map(EventoJornadaResponse::fromEntity);
 	}
 

@@ -1,6 +1,7 @@
 package br.com.fiap.arkive.controller;
 
 import br.com.fiap.arkive.dto.request.SalvarDiagnosticoRequest;
+import br.com.fiap.arkive.dto.request.ValidacaoVeterinariaRequest;
 import br.com.fiap.arkive.dto.response.DiagnosticoResponse;
 import br.com.fiap.arkive.security.UsuarioPrincipal;
 import br.com.fiap.arkive.service.DiagnosticoService;
@@ -16,6 +17,7 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -71,6 +73,16 @@ public class DiagnosticoController {
 			@AuthenticationPrincipal UsuarioPrincipal principal
 	) {
 		return diagnosticoService.atualizar(id, request.toDiagnosticoRequest(), principal);
+	}
+
+	@PatchMapping("/{id}/validacao-veterinaria")
+	@Operation(summary = "Avalia insight clinico de IA", description = "Registra se o insight de IA foi util para o veterinario responsavel pela consulta.")
+	public DiagnosticoResponse atualizarValidacaoVeterinaria(
+			@PathVariable Long id,
+			@Valid @RequestBody ValidacaoVeterinariaRequest request,
+			@AuthenticationPrincipal UsuarioPrincipal principal
+	) {
+		return diagnosticoService.atualizarValidacaoVeterinaria(id, request.util(), principal);
 	}
 
 	@DeleteMapping("/{id}")

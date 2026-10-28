@@ -1,0 +1,6 @@
+ALTER TABLE TB_ARKIVE_DIAGNOSTICO ADD (
+    DS_REFERENCIAS_RAG CLOB NULL
+);
+
+COMMENT ON COLUMN TB_ARKIVE_DIAGNOSTICO.DS_REFERENCIAS_RAG IS
+    'Titulos legiveis das referencias recuperadas da base RAG, serializados como JSON.';

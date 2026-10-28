@@ -9,6 +9,7 @@ public record AvaliacaoBemEstarResponse(
 		Long id,
 		Long animalId,
 		String animalNome,
+		String animalArkivePatientId,
 		Long responsavelId,
 		String responsavelNome,
 		Long veterinarioId,
@@ -22,6 +23,15 @@ public record AvaliacaoBemEstarResponse(
 		String comportamento,
 		String observacao
 ) {
+	public AvaliacaoBemEstarResponse(Long id, Long animalId, String animalNome, Long responsavelId,
+			String responsavelNome, Long veterinarioId, String veterinarioNome, Long consultaId,
+			LocalDateTime dataAvaliacao, BigDecimal peso, BigDecimal idade, String apetite,
+			String atividade, String comportamento, String observacao) {
+		this(id, animalId, animalNome, null, responsavelId, responsavelNome, veterinarioId,
+				veterinarioNome, consultaId, dataAvaliacao, peso, idade, apetite, atividade,
+				comportamento, observacao);
+	}
+
 	public static AvaliacaoBemEstarResponse fromEntity(AvaliacaoBemEstar avaliacao) {
 		Long responsavelId = avaliacao.getResponsavel() == null ? null : avaliacao.getResponsavel().getId();
 		String responsavelNome = avaliacao.getResponsavel() == null ? null : avaliacao.getResponsavel().getNome();
@@ -32,6 +42,7 @@ public record AvaliacaoBemEstarResponse(
 				avaliacao.getId(),
 				avaliacao.getAnimal().getId(),
 				avaliacao.getAnimal().getNome(),
+				avaliacao.getAnimal().getArkivePatientId(),
 				responsavelId,
 				responsavelNome,
 				veterinarioId,

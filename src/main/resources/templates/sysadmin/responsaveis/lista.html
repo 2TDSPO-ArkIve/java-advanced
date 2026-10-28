@@ -55,7 +55,7 @@
 						<td th:text="${responsavel.documento}">Documento</td>
 						<td th:text="${responsavel.email ?: '-'}">responsavel@arkive.com</td>
 						<td th:text="${responsavel.telefone ?: '-'}">Contato</td>
-						<td th:text="${responsavel.tipo}">TUTOR</td>
+						<td th:text="${responsavel.tipo}">RESPONSAVEL</td>
 						<td>
 							<span class="status-badge status-active" th:if="${responsavel.ativo == 'S'}">Ativo</span>
 							<span class="status-badge status-inactive" th:if="${responsavel.ativo == 'N'}">Inativo</span>

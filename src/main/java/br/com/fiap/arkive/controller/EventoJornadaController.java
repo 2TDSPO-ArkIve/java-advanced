@@ -3,6 +3,8 @@ package br.com.fiap.arkive.controller;
 import br.com.fiap.arkive.dto.request.EventoJornadaRequest;
 import br.com.fiap.arkive.dto.response.EventoJornadaResponse;
 import br.com.fiap.arkive.service.EventoJornadaService;
+import br.com.fiap.arkive.security.UsuarioPrincipal;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import jakarta.validation.Valid;
 import org.springframework.context.annotation.Profile;
 import org.springframework.data.domain.Page;
@@ -64,8 +66,9 @@ public class EventoJornadaController {
 	}
 
 	@GetMapping("/animal/{animalId}/timeline")
-	public Page<EventoJornadaResponse> timelinePorAnimal(@PathVariable Long animalId, Pageable pageable) {
-		return eventoJornadaService.timelinePorAnimal(animalId, pageable);
+	public Page<EventoJornadaResponse> timelinePorAnimal(@PathVariable Long animalId, Pageable pageable,
+			@AuthenticationPrincipal UsuarioPrincipal principal) {
+		return eventoJornadaService.timelinePorAnimal(animalId, pageable, principal);
 	}
 
 }

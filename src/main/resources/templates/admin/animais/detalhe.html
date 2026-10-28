@@ -84,7 +84,7 @@
 							</div>
 							<div>
 								<dt>Vínculo</dt>
-								<dd th:text="${responsavelPrincipal.tipoVinculo}">TUTOR_LEGAL</dd>
+								<dd th:text="${responsavelPrincipal.tipoVinculo == 'TUTOR_LEGAL' ? 'RESPONSÁVEL LEGAL' : responsavelPrincipal.tipoVinculo}">RESPONSÁVEL LEGAL</dd>
 							</div>
 							<div>
 								<dt>Início</dt>

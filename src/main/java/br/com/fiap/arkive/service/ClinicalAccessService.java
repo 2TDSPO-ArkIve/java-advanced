@@ -5,11 +5,15 @@ import br.com.fiap.arkive.entity.AdesaoPrescricao;
 import br.com.fiap.arkive.entity.Consulta;
 import br.com.fiap.arkive.entity.Diagnostico;
 import br.com.fiap.arkive.entity.Prescricao;
+import br.com.fiap.arkive.entity.PatientAccessRole;
 import br.com.fiap.arkive.entity.TipoUsuario;
 import br.com.fiap.arkive.repository.AnimalResponsavelRepository;
 import br.com.fiap.arkive.repository.ConsultaRepository;
+import br.com.fiap.arkive.repository.PatientAccessRepository;
 import br.com.fiap.arkive.security.UsuarioPrincipal;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.context.annotation.Profile;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 
@@ -23,15 +27,35 @@ public class ClinicalAccessService {
 	private final AnimalResponsavelRepository animalResponsavelRepository;
 	private final ConsultaRepository consultaRepository;
 	private final VeterinarioService veterinarioService;
+	private final PatientAccessRepository patientAccessRepository;
+
+	@Autowired
+	public ClinicalAccessService(
+			AnimalResponsavelRepository animalResponsavelRepository,
+			ConsultaRepository consultaRepository,
+			VeterinarioService veterinarioService,
+			ObjectProvider<PatientAccessRepository> patientAccessRepositoryProvider
+	) {
+		this(animalResponsavelRepository, consultaRepository, veterinarioService,
+				patientAccessRepositoryProvider.getIfAvailable());
+	}
 
 	public ClinicalAccessService(
 			AnimalResponsavelRepository animalResponsavelRepository,
 			ConsultaRepository consultaRepository,
-			VeterinarioService veterinarioService
+			VeterinarioService veterinarioService,
+			PatientAccessRepository patientAccessRepository
 	) {
 		this.animalResponsavelRepository = animalResponsavelRepository;
 		this.consultaRepository = consultaRepository;
 		this.veterinarioService = veterinarioService;
+		this.patientAccessRepository = patientAccessRepository;
+	}
+
+	public ClinicalAccessService(AnimalResponsavelRepository animalResponsavelRepository,
+			ConsultaRepository consultaRepository, VeterinarioService veterinarioService) {
+		this(animalResponsavelRepository, consultaRepository, veterinarioService,
+				(PatientAccessRepository) null);
 	}
 
 	public void exigirEscritaClinicaVeterinario(UsuarioPrincipal principal, Consulta consulta) {
@@ -61,10 +85,46 @@ public class ClinicalAccessService {
 		throw new AccessDeniedException("Usuario nao autorizado para este animal.");
 	}
 
+	public void exigirCriacaoRelatoResponsavel(
+			UsuarioPrincipal principal,
+			Animal animal,
+			LocalDate dataAtual
+	) {
+		exigirPrincipal(principal);
+		if (!TipoUsuario.RESPONSAVEL.equals(principal.getTipoUsuario())
+				|| principal.getResponsavelId() == null
+				|| animal == null
+				|| animal.getId() == null
+				|| !animalResponsavelRepository.existsVinculoAtivoVigente(
+						animal.getId(), principal.getResponsavelId(), dataAtual)) {
+			throw new AccessDeniedException("Responsavel nao autorizado a criar relato para este animal.");
+		}
+	}
+
 	public void exigirGestaoVinculosAnimal(UsuarioPrincipal principal, Animal animal) {
 		exigirPrincipal(principal);
 		if (TipoUsuario.RESPONSAVEL.equals(principal.getTipoUsuario())) {
-			throw new AccessDeniedException("Gestao de tutores permitida apenas a veterinarios e administradores autorizados.");
+			throw new AccessDeniedException("Gestão de responsáveis permitida apenas a veterinários e administradores autorizados.");
+		}
+		exigirLeituraAnimal(principal, animal);
+	}
+
+	public void exigirCompartilhamentoAnimal(UsuarioPrincipal principal, Animal animal) {
+		exigirPrincipal(principal);
+		if (!TipoUsuario.SYSADMIN.equals(principal.getTipoUsuario())
+				&& !TipoUsuario.ADMIN_CLINICA.equals(principal.getTipoUsuario())
+				&& !TipoUsuario.VETERINARIO.equals(principal.getTipoUsuario())
+				&& !TipoUsuario.RESPONSAVEL.equals(principal.getTipoUsuario())) {
+			throw new AccessDeniedException("Perfil nao autorizado a compartilhar pacientes.");
+		}
+		exigirLeituraAnimal(principal, animal);
+	}
+
+	public void exigirCriacaoCompartilhamentoAnimal(UsuarioPrincipal principal, Animal animal) {
+		exigirPrincipal(principal);
+		if (!TipoUsuario.VETERINARIO.equals(principal.getTipoUsuario())
+				&& !TipoUsuario.RESPONSAVEL.equals(principal.getTipoUsuario())) {
+			throw new AccessDeniedException("Somente veterinarios e responsaveis podem compartilhar pacientes.");
 		}
 		exigirLeituraAnimal(principal, animal);
 	}
@@ -108,28 +168,32 @@ public class ClinicalAccessService {
 		exigirPrincipal(principal);
 		return switch (principal.getTipoUsuario()) {
 			case SYSADMIN -> true;
-			case VETERINARIO -> principal.getVeterinarioId() != null
+			case VETERINARIO -> (principal.getVeterinarioId() != null
 					&& consulta.getVeterinario() != null
-					&& Objects.equals(principal.getVeterinarioId(), consulta.getVeterinario().getId());
+					&& Objects.equals(principal.getVeterinarioId(), consulta.getVeterinario().getId()))
+					|| temAcessoExplicito(principal, consulta.getAnimal(), PatientAccessRole.VETERINARIO);
 			case RESPONSAVEL -> principal.getResponsavelId() != null
 					&& consulta.getAnimal() != null
-					&& temVinculoResponsavelAnimal(principal.getResponsavelId(), consulta.getAnimal().getId());
+					&& (temVinculoResponsavelAnimal(principal.getResponsavelId(), consulta.getAnimal().getId())
+					|| temAcessoExplicito(principal, consulta.getAnimal(), PatientAccessRole.RESPONSAVEL));
 			case ADMIN_CLINICA -> principal.getClinicaId() != null
 					&& consulta.getClinica() != null
 					&& Objects.equals(principal.getClinicaId(), consulta.getClinica().getId());
 		};
 	}
 
-	private boolean podeLerAnimal(UsuarioPrincipal principal, Animal animal) {
+	public boolean podeLerAnimal(UsuarioPrincipal principal, Animal animal) {
 		return switch (principal.getTipoUsuario()) {
 			case SYSADMIN -> true;
 			case RESPONSAVEL -> principal.getResponsavelId() != null
-					&& temVinculoResponsavelAnimal(principal.getResponsavelId(), animal.getId());
+					&& (temVinculoResponsavelAnimal(principal.getResponsavelId(), animal.getId())
+					|| temAcessoExplicito(principal, animal, PatientAccessRole.RESPONSAVEL));
 			case VETERINARIO -> principal.getVeterinarioId() != null
 					&& "S".equals(animal.getAtivo())
 					&& (animalCadastradoPeloVeterinario(animal, principal.getVeterinarioId())
 					|| consultaRepository.existsConsultaDoVeterinarioParaAnimal(animal.getId(), principal.getVeterinarioId())
-					|| animalAtivoDaClinicaDoVeterinario(animal, principal.getVeterinarioId()));
+					|| animalAtivoDaClinicaDoVeterinario(animal, principal.getVeterinarioId())
+					|| temAcessoExplicito(principal, animal, PatientAccessRole.VETERINARIO));
 			case ADMIN_CLINICA -> principal.getClinicaId() != null
 					&& animal.getClinica() != null
 					&& Objects.equals(principal.getClinicaId(), animal.getClinica().getId());
@@ -172,6 +236,15 @@ public class ClinicalAccessService {
 
 	private boolean temVinculoResponsavelAnimal(Long responsavelId, Long animalId) {
 		return animalId != null && animalResponsavelRepository.existsVinculoAtivoVigente(animalId, responsavelId, LocalDate.now());
+	}
+
+	public boolean temVinculoResponsavelAtivo(Long responsavelId, Long animalId) {
+		return temVinculoResponsavelAnimal(responsavelId, animalId);
+	}
+
+	private boolean temAcessoExplicito(UsuarioPrincipal principal, Animal animal, PatientAccessRole role) {
+		return patientAccessRepository != null && principal.getUsuarioId() != null && animal != null && animal.getId() != null
+				&& patientAccessRepository.existsEffective(animal.getId(), principal.getUsuarioId(), role, java.time.LocalDateTime.now());
 	}
 
 	private void exigirPrincipal(UsuarioPrincipal principal) {

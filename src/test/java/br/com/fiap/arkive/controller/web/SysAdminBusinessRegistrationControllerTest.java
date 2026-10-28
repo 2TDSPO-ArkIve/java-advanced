@@ -84,7 +84,7 @@ class SysAdminBusinessRegistrationControllerTest {
 		when(responsavelService.listar(any(), any(), any(), any(), any(Pageable.class))).thenReturn(new PageImpl<>(List.of()));
 		when(responsavelService.listarPorTexto(any(), any(), any(Pageable.class))).thenReturn(new PageImpl<>(List.of()));
 		when(usuarioService.listarClinicasAtivas()).thenReturn(List.of(new UsuarioContextOption(1L, "Clínica Central")));
-		when(responsavelService.listarTipos()).thenReturn(List.of("TUTOR", "ONG"));
+		when(responsavelService.listarTipos()).thenReturn(List.of("RESPONSAVEL", "ONG"));
 	}
 
 	@Test
@@ -318,9 +318,9 @@ class SysAdminBusinessRegistrationControllerTest {
 
 		mockMvc.perform(get("/sysadmin/responsaveis"))
 				.andExpect(status().isOk())
-				.andExpect(content().string(containsString("Rui Tutor")))
+				.andExpect(content().string(containsString("Rui Responsável")))
 				.andExpect(content().string(containsString("12345678900")))
-				.andExpect(content().string(containsString("TUTOR")))
+				.andExpect(content().string(containsString("RESPONSAVEL")))
 				.andExpect(content().string(containsString("Novo responsável")))
 				.andExpect(content().string(containsString("list-toolbar")))
 				.andExpect(content().string(containsString("Nome, documento ou e-mail")))
@@ -365,7 +365,7 @@ class SysAdminBusinessRegistrationControllerTest {
 		mockMvc.perform(get("/sysadmin/responsaveis/novo"))
 				.andExpect(status().isOk())
 				.andExpect(content().string(containsString("Novo responsável")))
-				.andExpect(content().string(containsString("TUTOR")))
+				.andExpect(content().string(containsString("RESPONSAVEL")))
 				.andExpect(content().string(containsString("ONG")));
 	}
 
@@ -376,18 +376,18 @@ class SysAdminBusinessRegistrationControllerTest {
 		mockMvc.perform(post("/sysadmin/responsaveis")
 						.with(user("Ana Sys").roles("SYSADMIN"))
 						.with(csrf())
-						.param("nome", "Rui Tutor")
+						.param("nome", "Rui Responsável")
 						.param("documento", "12345678900")
 						.param("email", "rui@arkive.com")
 						.param("telefone", "11999999999")
-						.param("tipo", "TUTOR"))
+						.param("tipo", "RESPONSAVEL"))
 				.andExpect(status().is3xxRedirection())
 				.andExpect(redirectedUrl("/sysadmin/responsaveis"));
 
 		verify(responsavelService).criar(captor.capture());
-		assertEquals("Rui Tutor", captor.getValue().nome());
+		assertEquals("Rui Responsável", captor.getValue().nome());
 		assertEquals("rui@arkive.com", captor.getValue().email());
-		assertEquals("TUTOR", captor.getValue().tipo());
+		assertEquals("RESPONSAVEL", captor.getValue().tipo());
 	}
 
 	@Test
@@ -412,14 +412,14 @@ class SysAdminBusinessRegistrationControllerTest {
 		mockMvc.perform(get("/sysadmin/responsaveis/3/editar"))
 				.andExpect(status().isOk())
 				.andExpect(content().string(containsString("Editar responsável")))
-				.andExpect(content().string(containsString("Rui Tutor")));
+				.andExpect(content().string(containsString("Rui Respons&aacute;vel")));
 
 		mockMvc.perform(post("/sysadmin/responsaveis/3/editar")
 						.with(csrf())
 						.param("nome", "Rui Editado")
 						.param("documento", "12345678900")
 						.param("email", "rui.editado@arkive.com")
-						.param("tipo", "TUTOR"))
+						.param("tipo", "RESPONSAVEL"))
 				.andExpect(status().is3xxRedirection())
 				.andExpect(redirectedUrl("/sysadmin/responsaveis"));
 
@@ -439,7 +439,7 @@ class SysAdminBusinessRegistrationControllerTest {
 				.andExpect(status().isForbidden());
 		mockMvc.perform(get("/sysadmin/veterinarios").with(user("Dra. Vera").roles("VETERINARIO")))
 				.andExpect(status().isForbidden());
-		mockMvc.perform(get("/sysadmin/responsaveis").with(user("Rui Tutor").roles("RESPONSAVEL")))
+		mockMvc.perform(get("/sysadmin/responsaveis").with(user("Rui Responsável").roles("RESPONSAVEL")))
 				.andExpect(status().isForbidden());
 	}
 
@@ -484,11 +484,11 @@ class SysAdminBusinessRegistrationControllerTest {
 	private ResponsavelResponse responsavel() {
 		return new ResponsavelResponse(
 				3L,
-				"Rui Tutor",
+				"Rui Responsável",
 				"12345678900",
 				"rui@arkive.com",
 				"11999999999",
-				"TUTOR",
+				"RESPONSAVEL",
 				null,
 				"S",
 				"S"

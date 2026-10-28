@@ -57,19 +57,23 @@ public class ClinicalSupportPersistenceService {
 				result.severidade(),
 				result.insightIa(),
 				result.confianca(),
-				serializarFontes(result.fontesPesquisadas())
+				serializarLista(result.fontesPesquisadas()),
+				serializarLista(result.referenciasRag()),
+				result.tokens() == null ? null : result.tokens().entrada(),
+				result.tokens() == null ? null : result.tokens().saida(),
+				result.tokens() == null ? null : result.tokens().total()
 		);
 		consulta.setStatus(StatusConsulta.AP.getCodigo());
 		consultaRepository.save(consulta);
 		return ClinicalSupportResponse.fromEntities(consulta, diagnostico);
 	}
 
-	private String serializarFontes(List<String> fontesPesquisadas) {
-		if (fontesPesquisadas == null || fontesPesquisadas.isEmpty()) {
+	private String serializarLista(List<?> valores) {
+		if (valores == null || valores.isEmpty()) {
 			return null;
 		}
 		try {
-			return objectMapper.writeValueAsString(fontesPesquisadas);
+			return objectMapper.writeValueAsString(valores);
 		} catch (JsonProcessingException ex) {
 			return null;
 		}

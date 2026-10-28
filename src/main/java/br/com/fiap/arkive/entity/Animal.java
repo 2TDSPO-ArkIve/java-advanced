@@ -2,17 +2,20 @@ package br.com.fiap.arkive.entity;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EntityListeners;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
+import jakarta.persistence.Lob;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import java.time.LocalDate;
 
 @Entity
 @Table(name = "TB_ARKIVE_ANIMAL")
+@EntityListeners(AnimalPatientIdEntityListener.class)
 public class Animal {
 
 	@Column(name = "DT_NASCIMENTO")
@@ -30,6 +33,9 @@ public class Animal {
 	@GeneratedValue(strategy = GenerationType.IDENTITY)
 	@Column(name = "ID_ANIMAL")
 	private Long id;
+
+	@Column(name = "DS_ARKIVE_PATIENT_ID", nullable = false, length = 40, unique = true, updatable = false)
+	private String arkivePatientId;
 
 	@Column(name = "NM_ANIMAL", nullable = false, length = 50)
 	private String nome;
@@ -59,12 +65,27 @@ public class Animal {
 	@Column(name = "ST_ATIVO", nullable = false, columnDefinition = "CHAR(1)")
 	private String ativo = "S";
 
+	@Lob
+	@Column(name = "DS_OBS_RESP_PENDENTE")
+	private String observacaoResponsavelPendente;
+
 	public Long getId() {
 		return id;
 	}
 
 	public void setId(Long id) {
 		this.id = id;
+	}
+
+	public String getArkivePatientId() {
+		return arkivePatientId;
+	}
+
+	public void assignArkivePatientId(String arkivePatientId) {
+		if (this.arkivePatientId != null && !this.arkivePatientId.equals(arkivePatientId)) {
+			throw new IllegalStateException("ArkIve patient ID is immutable.");
+		}
+		this.arkivePatientId = arkivePatientId;
 	}
 
 	public String getNome() {
@@ -129,6 +150,14 @@ public class Animal {
 
 	public void setAtivo(String ativo) {
 		this.ativo = ativo;
+	}
+
+	public String getObservacaoResponsavelPendente() {
+		return observacaoResponsavelPendente;
+	}
+
+	public void setObservacaoResponsavelPendente(String observacaoResponsavelPendente) {
+		this.observacaoResponsavelPendente = observacaoResponsavelPendente;
 	}
 
 }

@@ -2,6 +2,8 @@ package br.com.fiap.arkive.entity;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
@@ -23,6 +25,10 @@ public class Responsavel {
 
 	@Column(name = "DC_CPF_RG", nullable = false, length = 20, unique = true)
 	private String documento;
+
+	@Enumerated(EnumType.STRING)
+	@Column(name = "TP_DOCUMENTO", length = 10)
+	private TipoDocumentoResponsavel tipoDocumento;
 
 	@Column(name = "DS_EMAIL", length = 200)
 	private String email;
@@ -64,6 +70,14 @@ public class Responsavel {
 
 	public void setDocumento(String documento) {
 		this.documento = documento;
+	}
+
+	public TipoDocumentoResponsavel getTipoDocumento() {
+		return tipoDocumento;
+	}
+
+	public void setTipoDocumento(TipoDocumentoResponsavel tipoDocumento) {
+		this.tipoDocumento = tipoDocumento;
 	}
 
 	public String getEmail() {

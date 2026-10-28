@@ -8,6 +8,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.data.mapping.PropertyReferenceException;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.web.HttpRequestMethodNotSupportedException;
+import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
@@ -30,6 +31,12 @@ public class GlobalExceptionHandler {
 		return buildResponse(ex.getStatus(), ex.getMessage(), request.getRequestURI());
 	}
 
+	@ExceptionHandler(IndicadoresDatabaseException.class)
+	public ResponseEntity<ErrorResponse> handleIndicadoresDatabase(IndicadoresDatabaseException ex,
+			HttpServletRequest request) {
+		return buildResponse(HttpStatus.SERVICE_UNAVAILABLE, ex.getMessage(), request.getRequestURI());
+	}
+
 	@ExceptionHandler(MethodArgumentNotValidException.class)
 	public ResponseEntity<ErrorResponse> handleValidation(MethodArgumentNotValidException ex, HttpServletRequest request) {
 		Map<String, String> fields = new LinkedHashMap<>();
@@ -38,6 +45,15 @@ public class GlobalExceptionHandler {
 				.map(entry -> entry.getKey() + ": " + entry.getValue())
 				.collect(Collectors.joining("; "));
 		return buildResponse(HttpStatus.BAD_REQUEST, message.isBlank() ? "Dados da requisicao invalidos." : message, request.getRequestURI(), fields);
+	}
+
+	@ExceptionHandler(HttpMessageNotReadableException.class)
+	public ResponseEntity<ErrorResponse> handleUnreadableMessage(HttpMessageNotReadableException ex,
+			HttpServletRequest request) {
+		if ("Tipo de documento inválido.".equals(ex.getMostSpecificCause().getMessage())) {
+			return buildResponse(HttpStatus.BAD_REQUEST, "Tipo de documento inválido.", request.getRequestURI());
+		}
+		return buildResponse(HttpStatus.BAD_REQUEST, "Corpo da requisicao invalido.", request.getRequestURI());
 	}
 
 	@ExceptionHandler(ConstraintViolationException.class)

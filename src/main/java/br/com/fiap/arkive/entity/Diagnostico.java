@@ -40,11 +40,24 @@ public class Diagnostico {
 	@Column(name = "DS_FONTES_IA")
 	private String fontesIaJson;
 
+	@Lob
+	@Column(name = "DS_REFERENCIAS_RAG")
+	private String referenciasRagJson;
+
 	@Column(name = "PC_CONFIANCA", precision = 5, scale = 2)
 	private BigDecimal confianca;
 
 	@Column(name = "ST_VALIDACAO_VET", columnDefinition = "CHAR(1)")
 	private String validacaoVet;
+
+	@Column(name = "NR_TOKENS_ENTRADA")
+	private Long tokensEntrada;
+
+	@Column(name = "NR_TOKENS_SAIDA")
+	private Long tokensSaida;
+
+	@Column(name = "NR_TOKENS_TOTAL")
+	private Long tokensTotal;
 
 	@ManyToOne(fetch = FetchType.LAZY, optional = false)
 	@JoinColumn(name = "ID_CONSULTA", nullable = false)
@@ -102,6 +115,14 @@ public class Diagnostico {
 		this.fontesIaJson = fontesIaJson;
 	}
 
+	public String getReferenciasRagJson() {
+		return referenciasRagJson;
+	}
+
+	public void setReferenciasRagJson(String referenciasRagJson) {
+		this.referenciasRagJson = referenciasRagJson;
+	}
+
 	public BigDecimal getConfianca() {
 		return confianca;
 	}
@@ -116,6 +137,30 @@ public class Diagnostico {
 
 	public void setValidacaoVet(String validacaoVet) {
 		this.validacaoVet = validacaoVet;
+	}
+
+	public Long getTokensEntrada() {
+		return tokensEntrada;
+	}
+
+	public void setTokensEntrada(Long tokensEntrada) {
+		this.tokensEntrada = tokensEntrada;
+	}
+
+	public Long getTokensSaida() {
+		return tokensSaida;
+	}
+
+	public void setTokensSaida(Long tokensSaida) {
+		this.tokensSaida = tokensSaida;
+	}
+
+	public Long getTokensTotal() {
+		return tokensTotal;
+	}
+
+	public void setTokensTotal(Long tokensTotal) {
+		this.tokensTotal = tokensTotal;
 	}
 
 	public Consulta getConsulta() {

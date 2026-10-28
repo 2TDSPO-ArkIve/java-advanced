@@ -1,10 +1,13 @@
 package br.com.fiap.arkive.dto.request;
 
 import io.swagger.v3.oas.annotations.media.Schema;
+import jakarta.validation.constraints.DecimalMin;
+import jakarta.validation.constraints.Digits;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 
 @Schema(description = "Prescricao criada pelo veterinario responsavel por uma consulta finalizada.")
@@ -39,6 +42,16 @@ public record PrescricaoRequest(
 
 		@NotNull
 		@Schema(description = "Consulta finalizada associada a prescricao. Este vinculo nao pode ser alterado depois da criacao.", example = "42")
-		Long consultaId
+		Long consultaId,
+
+		@DecimalMin("0.00")
+		@Digits(integer = 8, fraction = 2)
+		@Schema(description = "Custo total estimado ou registrado do medicamento ou tratamento, nao um preco unitario. Nulo significa valor nao informado.", example = "95.50")
+		BigDecimal valorMedicamento
 ) {
+	public PrescricaoRequest(String medicamento, String dosagem, String frequencia, String viaAdministracao,
+			LocalDate dataInicio, LocalDate dataFim, String instrucoes, Long consultaId) {
+		this(medicamento, dosagem, frequencia, viaAdministracao, dataInicio, dataFim, instrucoes,
+				consultaId, null);
+	}
 }

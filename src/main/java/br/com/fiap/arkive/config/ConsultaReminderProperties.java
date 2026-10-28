@@ -1,0 +1,23 @@
+package br.com.fiap.arkive.config;
+
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
+import org.springframework.boot.context.properties.ConfigurationProperties;
+import org.springframework.validation.annotation.Validated;
+
+@Validated
+@ConfigurationProperties(prefix = "arkive.notifications.consultation-reminder")
+public class ConsultaReminderProperties {
+
+	@Min(1)
+	@Max(1440)
+	private int minutesBefore = 30;
+
+	public int getMinutesBefore() {
+		return minutesBefore;
+	}
+
+	public void setMinutesBefore(int minutesBefore) {
+		this.minutesBefore = minutesBefore;
+	}
+}

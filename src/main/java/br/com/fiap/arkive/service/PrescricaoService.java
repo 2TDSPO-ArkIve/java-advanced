@@ -33,19 +33,22 @@ public class PrescricaoService {
 	private final ConsultaService consultaService;
 	private final EventoJornadaService eventoJornadaService;
 	private final ClinicalAccessService clinicalAccessService;
+	private final FinancialVisibilityService financialVisibilityService;
 
 	public PrescricaoService(
 			PrescricaoRepository prescricaoRepository,
 			AdesaoPrescricaoRepository adesaoPrescricaoRepository,
 			ConsultaService consultaService,
 			EventoJornadaService eventoJornadaService,
-			ClinicalAccessService clinicalAccessService
+			ClinicalAccessService clinicalAccessService,
+			FinancialVisibilityService financialVisibilityService
 	) {
 		this.prescricaoRepository = prescricaoRepository;
 		this.adesaoPrescricaoRepository = adesaoPrescricaoRepository;
 		this.consultaService = consultaService;
 		this.eventoJornadaService = eventoJornadaService;
 		this.clinicalAccessService = clinicalAccessService;
+		this.financialVisibilityService = financialVisibilityService;
 	}
 
 	@Transactional
@@ -72,7 +75,7 @@ public class PrescricaoService {
 				"Prescricao criada.",
 				eventoJornadaService.criarPayload("Prescricao", salva.getId(), "PRESCRICAO_CRIADA")
 		);
-		return PrescricaoResponse.fromEntity(salva);
+		return respostaAutorizada(salva, principal);
 	}
 
 	@Transactional(readOnly = true)
@@ -89,26 +92,26 @@ public class PrescricaoService {
 		String medicamentoFiltro = vazioParaNulo(medicamento);
 		return switch (principal.getTipoUsuario()) {
 			case SYSADMIN -> prescricaoRepository.buscar(consultaId, medicamentoFiltro, pageable)
-					.map(PrescricaoResponse::fromEntity);
+					.map(prescricao -> respostaAutorizada(prescricao, principal));
 			case VETERINARIO -> principal.getVeterinarioId() == null ? Page.empty(pageable) : prescricaoRepository.buscarParaVeterinario(
 					principal.getVeterinarioId(),
 					consultaId,
 					medicamentoFiltro,
 					pageable
-			).map(PrescricaoResponse::fromEntity);
+			).map(prescricao -> respostaAutorizada(prescricao, principal));
 			case RESPONSAVEL -> principal.getResponsavelId() == null ? Page.empty(pageable) : prescricaoRepository.buscarParaResponsavel(
 					principal.getResponsavelId(),
 					LocalDate.now(),
 					consultaId,
 					medicamentoFiltro,
 					pageable
-			).map(PrescricaoResponse::fromEntity);
+			).map(prescricao -> respostaAutorizada(prescricao, principal));
 			case ADMIN_CLINICA -> principal.getClinicaId() == null ? Page.empty(pageable) : prescricaoRepository.buscarParaClinica(
 					principal.getClinicaId(),
 					consultaId,
 					medicamentoFiltro,
 					pageable
-			).map(PrescricaoResponse::fromEntity);
+			).map(prescricao -> respostaAutorizada(prescricao, principal));
 		};
 	}
 
@@ -121,7 +124,7 @@ public class PrescricaoService {
 	public PrescricaoResponse buscarPorIdAutorizado(Long id, UsuarioPrincipal principal) {
 		Prescricao prescricao = buscarEntidade(id);
 		clinicalAccessService.exigirLeituraPrescricao(principal, prescricao);
-		return PrescricaoResponse.fromEntity(prescricao);
+		return respostaAutorizada(prescricao, principal);
 	}
 
 	@Transactional
@@ -136,7 +139,7 @@ public class PrescricaoService {
 		exigirSemAdesaoRegistrada(prescricao);
 		exigirMesmaConsulta(prescricao, request.consultaId());
 		aplicarTratamento(prescricao, request);
-		return PrescricaoResponse.fromEntity(prescricaoRepository.save(prescricao));
+		return respostaAutorizada(prescricaoRepository.save(prescricao), principal);
 	}
 
 	@Transactional
@@ -174,6 +177,7 @@ public class PrescricaoService {
 		prescricao.setDataInicio(request.dataInicio());
 		prescricao.setDataFim(request.dataFim());
 		prescricao.setInstrucoes(request.instrucoes());
+		prescricao.setValorMedicamento(request.valorMedicamento());
 		prescricao.setConsulta(consulta);
 	}
 
@@ -187,6 +191,7 @@ public class PrescricaoService {
 		prescricao.setDataInicio(request.dataInicio());
 		prescricao.setDataFim(request.dataFim());
 		prescricao.setInstrucoes(request.instrucoes());
+		prescricao.setValorMedicamento(request.valorMedicamento());
 	}
 
 	private void exigirConsultaFinalizada(Consulta consulta) {
@@ -196,7 +201,7 @@ public class PrescricaoService {
 	}
 
 	private void exigirMesmaConsulta(Prescricao prescricao, Long consultaIdRequest) {
-		if (consultaIdRequest == null || !prescricao.getConsulta().getId().equals(consultaIdRequest)) {
+		if (!prescricao.getConsulta().getId().equals(consultaIdRequest)) {
 			throw new BusinessException("Consulta da prescricao nao pode ser alterada.", HttpStatus.CONFLICT);
 		}
 	}
@@ -221,6 +226,13 @@ public class PrescricaoService {
 
 	private String vazioParaNulo(String valor) {
 		return valor == null || valor.isBlank() ? null : valor;
+	}
+
+	private PrescricaoResponse respostaAutorizada(Prescricao prescricao, UsuarioPrincipal principal) {
+		return PrescricaoResponse.fromEntity(
+				prescricao,
+				financialVisibilityService.podeVerCustosConsulta(principal, prescricao.getConsulta())
+		);
 	}
 
 }

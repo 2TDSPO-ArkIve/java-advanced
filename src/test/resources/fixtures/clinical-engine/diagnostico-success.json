@@ -3,8 +3,28 @@
   "tp_severidade": "MODERADA",
   "ds_insight_ia": "Bilu e um cao macho Golden Retriever, castrado, de 4 anos, peso 28,1 kg, apresentando claudicacao intermitente na pata traseira.",
   "pc_confianca": 65,
+  "tokens": {
+    "entrada": 1000,
+    "saida": 500,
+    "total": 1500
+  },
+  "fontes_rag": [
+    {
+      "fonte": "ABCD",
+      "titulo": "Feline calicivirus infection"
+    },
+    {
+      "fonte": "AAZV",
+      "titulo": "Herpesviridae · Alpha · Varicellovirus · Felid alphaherpesvirus 1"
+    },
+    {
+      "fonte": "CFSPH",
+      "titulo": "Cryptococcosis"
+    }
+  ],
   "fontes_pesquisadas": [
-    "https://source-one.example",
-    "https://source-two.example"
+    "https://pubmed.ncbi.nlm.nih.gov/31325462/",
+    "https://pubmed.ncbi.nlm.nih.gov/35232714/",
+    "https://pubmed.ncbi.nlm.nih.gov/35632680/"
   ]
 }

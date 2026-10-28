@@ -8,10 +8,55 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.math.BigDecimal;
 import java.util.List;
 
 @Profile("!local-nodb")
 public interface PrescricaoRepository extends JpaRepository<Prescricao, Long> {
+
+	interface CustoMedicamentoPorConsulta {
+		Long getConsultaId();
+		BigDecimal getValorMedicamentos();
+		Long getQuantidadePrescricoesComValor();
+	}
+
+	@Query("""
+			select p.consulta.id as consultaId,
+			       sum(p.valorMedicamento) as valorMedicamentos,
+			       count(p.valorMedicamento) as quantidadePrescricoesComValor
+			from Prescricao p
+			where p.consulta.animal.id = :animalId
+			and p.consulta.status = 'FI'
+			group by p.consulta.id
+			""")
+	List<CustoMedicamentoPorConsulta> somarCustosMedicamentosFinalizadosPorAnimal(
+			@Param("animalId") Long animalId);
+
+	@Query("""
+			select p.consulta.id as consultaId,
+			       sum(p.valorMedicamento) as valorMedicamentos,
+			       count(p.valorMedicamento) as quantidadePrescricoesComValor
+			from Prescricao p
+			where p.consulta.animal.id = :animalId
+			and p.consulta.veterinario.id = :veterinarioId
+			and p.consulta.status = 'FI'
+			group by p.consulta.id
+			""")
+	List<CustoMedicamentoPorConsulta> somarCustosMedicamentosFinalizadosPorAnimalEVeterinario(
+			@Param("animalId") Long animalId,
+			@Param("veterinarioId") Long veterinarioId);
+
+	@Query("""
+			select p.consulta.id as consultaId,
+			       sum(p.valorMedicamento) as valorMedicamentos,
+			       count(p.valorMedicamento) as quantidadePrescricoesComValor
+			from Prescricao p
+			where p.consulta.veterinario.id = :veterinarioId
+			and p.consulta.status = 'FI'
+			group by p.consulta.id
+			""")
+	List<CustoMedicamentoPorConsulta> somarCustosMedicamentosFinalizadosPorVeterinario(
+			@Param("veterinarioId") Long veterinarioId);
 
 	@Query("""
 			select p from Prescricao p

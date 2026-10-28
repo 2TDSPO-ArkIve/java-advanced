@@ -80,6 +80,25 @@ class SecurityConfigTest {
 	}
 
 	@Test
+	void somentePreviewDoConviteEhPublico() throws Exception {
+		mockMvc.perform(post("/api/compartilhamentos/preview"))
+				.andExpect(status().isOk());
+		mockMvc.perform(post("/api/compartilhamentos/redeem"))
+				.andExpect(status().isUnauthorized());
+		mockMvc.perform(post("/api/animais/1/compartilhamentos"))
+				.andExpect(status().isUnauthorized());
+	}
+
+	@Test
+	void somenteRotasExatasDeCadastroPublicoSaoAnonimas() throws Exception {
+		mockMvc.perform(post("/api/auth/register")).andExpect(status().isOk());
+		mockMvc.perform(post("/api/auth/register/responsavel")).andExpect(status().isOk());
+		mockMvc.perform(get("/api/auth/register/responsavel")).andExpect(status().isUnauthorized());
+		mockMvc.perform(post("/api/auth/register/sysadmin")).andExpect(status().isUnauthorized());
+		mockMvc.perform(post("/api/usuarios")).andExpect(status().isUnauthorized());
+	}
+
+	@Test
 	void corsApiIncluiOrigemDeProducaoSemRemoverDesenvolvimento() {
 		MockHttpServletRequest request =
 				new MockHttpServletRequest("GET", "/api/consultas");
@@ -275,11 +294,89 @@ class SecurityConfigTest {
 	}
 
 	@Test
+	void responsavelNaoPodeCriarRaca() throws Exception {
+		mockMvc.perform(post("/api/racas").with(user("responsavel").roles("RESPONSAVEL")))
+				.andExpect(status().isForbidden());
+		mockMvc.perform(post("/api/racas").with(user("vet").roles("VETERINARIO")))
+				.andExpect(status().isOk());
+	}
+
+	@Test
 	void fluxosClinicosPrincipaisContinuamAutorizados() throws Exception {
 		mockMvc.perform(post("/api/consultas").with(user("vet").roles("VETERINARIO")))
 				.andExpect(status().isOk());
 		mockMvc.perform(post("/api/adesoes-prescricao").with(user("responsavel").roles("RESPONSAVEL")))
 				.andExpect(status().isOk());
+	}
+
+	@Test
+	void notificacoesEDispositivosExigemAutenticacao() throws Exception {
+		mockMvc.perform(get("/api/notificacoes")).andExpect(status().isUnauthorized());
+		mockMvc.perform(post("/api/notificacoes/dispositivos")).andExpect(status().isUnauthorized());
+		mockMvc.perform(delete("/api/notificacoes/dispositivos/1")).andExpect(status().isUnauthorized());
+	}
+
+	@ParameterizedTest
+	@ValueSource(strings = { "VETERINARIO", "RESPONSAVEL" })
+	void usuariosMoveisAcessamSuaCaixaEDispositivos(String role) throws Exception {
+		mockMvc.perform(get("/api/notificacoes").with(user("mobile").roles(role)))
+				.andExpect(status().isOk());
+		mockMvc.perform(post("/api/notificacoes/dispositivos").with(user("mobile").roles(role)))
+				.andExpect(status().isOk());
+		mockMvc.perform(delete("/api/notificacoes/dispositivos/1").with(user("mobile").roles(role)))
+				.andExpect(status().isOk());
+	}
+
+	@Test
+	void solicitacaoAcessoTemRegrasEspecificasPorOperacao() throws Exception {
+		mockMvc.perform(post("/api/solicitacoes-acesso").with(user("vet").roles("VETERINARIO")))
+				.andExpect(status().isOk());
+		mockMvc.perform(post("/api/solicitacoes-acesso").with(user("responsavel").roles("RESPONSAVEL")))
+				.andExpect(status().isForbidden());
+
+		for (String role : List.of("VETERINARIO", "RESPONSAVEL")) {
+			mockMvc.perform(get("/api/solicitacoes-acesso").with(user("mobile").roles(role)))
+					.andExpect(status().isOk());
+			mockMvc.perform(get("/api/solicitacoes-acesso/91").with(user("mobile").roles(role)))
+					.andExpect(status().isOk());
+		}
+
+		mockMvc.perform(post("/api/solicitacoes-acesso/91/aprovar")
+					.with(user("responsavel").roles("RESPONSAVEL")))
+				.andExpect(status().isOk());
+		mockMvc.perform(post("/api/solicitacoes-acesso/91/rejeitar")
+					.with(user("responsavel").roles("RESPONSAVEL")))
+				.andExpect(status().isOk());
+		mockMvc.perform(post("/api/solicitacoes-acesso/91/aprovar")
+					.with(user("vet").roles("VETERINARIO")))
+				.andExpect(status().isForbidden());
+	}
+
+	@ParameterizedTest
+	@ValueSource(strings = { "SYSADMIN", "ADMIN_CLINICA" })
+	void papeisAdministrativosNaoUsamFluxoDeSolicitacaoDeAcesso(String role) throws Exception {
+		mockMvc.perform(post("/api/solicitacoes-acesso").with(user("admin").roles(role)))
+				.andExpect(status().isForbidden());
+		mockMvc.perform(get("/api/solicitacoes-acesso").with(user("admin").roles(role)))
+				.andExpect(status().isForbidden());
+	}
+
+	@Test
+	void solicitacaoAcessoExigeAutenticacaoENaoAceitaMetodosNaoPrevistos() throws Exception {
+		mockMvc.perform(post("/api/solicitacoes-acesso")).andExpect(status().isUnauthorized());
+		mockMvc.perform(get("/api/solicitacoes-acesso")).andExpect(status().isUnauthorized());
+		mockMvc.perform(delete("/api/solicitacoes-acesso/91")
+					.with(user("vet").roles("VETERINARIO")))
+				.andExpect(status().isForbidden());
+	}
+
+	@ParameterizedTest
+	@ValueSource(strings = { "SYSADMIN", "ADMIN_CLINICA" })
+	void papeisAdministrativosNaoRecebemAcessoGlobalACaixaPrivada(String role) throws Exception {
+		mockMvc.perform(get("/api/notificacoes").with(user("admin").roles(role)))
+				.andExpect(status().isForbidden());
+		mockMvc.perform(post("/api/notificacoes/dispositivos").with(user("admin").roles(role)))
+				.andExpect(status().isForbidden());
 	}
 
 	@TestConfiguration
@@ -345,13 +442,18 @@ class SecurityConfigTest {
 			return "ok";
 		}
 
+		@org.springframework.web.bind.annotation.PostMapping("/api/racas")
+		String criarRaca() {
+			return "ok";
+		}
+
 		@GetMapping("/api/alertas")
 		String listarAlertas() {
 			return "ok";
 		}
 
 		@org.springframework.web.bind.annotation.PatchMapping("/api/alertas/{id}/ler")
-		String lerAlerta(@org.springframework.web.bind.annotation.PathVariable Long id) {
+		String lerAlerta() {
 			return "ok";
 		}
 
@@ -366,7 +468,7 @@ class SecurityConfigTest {
 		}
 
 		@GetMapping("/api/eventos-jornada/animal/{animalId}/timeline")
-		String timelineAnimal(@org.springframework.web.bind.annotation.PathVariable Long animalId) {
+		String timelineAnimal() {
 			return "ok";
 		}
 
@@ -380,8 +482,73 @@ class SecurityConfigTest {
 			return "ok";
 		}
 
+		@org.springframework.web.bind.annotation.PostMapping("/api/compartilhamentos/preview")
+		String previewCompartilhamento() {
+			return "ok";
+		}
+
+		@org.springframework.web.bind.annotation.PostMapping("/api/compartilhamentos/redeem")
+		String resgatarCompartilhamento() {
+			return "ok";
+		}
+
+		@org.springframework.web.bind.annotation.PostMapping("/api/animais/{animalId}/compartilhamentos")
+		String criarCompartilhamento() {
+			return "ok";
+		}
+
+		@org.springframework.web.bind.annotation.PostMapping("/api/auth/register")
+		String registrarVeterinario() {
+			return "ok";
+		}
+
+		@org.springframework.web.bind.annotation.PostMapping("/api/auth/register/responsavel")
+		String registrarResponsavel() {
+			return "ok";
+		}
+
 		@GetMapping("/api/adesoes-prescricao/{id}")
-		String buscarAdesao(@org.springframework.web.bind.annotation.PathVariable Long id) {
+		String buscarAdesao() {
+			return "ok";
+		}
+
+		@GetMapping("/api/notificacoes")
+		String listarNotificacoes() {
+			return "ok";
+		}
+
+		@org.springframework.web.bind.annotation.PostMapping("/api/notificacoes/dispositivos")
+		String registrarDispositivo() {
+			return "ok";
+		}
+
+		@org.springframework.web.bind.annotation.DeleteMapping("/api/notificacoes/dispositivos/{id}")
+		String removerDispositivo() {
+			return "ok";
+		}
+
+		@org.springframework.web.bind.annotation.PostMapping("/api/solicitacoes-acesso")
+		String criarSolicitacaoAcesso() {
+			return "ok";
+		}
+
+		@GetMapping("/api/solicitacoes-acesso")
+		String listarSolicitacoesAcesso() {
+			return "ok";
+		}
+
+		@GetMapping("/api/solicitacoes-acesso/{id}")
+		String detalharSolicitacaoAcesso() {
+			return "ok";
+		}
+
+		@org.springframework.web.bind.annotation.PostMapping("/api/solicitacoes-acesso/{id}/aprovar")
+		String aprovarSolicitacaoAcesso() {
+			return "ok";
+		}
+
+		@org.springframework.web.bind.annotation.PostMapping("/api/solicitacoes-acesso/{id}/rejeitar")
+		String rejeitarSolicitacaoAcesso() {
 			return "ok";
 		}
 

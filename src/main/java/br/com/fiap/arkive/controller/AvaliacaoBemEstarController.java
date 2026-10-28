@@ -3,6 +3,8 @@ package br.com.fiap.arkive.controller;
 import br.com.fiap.arkive.dto.request.AvaliacaoBemEstarRequest;
 import br.com.fiap.arkive.dto.response.AvaliacaoBemEstarResponse;
 import br.com.fiap.arkive.service.AvaliacaoBemEstarService;
+import br.com.fiap.arkive.security.UsuarioPrincipal;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import jakarta.validation.Valid;
 import org.springframework.context.annotation.Profile;
 import org.springframework.data.domain.Page;
@@ -31,8 +33,9 @@ public class AvaliacaoBemEstarController {
 	}
 
 	@PostMapping
-	public ResponseEntity<AvaliacaoBemEstarResponse> criar(@Valid @RequestBody AvaliacaoBemEstarRequest request) {
-		return ResponseEntity.status(HttpStatus.CREATED).body(avaliacaoService.criar(request));
+	public ResponseEntity<AvaliacaoBemEstarResponse> criar(@Valid @RequestBody AvaliacaoBemEstarRequest request,
+			@AuthenticationPrincipal UsuarioPrincipal principal) {
+		return ResponseEntity.status(HttpStatus.CREATED).body(avaliacaoService.criar(request, principal));
 	}
 
 	@GetMapping
@@ -44,24 +47,25 @@ public class AvaliacaoBemEstarController {
 			@RequestParam(required = false) String apetite,
 			@RequestParam(required = false) String atividade,
 			@RequestParam(required = false) String comportamento,
-			Pageable pageable
+			Pageable pageable, @AuthenticationPrincipal UsuarioPrincipal principal
 	) {
-		return avaliacaoService.listar(animalId, responsavelId, veterinarioId, consultaId, apetite, atividade, comportamento, pageable);
+		return avaliacaoService.listar(animalId, responsavelId, veterinarioId, consultaId, apetite, atividade, comportamento, pageable, principal);
 	}
 
 	@GetMapping("/{id}")
-	public AvaliacaoBemEstarResponse buscarPorId(@PathVariable Long id) {
-		return avaliacaoService.buscarPorId(id);
+	public AvaliacaoBemEstarResponse buscarPorId(@PathVariable Long id, @AuthenticationPrincipal UsuarioPrincipal principal) {
+		return avaliacaoService.buscarPorId(id, principal);
 	}
 
 	@PutMapping("/{id}")
-	public AvaliacaoBemEstarResponse atualizar(@PathVariable Long id, @Valid @RequestBody AvaliacaoBemEstarRequest request) {
-		return avaliacaoService.atualizar(id, request);
+	public AvaliacaoBemEstarResponse atualizar(@PathVariable Long id, @Valid @RequestBody AvaliacaoBemEstarRequest request,
+			@AuthenticationPrincipal UsuarioPrincipal principal) {
+		return avaliacaoService.atualizar(id, request, principal);
 	}
 
 	@DeleteMapping("/{id}")
-	public ResponseEntity<Void> excluir(@PathVariable Long id) {
-		avaliacaoService.excluir(id);
+	public ResponseEntity<Void> excluir(@PathVariable Long id, @AuthenticationPrincipal UsuarioPrincipal principal) {
+		avaliacaoService.excluir(id, principal);
 		return ResponseEntity.noContent().build();
 	}
 

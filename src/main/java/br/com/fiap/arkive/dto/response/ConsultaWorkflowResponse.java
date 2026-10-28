@@ -13,18 +13,29 @@ public record ConsultaWorkflowResponse(
 		String motivo,
 		String sintomas,
 		String observacao,
+		String observacaoResponsavel,
 		BigDecimal peso,
 		String transcricao,
 		String status,
 		String statusDescricao,
 		Long animalId,
 		String animalNome,
+		String animalArkivePatientId,
 		Long veterinarioId,
 		String veterinarioNome,
 		Long clinicaId,
 		String clinicaNome,
 		Long diagnosticoId
 ) {
+	public ConsultaWorkflowResponse(Long id, LocalDateTime dataHora, String modalidade, String motivo,
+			String sintomas, String observacao, BigDecimal peso, String transcricao, String status,
+			String statusDescricao, Long animalId, String animalNome, Long veterinarioId,
+			String veterinarioNome, Long clinicaId, String clinicaNome, Long diagnosticoId) {
+		this(id, dataHora, modalidade, motivo, sintomas, observacao, null, peso, transcricao, status,
+				statusDescricao, animalId, animalNome, null, veterinarioId, veterinarioNome,
+				clinicaId, clinicaNome, diagnosticoId);
+	}
+
 	public static ConsultaWorkflowResponse fromEntity(Consulta consulta) {
 		return fromEntity(consulta, null);
 	}
@@ -40,12 +51,14 @@ public record ConsultaWorkflowResponse(
 				consulta.getMotivo(),
 				consulta.getSintomas(),
 				consulta.getObservacao(),
+				consulta.getObservacaoResponsavel(),
 				consulta.getPeso(),
 				consulta.getTranscricao(),
 				consulta.getStatus(),
 				statusConsulta.getDescricao(),
 				consulta.getAnimal().getId(),
 				consulta.getAnimal().getNome(),
+				consulta.getAnimal().getArkivePatientId(),
 				consulta.getVeterinario().getId(),
 				consulta.getVeterinario().getNome(),
 				clinicaId,

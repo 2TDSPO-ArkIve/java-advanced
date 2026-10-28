@@ -10,9 +10,12 @@ import br.com.fiap.arkive.entity.Clinica;
 import br.com.fiap.arkive.entity.Consulta;
 import br.com.fiap.arkive.entity.Diagnostico;
 import br.com.fiap.arkive.exception.BusinessException;
+import br.com.fiap.arkive.exception.ResourceNotFoundException;
+import br.com.fiap.arkive.repository.AnimalRepository;
 import br.com.fiap.arkive.repository.ConsultaRepository;
 import br.com.fiap.arkive.security.UsuarioPrincipal;
 import org.springframework.context.annotation.Profile;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -22,22 +25,41 @@ public class ConsultaWorkflowService {
 
 	private final ConsultaService consultaService;
 	private final ConsultaRepository consultaRepository;
+	private final AnimalRepository animalRepository;
 	private final DiagnosticoService diagnosticoService;
 	private final EventoJornadaService eventoJornadaService;
 	private final ClinicalAccessService clinicalAccessService;
+	private final NotificacaoService notificacaoService;
 
+	@Autowired
 	public ConsultaWorkflowService(
+			ConsultaService consultaService,
+			ConsultaRepository consultaRepository,
+			AnimalRepository animalRepository,
+			DiagnosticoService diagnosticoService,
+			EventoJornadaService eventoJornadaService,
+			ClinicalAccessService clinicalAccessService,
+			NotificacaoService notificacaoService
+	) {
+		this.consultaService = consultaService;
+		this.consultaRepository = consultaRepository;
+		this.animalRepository = animalRepository;
+		this.diagnosticoService = diagnosticoService;
+		this.eventoJornadaService = eventoJornadaService;
+		this.clinicalAccessService = clinicalAccessService;
+		this.notificacaoService = notificacaoService;
+	}
+
+	ConsultaWorkflowService(
 			ConsultaService consultaService,
 			ConsultaRepository consultaRepository,
 			DiagnosticoService diagnosticoService,
 			EventoJornadaService eventoJornadaService,
-			ClinicalAccessService clinicalAccessService
+			ClinicalAccessService clinicalAccessService,
+			NotificacaoService notificacaoService
 	) {
-		this.consultaService = consultaService;
-		this.consultaRepository = consultaRepository;
-		this.diagnosticoService = diagnosticoService;
-		this.eventoJornadaService = eventoJornadaService;
-		this.clinicalAccessService = clinicalAccessService;
+		this(consultaService, consultaRepository, null, diagnosticoService, eventoJornadaService,
+				clinicalAccessService, notificacaoService);
 	}
 
 	@Transactional
@@ -118,6 +140,7 @@ public class ConsultaWorkflowService {
 		consulta.setStatus(StatusConsulta.FI.getCodigo());
 		consultaRepository.save(consulta);
 		registrarEvento(consulta, "CONSULTA_FINALIZADA", "Consulta finalizada com diagnostico confirmado pelo veterinario.");
+		notificacaoService.criarParaConsultaFinalizada(consulta);
 		return ConsultaWorkflowResponse.fromEntity(consulta, diagnostico.getId());
 	}
 
@@ -141,10 +164,26 @@ public class ConsultaWorkflowService {
 		}
 		ConsultaStatusTransitionPolicy.validar(atual, StatusConsulta.EP);
 		validarRecursosAtivos(consulta);
+		consumirObservacaoResponsavel(consulta);
 		consulta.setStatus(StatusConsulta.EP.getCodigo());
 		consultaRepository.save(consulta);
 		registrarEvento(consulta, "CONSULTA_INICIADA", "Consulta iniciada.");
 		return ConsultaWorkflowResponse.fromEntity(consulta);
+	}
+
+	private void consumirObservacaoResponsavel(Consulta consulta) {
+		if (animalRepository == null) {
+			return;
+		}
+		var animal = animalRepository.buscarParaAtualizarVinculos(consulta.getAnimal().getId())
+				.orElseThrow(() -> new ResourceNotFoundException("Animal nao encontrado."));
+		String pendente = animal.getObservacaoResponsavelPendente();
+		if (pendente == null || pendente.isBlank()) {
+			return;
+		}
+		consulta.setObservacaoResponsavel(pendente);
+		animal.setObservacaoResponsavelPendente(null);
+		animalRepository.save(animal);
 	}
 
 	private ConsultaWorkflowResponse cancelar(Consulta consulta, CancelarConsultaRequest request) {

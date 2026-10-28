@@ -16,10 +16,12 @@ import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.access.AccessDeniedException;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.argThat;
@@ -33,22 +35,21 @@ import static org.mockito.Mockito.doThrow;
 class ConsultaServiceTest {
 
 	private ConsultaRepository consultaRepository;
-	private AnimalRepository animalRepository;
 	private VeterinarioRepository veterinarioRepository;
-	private ClinicaRepository clinicaRepository;
-	private EventoJornadaService eventoJornadaService;
 	private ClinicalAccessService clinicalAccessService;
+	private NotificacaoService notificacaoService;
 	private ConsultaService consultaService;
 	private final java.time.Clock clock = java.time.Clock.fixed(java.time.Instant.parse("2026-09-08T12:00:00Z"), java.time.ZoneId.of("America/Sao_Paulo"));
 
 	@BeforeEach
 	void setUp() {
 		consultaRepository = mock(ConsultaRepository.class);
-		animalRepository = mock(AnimalRepository.class);
+		AnimalRepository animalRepository = mock(AnimalRepository.class);
 		veterinarioRepository = mock(VeterinarioRepository.class);
-		clinicaRepository = mock(ClinicaRepository.class);
-		eventoJornadaService = mock(EventoJornadaService.class);
+		ClinicaRepository clinicaRepository = mock(ClinicaRepository.class);
+		EventoJornadaService eventoJornadaService = mock(EventoJornadaService.class);
 		clinicalAccessService = mock(ClinicalAccessService.class);
+		notificacaoService = mock(NotificacaoService.class);
 		consultaService = new ConsultaService(
 				consultaRepository,
 				animalRepository,
@@ -56,6 +57,8 @@ class ConsultaServiceTest {
 				clinicaRepository,
 				eventoJornadaService,
 				clinicalAccessService,
+				notificacaoService,
+				new FinancialVisibilityService(),
 				clock
 		);
 		when(consultaRepository.save(any(Consulta.class))).thenAnswer(invocation -> invocation.getArgument(0));
@@ -79,11 +82,12 @@ class ConsultaServiceTest {
 
 		verify(consultaRepository).save(any(Consulta.class));
 		verify(clinicalAccessService).exigirLeituraAnimal(any(), any());
+		verify(notificacaoService).criarParaConsultaAgendada(any(Consulta.class));
 	}
 
 	@Test
 	void criaConsultaSemVeterinarioNoRequestUsaVeterinarioAutenticado() {
-		consultaService.criar(requestSemVeterinario("AG"), veterinarioPrincipal(20L));
+		consultaService.criar(requestSemVeterinario(), veterinarioPrincipal(20L));
 
 		verify(consultaRepository).save(argThat(consulta ->
 				consulta.getVeterinario().getId().equals(20L)
@@ -119,7 +123,7 @@ class ConsultaServiceTest {
 	void veterinarioSemClinicaCriaConsultaSemClinica() {
 		when(veterinarioRepository.findById(20L)).thenReturn(Optional.of(veterinarioSemClinica()));
 
-		consultaService.criar(requestSemVeterinarioEClinica("AG"), veterinarioPrincipal(20L));
+		consultaService.criar(requestSemVeterinarioEClinica(), veterinarioPrincipal(20L));
 
 		verify(consultaRepository).save(argThat(consulta ->
 				consulta.getVeterinario().getId().equals(20L)
@@ -163,7 +167,9 @@ class ConsultaServiceTest {
 				"EP",
 				10L,
 				20L,
-				30L
+				30L,
+				null,
+				new BigDecimal("150.00")
 		);
 		var principal = veterinarioPrincipal(20L);
 
@@ -172,6 +178,7 @@ class ConsultaServiceTest {
 		assertEquals("EP", consulta.getStatus());
 		assertEquals("REMOTA", consulta.getModalidade());
 		assertEquals("Narrativa atualizada", consulta.getTranscricao());
+		assertEquals(new BigDecimal("150.00"), consulta.getValorConsulta());
 		verify(clinicalAccessService).exigirEscritaClinicaVeterinario(principal, consulta);
 		verify(consultaRepository).save(consulta);
 	}
@@ -245,12 +252,14 @@ class ConsultaServiceTest {
 				1L, "Dra Vera", "vera@arkive.com", "$2a$10$hash",
 				br.com.fiap.arkive.entity.TipoUsuario.VETERINARIO, "S", false, null, 20L, null
 		);
-		when(consultaRepository.buscar(null, 20L, null, null, null, org.springframework.data.domain.Pageable.unpaged()))
+		when(consultaRepository.buscar(null, null, null, null, null, null, 20L, null, null, null,
+				org.springframework.data.domain.Pageable.unpaged()))
 				.thenReturn(org.springframework.data.domain.Page.empty());
 
 		consultaService.listarAutorizado(null, null, null, null, null, org.springframework.data.domain.Pageable.unpaged(), principal);
 
-		verify(consultaRepository).buscar(null, 20L, null, null, null, org.springframework.data.domain.Pageable.unpaged());
+		verify(consultaRepository).buscar(null, null, null, null, null, null, 20L, null, null, null,
+				org.springframework.data.domain.Pageable.unpaged());
 	}
 
 	@Test
@@ -263,7 +272,36 @@ class ConsultaServiceTest {
 		var resultado = consultaService.listarAutorizado(null, 22L, null, null, null, org.springframework.data.domain.Pageable.unpaged(), principal);
 
 		assertEquals(0, resultado.getTotalElements());
-		verify(consultaRepository, never()).buscar(null, 22L, null, null, null, org.springframework.data.domain.Pageable.unpaged());
+		verify(consultaRepository, never()).buscar(null, null, null, null, null, null, 22L, null, null, null,
+				org.springframework.data.domain.Pageable.unpaged());
+	}
+
+	@Test
+	void filtrosNovosSaoCombinadosSemRemoverEscopoDoVeterinario() {
+		var principal = veterinarioPrincipal(20L);
+		LocalDateTime inicio = LocalDateTime.parse("2026-10-01T00:00:00");
+		LocalDateTime fim = LocalDateTime.parse("2026-10-31T23:59:59");
+		when(consultaRepository.buscar(321L, "Epona", "ARK-PET-ABC", inicio, fim,
+				10L, 20L, 30L, "FI", "PRESENCIAL", org.springframework.data.domain.Pageable.unpaged()))
+				.thenReturn(org.springframework.data.domain.Page.empty());
+
+		consultaService.listarAutorizado(321L, " Epona ", " ARK-PET-ABC ", inicio, fim,
+				10L, null, 30L, "FI", "PRESENCIAL", org.springframework.data.domain.Pageable.unpaged(), principal);
+
+		verify(consultaRepository).buscar(321L, "Epona", "ARK-PET-ABC", inicio, fim,
+				10L, 20L, 30L, "FI", "PRESENCIAL", org.springframework.data.domain.Pageable.unpaged());
+	}
+
+	@Test
+	void intervaloInvertidoEhRejeitadoAntesDaConsultaAoBanco() {
+		LocalDateTime inicio = LocalDateTime.parse("2026-10-31T23:59:59");
+		LocalDateTime fim = LocalDateTime.parse("2026-10-01T00:00:00");
+
+		BusinessException exception = assertThrows(BusinessException.class, () -> consultaService.listarAutorizado(
+				null, null, null, inicio, fim, null, null, null, null, null,
+				org.springframework.data.domain.Pageable.unpaged(), veterinarioPrincipal(20L)));
+
+		assertEquals("Data e hora inicial nao podem ser posteriores a data e hora final.", exception.getMessage());
 	}
 
 	@Test
@@ -278,6 +316,33 @@ class ConsultaServiceTest {
 		consultaService.buscarPorIdAutorizado(1L, principal);
 
 		verify(clinicalAccessService).exigirLeituraConsulta(principal, consulta);
+	}
+
+	@Test
+	void leituraClinicaDeOutroVeterinarioRedigeValorSemOcultarConsulta() {
+		Consulta consulta = consulta("FI");
+		consulta.setId(1L);
+		consulta.setMotivo("Acompanhamento clinico compartilhado");
+		consulta.setValorConsulta(new BigDecimal("200.00"));
+		consulta.getVeterinario().setId(21L);
+		when(consultaRepository.findById(1L)).thenReturn(Optional.of(consulta));
+
+		var response = consultaService.buscarPorIdAutorizado(1L, veterinarioPrincipal(20L));
+
+		assertEquals("Acompanhamento clinico compartilhado", response.motivo());
+		assertNull(response.valorConsulta());
+	}
+
+	@Test
+	void leituraDaConsultaPropriaPreservaZeroRegistrado() {
+		Consulta consulta = consulta("FI");
+		consulta.setId(1L);
+		consulta.setValorConsulta(new BigDecimal("0.00"));
+		when(consultaRepository.findById(1L)).thenReturn(Optional.of(consulta));
+
+		var response = consultaService.buscarPorIdAutorizado(1L, veterinarioPrincipal(20L));
+
+		assertEquals(new BigDecimal("0.00"), response.valorConsulta());
 	}
 
 	@org.junit.jupiter.params.ParameterizedTest
@@ -320,7 +385,7 @@ class ConsultaServiceTest {
 		Veterinario vet = veterinario();
 		vet.getClinica().setEndereco("Rua da Clinica, 10");
 		when(veterinarioRepository.findById(20L)).thenReturn(Optional.of(vet));
-		var response = consultaService.criar(requestSemVeterinarioEClinica("AG"), veterinarioPrincipal(20L));
+		var response = consultaService.criar(requestSemVeterinarioEClinica(), veterinarioPrincipal(20L));
 		var captor = org.mockito.ArgumentCaptor.forClass(Consulta.class);
 		verify(consultaRepository).save(captor.capture());
 		vet.getClinica().setEndereco("Novo endereco");
@@ -346,7 +411,7 @@ class ConsultaServiceTest {
 	@Test
 	void presencialSemClinicaAceitaEnderecoNulo() {
 		when(veterinarioRepository.findById(20L)).thenReturn(Optional.of(veterinarioSemClinica()));
-		org.junit.jupiter.api.Assertions.assertNull(consultaService.criar(requestSemVeterinarioEClinica("AG"), veterinarioPrincipal(20L)).endereco());
+		org.junit.jupiter.api.Assertions.assertNull(consultaService.criar(requestSemVeterinarioEClinica(), veterinarioPrincipal(20L)).endereco());
 	}
 
 	@Test
@@ -387,7 +452,7 @@ class ConsultaServiceTest {
 		);
 	}
 
-	private ConsultaRequest requestSemVeterinario(String status) {
+	private ConsultaRequest requestSemVeterinario() {
 		return new ConsultaRequest(
 				LocalDateTime.now(clock),
 				"PRESENCIAL",
@@ -396,14 +461,14 @@ class ConsultaServiceTest {
 				null,
 				null,
 				null,
-				status,
+				"AG",
 				10L,
 				null,
 				30L
 		);
 	}
 
-	private ConsultaRequest requestSemVeterinarioEClinica(String status) {
+	private ConsultaRequest requestSemVeterinarioEClinica() {
 		return new ConsultaRequest(
 				LocalDateTime.now(clock),
 				"PRESENCIAL",
@@ -412,7 +477,7 @@ class ConsultaServiceTest {
 				null,
 				null,
 				null,
-				status,
+				"AG",
 				10L,
 				null,
 				null

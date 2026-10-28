@@ -146,9 +146,26 @@ class TranscricaoServiceTest {
 	}
 
 	@Test
-	void somenteVeterinarioPodeTranscrever() {
+	void responsavelPodeTranscreverSemAlterarIntegracao() {
+		when(gateway.transcrever(any(), any(), any(), any(), any())).thenReturn("Texto revisavel");
+
+		var response = service.transcrever(wav("relato.wav", "audio/wav"), "pt-BR", responsavel());
+
+		assertEquals("Texto revisavel", response.transcricao());
+		verify(gateway).transcrever(any(), eq("relato.wav"), eq("audio/wav"),
+				eq(SupportedAudioFormat.WAV), eq(IdiomaTranscricao.PT_BR));
+	}
+
+	@Test
+	void rejeitaPerfisAdministrativosEPrincipaisMalformados() {
 		assertThrows(AccessDeniedException.class,
-				() -> service.transcrever(wav("consulta.wav", "audio/wav"), "pt-BR", responsavel()));
+				() -> service.transcrever(wav("consulta.wav", "audio/wav"), "pt-BR", sysadmin()));
+		assertThrows(AccessDeniedException.class,
+				() -> service.transcrever(wav("consulta.wav", "audio/wav"), "pt-BR", responsavelSemId()));
+		assertThrows(AccessDeniedException.class,
+				() -> service.transcrever(wav("consulta.wav", "audio/wav"), "pt-BR", veterinarioSemId()));
+		assertThrows(AccessDeniedException.class,
+				() -> service.transcrever(wav("consulta.wav", "audio/wav"), "pt-BR", null));
 
 		verify(gateway, never()).transcrever(any(), any(), any(), any(), any());
 	}
@@ -167,5 +184,17 @@ class TranscricaoServiceTest {
 
 	private UsuarioPrincipal responsavel() {
 		return new UsuarioPrincipal(2L, "Joao", "joao@arkive.com", "$2a$10$hash", TipoUsuario.RESPONSAVEL, "S", false, 20L, null, null);
+	}
+
+	private UsuarioPrincipal responsavelSemId() {
+		return new UsuarioPrincipal(2L, "Joao", "joao@arkive.com", "$2a$10$hash", TipoUsuario.RESPONSAVEL, "S");
+	}
+
+	private UsuarioPrincipal veterinarioSemId() {
+		return new UsuarioPrincipal(1L, "Dra Vera", "vera@arkive.com", "$2a$10$hash", TipoUsuario.VETERINARIO, "S");
+	}
+
+	private UsuarioPrincipal sysadmin() {
+		return new UsuarioPrincipal(3L, "Admin", "admin@arkive.com", "$2a$10$hash", TipoUsuario.SYSADMIN, "S");
 	}
 }

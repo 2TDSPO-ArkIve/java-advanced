@@ -16,20 +16,25 @@ import java.time.LocalDate;
 @Profile("!local-nodb")
 public interface AnimalRepository extends JpaRepository<Animal, Long> {
 
+	Optional<Animal> findByArkivePatientId(String arkivePatientId);
+
+	boolean existsByArkivePatientId(String arkivePatientId);
+
 	@Lock(LockModeType.PESSIMISTIC_WRITE)
 	@Query("select a from Animal a where a.id = :id")
 	Optional<Animal> buscarParaAtualizarVinculos(@Param("id") Long id);
 
 	@Query("""
 			select a from Animal a
-			where (:nome is null or lower(a.nome) like lower(concat('%', :nome, '%')))
+			where (:busca is null or lower(a.nome) like lower(concat('%', :busca, '%'))
+			or lower(a.arkivePatientId) like lower(concat('%', :busca, '%')))
 			and (:especieId is null or a.especie.id = :especieId)
 			and (:racaId is null or a.raca.id = :racaId)
 			and (:clinicaId is null or a.clinica.id = :clinicaId)
 			and (:ativo is null or a.ativo = :ativo)
 			""")
 	Page<Animal> buscar(
-			@Param("nome") String nome,
+			@Param("busca") String busca,
 			@Param("especieId") Long especieId,
 			@Param("racaId") Long racaId,
 			@Param("clinicaId") Long clinicaId,
@@ -38,13 +43,25 @@ public interface AnimalRepository extends JpaRepository<Animal, Long> {
 	);
 
 	@Query("""
-			select distinct a from Animal a
-			join AnimalResponsavel ar on ar.animal = a
-			where ar.responsavel.id = :responsavelId
-			and ar.ativo = 'S'
-			and ar.id.dataInicio <= :dataAtual
-			and (ar.dataFim is null or ar.dataFim >= :dataAtual)
-			and (:nome is null or lower(a.nome) like lower(concat('%', :nome, '%')))
+			select a from Animal a
+			where (exists (
+				select ar from AnimalResponsavel ar
+				where ar.animal = a
+				and ar.responsavel.id = :responsavelId
+				and ar.ativo = 'S'
+				and ar.id.dataInicio <= :dataAtual
+				and (ar.dataFim is null or ar.dataFim >= :dataAtual)
+			)
+			or exists (
+				select pa from PatientAccess pa
+				where pa.animal = a
+				and pa.usuario.responsavel.id = :responsavelId
+				and pa.accessRole = br.com.fiap.arkive.entity.PatientAccessRole.RESPONSAVEL
+				and pa.revokedAt is null
+				and (pa.expiresAt is null or pa.expiresAt > current_timestamp)
+			))
+			and (:busca is null or lower(a.nome) like lower(concat('%', :busca, '%'))
+			or lower(a.arkivePatientId) like lower(concat('%', :busca, '%')))
 			and (:especieId is null or a.especie.id = :especieId)
 			and (:racaId is null or a.raca.id = :racaId)
 			and (:clinicaId is null or a.clinica.id = :clinicaId)
@@ -53,7 +70,7 @@ public interface AnimalRepository extends JpaRepository<Animal, Long> {
 	Page<Animal> buscarParaResponsavel(
 			@Param("responsavelId") Long responsavelId,
 			@Param("dataAtual") LocalDate dataAtual,
-			@Param("nome") String nome,
+			@Param("busca") String busca,
 			@Param("especieId") Long especieId,
 			@Param("racaId") Long racaId,
 			@Param("clinicaId") Long clinicaId,
@@ -62,7 +79,7 @@ public interface AnimalRepository extends JpaRepository<Animal, Long> {
 	);
 
 	@Query("""
-			select distinct a from Animal a
+			select a from Animal a
 			where a.ativo = 'S'
 			and :veterinarioId is not null
 			and (
@@ -76,8 +93,17 @@ public interface AnimalRepository extends JpaRepository<Animal, Long> {
 					:clinicaVeterinarioId is not null
 					and a.clinica.id = :clinicaVeterinarioId
 				)
+				or exists (
+					select pa from PatientAccess pa
+					where pa.animal = a
+					and pa.usuario.veterinario.id = :veterinarioId
+					and pa.accessRole = br.com.fiap.arkive.entity.PatientAccessRole.VETERINARIO
+					and pa.revokedAt is null
+					and (pa.expiresAt is null or pa.expiresAt > current_timestamp)
+				)
 			)
-			and (:nome is null or lower(a.nome) like lower(concat('%', :nome, '%')))
+			and (:busca is null or lower(a.nome) like lower(concat('%', :busca, '%'))
+			or lower(a.arkivePatientId) like lower(concat('%', :busca, '%')))
 			and (:especieId is null or a.especie.id = :especieId)
 			and (:racaId is null or a.raca.id = :racaId)
 			and (:clinicaId is null or a.clinica.id = :clinicaId)
@@ -86,7 +112,7 @@ public interface AnimalRepository extends JpaRepository<Animal, Long> {
 	Page<Animal> buscarParaVeterinario(
 			@Param("veterinarioId") Long veterinarioId,
 			@Param("clinicaVeterinarioId") Long clinicaVeterinarioId,
-			@Param("nome") String nome,
+			@Param("busca") String busca,
 			@Param("especieId") Long especieId,
 			@Param("racaId") Long racaId,
 			@Param("clinicaId") Long clinicaId,
@@ -98,13 +124,14 @@ public interface AnimalRepository extends JpaRepository<Animal, Long> {
 			select a from Animal a
 			where a.clinica.id = :clinicaId
 			and a.ativo = 'S'
-			and (:nome is null or lower(a.nome) like lower(concat('%', :nome, '%')))
+			and (:busca is null or lower(a.nome) like lower(concat('%', :busca, '%'))
+			or lower(a.arkivePatientId) like lower(concat('%', :busca, '%')))
 			and (:especieId is null or a.especie.id = :especieId)
 			and (:racaId is null or a.raca.id = :racaId)
 			""")
 	Page<Animal> buscarAtivosParaClinica(
 			@Param("clinicaId") Long clinicaId,
-			@Param("nome") String nome,
+			@Param("busca") String busca,
 			@Param("especieId") Long especieId,
 			@Param("racaId") Long racaId,
 			Pageable pageable

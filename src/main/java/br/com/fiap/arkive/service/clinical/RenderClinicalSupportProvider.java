@@ -57,7 +57,8 @@ public class RenderClinicalSupportProvider implements ClinicalSupportProvider {
 				|| response.insightIa() == null || response.insightIa().isBlank()
 				|| response.confianca() == null
 				|| response.confianca() < 0
-				|| response.confianca() > 100) {
+				|| response.confianca() > 100
+				|| response.tokens() != null && response.tokens().possuiValorNegativo()) {
 			throw new BusinessException("Resposta invalida do motor clinico.", HttpStatus.BAD_GATEWAY);
 		}
 	}

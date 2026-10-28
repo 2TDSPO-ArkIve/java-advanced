@@ -10,6 +10,7 @@ public record FeedbackNpsResponse(
 		String responsavelNome,
 		Long animalId,
 		String animalNome,
+		String animalArkivePatientId,
 		Long clinicaId,
 		String clinicaNome,
 		Long veterinarioId,
@@ -19,11 +20,20 @@ public record FeedbackNpsResponse(
 		String comentario,
 		LocalDateTime dataFeedback
 ) {
+	public FeedbackNpsResponse(Long id, Long responsavelId, String responsavelNome, Long animalId,
+			String animalNome, Long clinicaId, String clinicaNome, Long veterinarioId,
+			String veterinarioNome, Long consultaId, Integer nota, String comentario,
+			LocalDateTime dataFeedback) {
+		this(id, responsavelId, responsavelNome, animalId, animalNome, null, clinicaId, clinicaNome,
+				veterinarioId, veterinarioNome, consultaId, nota, comentario, dataFeedback);
+	}
+
 	public static FeedbackNpsResponse fromEntity(FeedbackNps feedback) {
 		Long responsavelId = feedback.getResponsavel() == null ? null : feedback.getResponsavel().getId();
 		String responsavelNome = feedback.getResponsavel() == null ? null : feedback.getResponsavel().getNome();
 		Long animalId = feedback.getAnimal() == null ? null : feedback.getAnimal().getId();
 		String animalNome = feedback.getAnimal() == null ? null : feedback.getAnimal().getNome();
+		String animalArkivePatientId = feedback.getAnimal() == null ? null : feedback.getAnimal().getArkivePatientId();
 		Long clinicaId = feedback.getClinica() == null ? null : feedback.getClinica().getId();
 		String clinicaNome = feedback.getClinica() == null ? null : feedback.getClinica().getNome();
 		Long veterinarioId = feedback.getVeterinario() == null ? null : feedback.getVeterinario().getId();
@@ -35,6 +45,7 @@ public record FeedbackNpsResponse(
 				responsavelNome,
 				animalId,
 				animalNome,
+				animalArkivePatientId,
 				clinicaId,
 				clinicaNome,
 				veterinarioId,

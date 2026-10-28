@@ -52,8 +52,15 @@ public class Consulta {
 	@Column(name = "DS_OBSERVACAO")
 	private String observacao;
 
+	@Lob
+	@Column(name = "DS_OBS_RESPONSAVEL")
+	private String observacaoResponsavel;
+
 	@Column(name = "KG_PESO", precision = 6, scale = 2)
 	private BigDecimal peso;
+
+	@Column(name = "VL_CONSULTA", precision = 10, scale = 2)
+	private BigDecimal valorConsulta;
 
 	@Lob
 	@Column(name = "DS_TRANSCRICAO")
@@ -122,12 +129,28 @@ public class Consulta {
 		this.observacao = observacao;
 	}
 
+	public String getObservacaoResponsavel() {
+		return observacaoResponsavel;
+	}
+
+	public void setObservacaoResponsavel(String observacaoResponsavel) {
+		this.observacaoResponsavel = observacaoResponsavel;
+	}
+
 	public BigDecimal getPeso() {
 		return peso;
 	}
 
 	public void setPeso(BigDecimal peso) {
 		this.peso = peso;
+	}
+
+	public BigDecimal getValorConsulta() {
+		return valorConsulta;
+	}
+
+	public void setValorConsulta(BigDecimal valorConsulta) {
+		this.valorConsulta = valorConsulta;
 	}
 
 	public String getTranscricao() {

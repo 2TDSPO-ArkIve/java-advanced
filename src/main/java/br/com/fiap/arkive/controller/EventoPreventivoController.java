@@ -3,6 +3,8 @@ package br.com.fiap.arkive.controller;
 import br.com.fiap.arkive.dto.request.EventoPreventivoRequest;
 import br.com.fiap.arkive.dto.response.EventoPreventivoResponse;
 import br.com.fiap.arkive.service.EventoPreventivoService;
+import br.com.fiap.arkive.security.UsuarioPrincipal;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import jakarta.validation.Valid;
 import org.springframework.context.annotation.Profile;
 import org.springframework.data.domain.Page;
@@ -31,8 +33,8 @@ public class EventoPreventivoController {
 	}
 
 	@PostMapping
-	public ResponseEntity<EventoPreventivoResponse> criar(@Valid @RequestBody EventoPreventivoRequest request) {
-		return ResponseEntity.status(HttpStatus.CREATED).body(eventoService.criar(request));
+	public ResponseEntity<EventoPreventivoResponse> criar(@Valid @RequestBody EventoPreventivoRequest request, @AuthenticationPrincipal UsuarioPrincipal principal) {
+		return ResponseEntity.status(HttpStatus.CREATED).body(eventoService.criar(request, principal));
 	}
 
 	@GetMapping
@@ -42,24 +44,24 @@ public class EventoPreventivoController {
 			@RequestParam(required = false) Long consultaId,
 			@RequestParam(required = false) String status,
 			@RequestParam(required = false) String alerta,
-			Pageable pageable
+			Pageable pageable, @AuthenticationPrincipal UsuarioPrincipal principal
 	) {
-		return eventoService.listar(animalId, protocoloId, consultaId, status, alerta, pageable);
+		return eventoService.listar(animalId, protocoloId, consultaId, status, alerta, pageable, principal);
 	}
 
 	@GetMapping("/{id}")
-	public EventoPreventivoResponse buscarPorId(@PathVariable Long id) {
-		return eventoService.buscarPorId(id);
+	public EventoPreventivoResponse buscarPorId(@PathVariable Long id, @AuthenticationPrincipal UsuarioPrincipal principal) {
+		return eventoService.buscarPorId(id, principal);
 	}
 
 	@PutMapping("/{id}")
-	public EventoPreventivoResponse atualizar(@PathVariable Long id, @Valid @RequestBody EventoPreventivoRequest request) {
-		return eventoService.atualizar(id, request);
+	public EventoPreventivoResponse atualizar(@PathVariable Long id, @Valid @RequestBody EventoPreventivoRequest request, @AuthenticationPrincipal UsuarioPrincipal principal) {
+		return eventoService.atualizar(id, request, principal);
 	}
 
 	@DeleteMapping("/{id}")
-	public ResponseEntity<Void> excluir(@PathVariable Long id) {
-		eventoService.excluir(id);
+	public ResponseEntity<Void> excluir(@PathVariable Long id, @AuthenticationPrincipal UsuarioPrincipal principal) {
+		eventoService.excluir(id, principal);
 		return ResponseEntity.noContent().build();
 	}
 
