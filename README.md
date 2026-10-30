@@ -1,6 +1,8 @@
-# ArkIve
+# ArkIve — Backend Java
 
-O **ArkIve** é uma plataforma de apoio clínico veterinário desenvolvida em Spring Boot. A aplicação organiza dados de animais, responsáveis, clínicas, consultas, diagnósticos, prescrições, adesão ao tratamento e outros eventos da jornada de saúde do pet.
+**FIAP | Challenge ArkIve | Java Advanced e integração Oracle PL/SQL**
+
+O **ArkIve** é uma plataforma de apoio clínico veterinário. Este repositório contém o **backend Java com Spring Boot**, responsável pela API REST, interface web administrativa, autenticação, regras de negócio e persistência Oracle. A aplicação organiza dados de animais, responsáveis, clínicas, consultas, diagnósticos, prescrições, adesão ao tratamento e outros eventos da jornada de saúde do pet.
 
 O motor de inteligência artificial atua como ferramenta assistiva: produz hipóteses, indicação de severidade, confiança, fontes e insights para apoiar a análise. Ele não substitui o veterinário, não confirma autonomamente um diagnóstico e não prescreve medicamentos. A conclusão clínica e a decisão final continuam sob responsabilidade do profissional veterinário.
 
@@ -8,9 +10,11 @@ O motor de inteligência artificial atua como ferramenta assistiva: produz hipó
 
 O ArkIve busca reduzir a fragmentação do histórico veterinário. A solução reúne informações clínicas, preventivas e terapêuticas em uma base longitudinal, aplica regras de acesso conforme o perfil do usuário e oferece apoio à tomada de decisão sem retirar a autonomia do veterinário.
 
-## Sprint 3 — Java Advanced
+## Escopo da entrega
 
-Esta aplicação Spring Boot foi preparada para os requisitos da **FIAP Java Advanced — 3º Sprint**, com ênfase em:
+### Sprint 4 — Java Advanced
+
+A base do projeto atende aos requisitos de **Java Advanced — Sprint 4**, com ênfase em:
 
 - frontend web e camada de visualização com Thymeleaf;
 - versionamento do banco Oracle com Flyway;
@@ -39,10 +43,12 @@ Esta aplicação Spring Boot foi preparada para os requisitos da **FIAP Java Adv
 | Spring Security | Form login, HTTP Basic, autorização por perfil e sessão web |
 | BCrypt | Hash das senhas persistidas |
 | Spring Data JPA / Hibernate | Persistência e consultas ao banco |
+| Spring JDBC / `SimpleJdbcCall` | Execução de procedures empacotadas no Oracle e leitura de parâmetros `OUT` |
+| Oracle PL/SQL | Package, procedures, função e trigger de indicadores |
 | Bean Validation | Validação declarativa de DTOs e formulários |
 | Flyway | Criação e evolução versionada do schema |
 | Oracle Database / `ojdbc11` | Banco da aplicação no perfil padrão `oracle` |
-| Maven Wrapper 3.9.15 | Build reproduzível sem instalação manual do Maven |
+| Maven Wrapper (Maven 3.9.15) | Execução do build e testes; Maven instalado também é aceito |
 | Springdoc OpenAPI 2.8.9 | Documentação complementar da API |
 | Apache PDFBox 3.0.8 | Geração de históricos e resumos clínicos em PDF |
 | Azure Speech SDK 1.51.0 | Transcrição opcional de áudio clínico |
@@ -57,26 +63,30 @@ O suporte clínico usa ainda o `RestClient` do Spring para consultar o motor cl�
 O projeto separa apresentação, regras de negócio e persistência. Os mesmos services são usados pelos controllers REST e, quando aplicável, pelos controllers MVC.
 
 ```text
-Navegador / cliente REST
-          │
-          ▼
-Controller MVC + Thymeleaf / REST Controller
-          │
-          ▼
-Service + regras de negócio + autorização por escopo
-          │
-          ▼
-Spring Data Repository ──► JPA/Hibernate ──► Oracle
-          │
-          ├──► motor clínico externo
-          └──► Azure Speech + FFmpeg (transcrição opcional)
+Navegador / Mobile / Postman
+             │
+             ▼
+    Controllers REST e MVC
+       (Thymeleaf web)
+             │
+             ▼
+ Service + autorização por perfil e escopo
+             │
+             ├──► Spring Data JPA / Hibernate ──► Oracle (tabelas)
+             │
+             ├──► Spring JDBC / SimpleJdbcCall ──► Oracle
+             │                                     └── PKG_ARKIVE_INDICADORES
+             │
+             ├──► Motor clínico externo (IA assistiva)
+             │
+             └──► Azure Speech + FFmpeg (transcrição opcional)
 ```
 
 | Área | Responsabilidade |
 | --- | --- |
 | `controller` | Endpoints REST e controllers web MVC |
 | `service` | Casos de uso, transações, validações e integrações |
-| `repository` | Consultas e persistência com Spring Data JPA |
+| `repository` | Consultas JPA e chamadas às procedures Oracle via Spring JDBC |
 | `entity` | Mapeamento das tabelas Oracle |
 | `dto` | Contratos de entrada, saída e formulários |
 | `security` / `config` | Autenticação, autorização, senha, CORS e integrações |
@@ -96,7 +106,7 @@ Os usuários são carregados do banco por um `UserDetailsService` e autenticados
 
 O `SecurityConfig` restringe rotas por perfil. As áreas `/sysadmin/**` exigem `SYSADMIN`; `/admin/**` aceita `SYSADMIN` ou `ADMIN_CLINICA`. A matriz REST também protege explicitamente recursos administrativos: por exemplo, `/api/clinicas/**` e o CRUD `/api/veterinarios/**` são exclusivos de `SYSADMIN`. A exceção específica `GET /api/veterinarios/me`, declarada antes da regra administrativa, permite apenas ao `VETERINARIO` autenticado consultar o próprio perfil a partir do vínculo presente no principal, sem aceitar ID do cliente.
 
-Além da proteção de rota, `ClinicalAccessService` e os services clínicos validam propriedade e escopo. Assim, o veterinário só altera consultas e prescrições sob sua responsabilidade, o administrador visualiza dados da própria clínica e o responsável acessa vínculos permitidos.
+Além da proteção de rota, `ClinicalAccessService` e os services clínicos validam propriedade e escopo. Assim, o veterinário só altera consultas e prescrições sob sua responsabilidade, o administrador visualiza dados da própria clínica e o responsável acessa vínculos permitidos. Nos indicadores Oracle, a leitura por animal reutiliza `ClinicalAccessService`; a contagem global de pacientes ativos é exclusiva de `SYSADMIN`.
 
 Contas provisionadas automaticamente para clínica ou veterinário recebem uma credencial inicial temporária e ficam marcadas para troca obrigatória. O `MandatoryPasswordChangeFilter` impede o restante da navegação até a alteração em `/alterar-senha`. A nova senha deve ter de 8 a 72 caracteres, com pelo menos uma letra maiúscula, uma minúscula e um número.
 
@@ -258,19 +268,19 @@ Entradas inválidas da API recebem respostas pelo tratamento centralizado de exc
 
 ## Flyway e banco de dados
 
-O **Flyway controla o versionamento do schema Oracle**. As migrations ficam em `src/main/resources/db/migration` e são aplicadas em ordem durante a inicialização do perfil `oracle`.
+O **Flyway controla o versionamento da estrutura relacional Oracle utilizada pelo backend**. As migrations ficam em `src/main/resources/db/migration` e são aplicadas em ordem durante a inicialização do perfil `oracle`. Os objetos PL/SQL de indicadores, criados diretamente no schema de validação, possuem uma etapa de provisionamento separada, detalhada acima.
 
 | Versão | Migration | Objetivo |
 | --- | --- | --- |
-| V1 | `V1__create_arkive_schema.sql` | Cria o schema-base com 23 tabelas, chaves, constraints, relacionamentos, colunas identity, comentários e índices |
-| V2 | `V2__evolve_usuario_for_security.sql` | Evolui usuários para os quatro perfis, adiciona nome e vínculo de clínica e ajusta constraints de segurança |
-| V3 | `V3__add_usuario_password_lifecycle.sql` | Adiciona controle de troca obrigatória e data da última troca de senha |
-| V4 | `V4__add_diagnostico_fontes_ia.sql` | Adiciona as fontes consultadas pelo motor clínico ao diagnóstico |
-| V5 | `V5__add_animal_veterinario_cadastro.sql` | Registra o veterinário que cadastrou o animal, com chave estrangeira e índice |
-| V6 | `V6__add_animal_birth_date_and_consulta_address.sql` | Adiciona data de nascimento do animal e endereço da consulta |
-| V7 | `V7__add_patient_identity_and_sharing.sql` | Adiciona a identidade ArkIve do paciente e o compartilhamento de acesso |
-| V8 | `V8__backfill_arkive_patient_ids.java` | Preenche identificadores ArkIve para pacientes existentes |
-| V9 | `V9__enforce_arkive_patient_id.sql` | Torna obrigatório e único o identificador ArkIve após o preenchimento |
+| V1  | `V1__create_arkive_schema.sql` | Cria o schema-base com 23 tabelas, chaves, constraints, relacionamentos, colunas identity, comentários e índices |
+| V2  | `V2__evolve_usuario_for_security.sql` | Evolui usuários para os quatro perfis, adiciona nome e vínculo de clínica e ajusta constraints de segurança |
+| V3  | `V3__add_usuario_password_lifecycle.sql` | Adiciona controle de troca obrigatória e data da última troca de senha |
+| V4  | `V4__add_diagnostico_fontes_ia.sql` | Adiciona as fontes consultadas pelo motor clínico ao diagnóstico |
+| V5  | `V5__add_animal_veterinario_cadastro.sql` | Registra o veterinário que cadastrou o animal, com chave estrangeira e índice |
+| V6  | `V6__add_animal_birth_date_and_consulta_address.sql` | Adiciona data de nascimento do animal e endereço da consulta |
+| V7  | `V7__add_patient_identity_and_sharing.sql` | Adiciona a identidade ArkIve do paciente e o compartilhamento de acesso |
+| V8  | `V8__backfill_arkive_patient_ids.java` | Preenche identificadores ArkIve para pacientes existentes |
+| V9  | `V9__enforce_arkive_patient_id.sql` | Torna obrigatório e único o identificador ArkIve após o preenchimento |
 | V10 | `V10__add_notifications.sql` | Adiciona notificações persistidas da jornada do paciente |
 | V11 | `V11__correct_ai_diagnosis_validation_semantics.sql` | Corrige a semântica histórica da avaliação veterinária de insights de IA |
 | V12 | `V12__add_diagnostico_referencias_rag.sql` | Persiste separadamente os títulos das referências RAG |
@@ -290,7 +300,7 @@ No perfil Oracle:
 - `spring.jpa.hibernate.ddl-auto=validate`, portanto o Hibernate valida o modelo e não gera o schema;
 - `spring.sql.init.mode=never`, evitando inicialização paralela por scripts SQL do Spring.
 
-As migrations não inserem usuários ou credenciais de demonstração.
+As migrations não inserem usuários ou credenciais de demonstração. Elas também **não instalam automaticamente** `PKG_ARKIVE_INDICADORES` nem `TRG_ARKIVE_CONS_PESO`.
 
 ## Pré-requisitos
 
@@ -299,6 +309,7 @@ As migrations não inserem usuários ou credenciais de demonstração.
 - JDK 17 disponível em `JAVA_HOME` ou no `PATH`;
 - acesso à internet no primeiro uso do Maven Wrapper e para baixar dependências;
 - uma instância Oracle e um usuário/schema da aplicação;
+- para os endpoints `/api/indicadores/**`, o package e o trigger instalados no Oracle conforme a seção de integração PL/SQL;
 - acesso ao motor clínico externo para demonstrar a etapa de suporte por IA.
 
 O repositório não fixa uma versão específica do Oracle. A instância deve aceitar os recursos usados nas migrations, como colunas `GENERATED BY DEFAULT AS IDENTITY`, constraints com `IS JSON`, CLOBs, índices e chaves estrangeiras.
@@ -313,7 +324,7 @@ A narrativa da consulta pode ser enviada como texto sem Azure Speech. Assim, Azu
 
 ## Variáveis de ambiente
 
-Nenhum valor real de credencial deve ser versionado. O arquivo `.env.example` serve apenas como referência de nomes.
+Nenhum valor real de credencial deve ser versionado. O arquivo `.env.example` existente no repositório serve como referência inicial de nomes; caso esteja indisponível em uma cópia da entrega, consulte a tabela abaixo e defina as variáveis diretamente no ambiente.
 
 | Variável | Finalidade | Obrigatória |
 | --- | --- | --- |
@@ -321,6 +332,7 @@ Nenhum valor real de credencial deve ser versionado. O arquivo `.env.example` se
 | `ARKIVE_DB_URL` | URL JDBC Oracle | Sim no perfil `oracle` |
 | `ARKIVE_DB_USERNAME` | Usuário/schema Oracle | Sim no perfil `oracle` |
 | `ARKIVE_DB_PASSWORD` | Senha do usuário Oracle | Sim no perfil `oracle` |
+| `ARKIVE_ORACLE_INDICADORES_SCHEMA` | Proprietário do package `PKG_ARKIVE_INDICADORES`; padrão `RM561996` | Para outro proprietário de package |
 | `ARKIVE_JPA_SHOW_SQL` | Habilita log SQL; padrão `false` | Não |
 | `ARKIVE_CLINICAL_ENGINE_URL` | URL-base do motor clínico externo; existe uma URL padrão configurada | Não, se a URL padrão for usada |
 | `ARKIVE_CLINICAL_ENGINE_CONNECT_TIMEOUT` | Timeout de conexão com o motor clínico; padrão `10s` | Não |
@@ -340,6 +352,7 @@ Nenhum valor real de credencial deve ser versionado. O arquivo `.env.example` se
 3. Configure `ARKIVE_DB_URL`, `ARKIVE_DB_USERNAME` e `ARKIVE_DB_PASSWORD` fora do repositório.
 4. Inicie a aplicação com o perfil `oracle`.
 5. O Flyway cria a tabela de histórico e aplica automaticamente as migrations pendentes. O Hibernate valida o resultado antes de a aplicação ficar disponível.
+6. Para usar `/api/indicadores/**`, confirme que o package PL/SQL e o trigger foram instalados no schema correspondente e que o usuário JDBC tem as permissões necessárias. Essa etapa não é feita pelas migrations `V1`–`V19`.
 
 O repositório não define um script de criação do usuário Oracle nem exige comandos DBA específicos. Não é necessário executar as migrations manualmente.
 
@@ -428,7 +441,7 @@ docker build -t arkive .
 docker run --rm -p 8080:8080 --env-file .env arkive
 ```
 
-Crie o `.env` localmente a partir de `.env.example`, substitua os placeholders e não versione o arquivo com valores reais.
+Crie o `.env` localmente com as variáveis necessárias (o `.env.example` pode servir como modelo), substitua os placeholders e não versione o arquivo com valores reais. Se o package estiver em outro schema, inclua também `ARKIVE_ORACLE_INDICADORES_SCHEMA`.
 
 ## Acesso à aplicação
 
@@ -458,14 +471,17 @@ O repositório não contém contas de demonstração ou senhas públicas. Use o 
 
 ## Testes
 
-A última execução completa após o endurecimento da autorização REST apresentou:
+A execução completa informada após a integração das procedures Oracle apresentou:
 
 ```text
-Tests run: 561
+Tests run: 847
 Failures: 0
 Errors: 0
 Skipped: 0
+BUILD SUCCESS
 ```
+
+Esse total representa **execuções automatizadas de diferentes categorias**, não 847 testes unitários. Abrange testes unitários, de camada MVC e de integração simulada. O resultado acima foi registrado na implementação local; para uma nova entrega, reexecute a suíte e anexe o relatório Maven Surefire atualizado, em `target/surefire-reports`.
 
 Também foi validado o empacotamento em um JAR executável Spring Boot com:
 
@@ -473,8 +489,7 @@ Também foi validado o empacotamento em um JAR executável Spring Boot com:
 .\mvnw.cmd package -DskipTests
 ```
 
-Os testes usam H2 e cobrem controllers MVC/REST, Spring Security, ciclo de senha, serviços, autorização clínica, fluxos de consulta, prescrição/adesão, repositories, PDFs, transcrição e integração simulada com o motor clínico. Eles não substituem uma validação manual contra a instância Oracle configurada.
-
+Os testes automatizados utilizam JUnit 5, Mockito, MockMvc e, nas classes de integração JPA, H2. Cobrem controllers MVC/REST, Spring Security, ciclo de senha, serviços, autorização clínica, fluxos de consulta, prescrição/adesão, repositories, PDFs, transcrição e integração simulada com o motor clínico. Para os indicadores Oracle, foram adicionados testes específicos de `IndicadoresOracleRepository`, `IndicadoresService` e `IndicadoresController`, inclusive de autorização e retorno `503`. Esses testes não substituem a validação manual com Oracle real nem fornecem, por si sós, percentual de cobertura de código; o projeto não apresenta relatório JaCoCo configurado.
 
 ## Estrutura do projeto
 
@@ -502,6 +517,25 @@ src/
 └── test/
     ├── java/br/com/fiap/arkive/
     └── resources/fixtures/
+```
+
+### Componentes de indicadores Oracle
+
+Os arquivos principais da integração estão distribuídos entre as pastas `controller`, `service`, `repository`, `dto/response` e `exception`:
+
+```text
+src/main/java/br/com/fiap/arkive/
+├── controller/IndicadoresController.java
+├── service/IndicadoresService.java
+├── repository/IndicadoresOracleRepository.java
+├── dto/response/AnimalConsultasIndicadorResponse.java
+├── dto/response/PacientesAtivosIndicadorResponse.java
+└── exception/IndicadoresDatabaseException.java
+
+src/test/java/br/com/fiap/arkive/
+├── controller/IndicadoresControllerMvcTest.java
+├── service/IndicadoresServiceTest.java
+└── repository/IndicadoresOracleRepositoryTest.java
 ```
 
 Documentação complementar existente:
