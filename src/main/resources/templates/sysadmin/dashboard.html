@@ -1,117 +1,130 @@
 <!DOCTYPE html>
 <html lang="pt-BR" xmlns:th="http://www.thymeleaf.org">
 <head th:replace="~{fragments/head :: head(${pageTitle})}"></head>
-<body>
+<body class="sysadmin-dashboard-page">
 <div class="app-shell">
 	<aside th:replace="~{fragments/sidebar :: sidebar}"></aside>
 	<div class="app-content">
 		<header th:replace="~{fragments/header :: header(${pageTitle})}"></header>
-		<main class="main-content">
-			<section class="kpi-grid" aria-label="Indicadores globais">
-				<article class="kpi-card">
-					<p class="kpi-label">Clínicas ativas</p>
-					<strong th:text="${dashboard.clinicasAtivas}">0</strong>
+		<main class="main-content sysdash">
+			<section class="sysdash-intro" aria-labelledby="platform-overview-title">
+				<div>
+					<p class="sysdash-eyebrow">Administração global</p>
+					<h2 id="platform-overview-title">Panorama da Plataforma</h2>
+					<p>Acompanhe os principais indicadores da operação ArkIve.</p>
+				</div>
+				<span class="sysdash-context" aria-label="Escopo dos dados: toda a plataforma">
+					<svg aria-hidden="true" viewBox="0 0 24 24"><path d="M4 19V9m5 10V5m6 14v-7m5 7V3M2 19h20"/></svg>
+					Visão consolidada
+				</span>
+			</section>
+
+			<section class="sysdash-kpis" aria-label="Indicadores globais">
+				<article class="sysdash-kpi sysdash-kpi-clinics">
+					<div class="sysdash-kpi-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 21V5a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v16M2 21h20M8 7h5m-5 4h5m-5 4h2m9-6v12m-2-8h4"/></svg></div>
+					<div class="sysdash-kpi-copy"><p>Clínicas ativas</p><strong th:text="${dashboard.clinicasAtivas}">0</strong></div>
 				</article>
-				<article class="kpi-card">
-					<p class="kpi-label">Veterinários ativos</p>
-					<strong th:text="${dashboard.veterinariosAtivos}">0</strong>
+				<article class="sysdash-kpi sysdash-kpi-vets">
+					<div class="sysdash-kpi-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M5 21v-2a7 7 0 0 1 14 0v2m-7-7v7m-3-3h6"/></svg></div>
+					<div class="sysdash-kpi-copy"><p>Veterinários ativos</p><strong th:text="${dashboard.veterinariosAtivos}">0</strong></div>
 				</article>
-				<article class="kpi-card">
-					<p class="kpi-label">Responsáveis ativos</p>
-					<strong th:text="${dashboard.responsaveisAtivos}">0</strong>
+				<article class="sysdash-kpi sysdash-kpi-guardians">
+					<div class="sysdash-kpi-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="4"/><path d="M2 21v-2a7 7 0 0 1 14 0v2m1-10a4 4 0 0 1 0 8"/></svg></div>
+					<div class="sysdash-kpi-copy"><p>Responsáveis ativos</p><strong th:text="${dashboard.responsaveisAtivos}">0</strong></div>
 				</article>
-				<article class="kpi-card">
-					<p class="kpi-label">Animais ativos</p>
-					<strong th:text="${dashboard.animaisAtivos}">0</strong>
+				<article class="sysdash-kpi sysdash-kpi-animals">
+					<div class="sysdash-kpi-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="7" cy="8" r="2"/><circle cx="17" cy="8" r="2"/><circle cx="4" cy="13" r="2"/><circle cx="20" cy="13" r="2"/><path d="M12 10c-3 0-6 4-6 7a4 4 0 0 0 6 3 4 4 0 0 0 6-3c0-3-3-7-6-7Z"/></svg></div>
+					<div class="sysdash-kpi-copy"><p>Animais ativos</p><strong th:text="${dashboard.animaisAtivos}">0</strong></div>
 				</article>
-				<article class="kpi-card">
-					<p class="kpi-label">Consultas nos últimos 30 dias</p>
-					<strong th:text="${dashboard.consultasUltimos30Dias}">0</strong>
+				<article class="sysdash-kpi sysdash-kpi-appointments">
+					<div class="sysdash-kpi-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M16 3v4M8 3v4M3 10h18m-9 3v5m-2.5-2.5h5"/></svg></div>
+					<div class="sysdash-kpi-copy"><p>Consultas nos últimos 30 dias</p><strong th:text="${dashboard.consultasUltimos30Dias}">0</strong></div>
 				</article>
-				<article class="kpi-card">
-					<p class="kpi-label">Usuários ativos</p>
-					<strong th:text="${dashboard.usuariosAtivos}">0</strong>
+				<article class="sysdash-kpi sysdash-kpi-users">
+					<div class="sysdash-kpi-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="8" cy="8" r="3"/><circle cx="17" cy="9" r="2.5"/><path d="M2 20v-2a6 6 0 0 1 12 0v2m1-6a5 5 0 0 1 7 4.5V20"/></svg></div>
+					<div class="sysdash-kpi-copy"><p>Usuários ativos</p><strong th:text="${dashboard.usuariosAtivos}">0</strong></div>
 				</article>
 			</section>
 
-			<section class="analytics-grid" aria-label="Análises globais">
-				<article class="analytics-panel">
-					<header class="panel-header">
-						<h3>Consultas nos últimos 6 meses</h3>
+			<section class="sysdash-primary-grid" aria-label="Análises de consultas">
+				<article class="sysdash-panel sysdash-monthly-panel">
+					<header class="sysdash-panel-header">
+						<div><p class="sysdash-panel-kicker">Evolução mensal</p><h2>Consultas nos últimos 6 meses</h2></div>
+						<span class="sysdash-period">6 meses</span>
 					</header>
-					<div class="empty-chart" th:unless="${dashboard.hasConsultasPorMes()}">
-						Não há consultas registradas neste período.
+					<div class="sysdash-empty" th:unless="${dashboard.hasConsultasPorMes()}">
+						<svg aria-hidden="true" viewBox="0 0 24 24"><path d="M4 19V9m5 10V5m6 14v-7m5 7V3M2 19h20"/></svg>
+						<strong>Nenhuma consulta no período</strong><span>Os dados mensais aparecerão aqui quando houver registros.</span>
 					</div>
-					<div class="vertical-chart" th:if="${dashboard.hasConsultasPorMes()}">
-						<div class="vertical-bar" th:each="item : ${dashboard.consultasPorMes}">
+					<div class="sysdash-column-chart" th:if="${dashboard.hasConsultasPorMes()}" role="list" aria-label="Quantidade de consultas por mês">
+						<div class="sysdash-column" th:each="item : ${dashboard.consultasPorMes}" th:classappend="${item.value == 0} ? ' is-zero'" th:attr="aria-label=${item.label + ': ' + item.value + (item.value == 1 ? ' consulta' : ' consultas')}" role="listitem">
 							<strong th:text="${item.value}">0</strong>
-							<div class="bar-track">
-								<span th:style="'height:' + ${item.percentage} + '%'"></span>
-							</div>
+							<div class="sysdash-column-track"><span class="sysdash-column-fill" th:style="'--bar-height:' + ${item.percentage} + '%'" aria-hidden="true"></span></div>
 							<small th:text="${item.label}">Mês</small>
 						</div>
 					</div>
 				</article>
 
-				<article class="analytics-panel">
-					<header class="panel-header">
-						<h3>Animais por espécie</h3>
-					</header>
-					<div class="empty-chart" th:unless="${dashboard.hasAnimaisPorEspecie()}">
-						Não há animais ativos para exibir.
+				<article class="sysdash-panel sysdash-status-panel">
+					<header class="sysdash-panel-header"><div><p class="sysdash-panel-kicker">Distribuição atual</p><h2>Consultas por status</h2></div></header>
+					<div class="sysdash-empty sysdash-empty-compact" th:unless="${dashboard.hasConsultasPorStatus()}">
+						<svg aria-hidden="true" viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h10"/></svg>
+						<strong>Nenhum status para exibir</strong><span>Não há consultas registradas.</span>
 					</div>
-					<div class="bar-list" th:if="${dashboard.hasAnimaisPorEspecie()}">
-						<div class="bar-row" th:each="item : ${dashboard.animaisPorEspecie}">
-							<div class="bar-row-label">
-								<span th:text="${item.label}">Espécie</span>
-								<strong th:text="${item.value}">0</strong>
-							</div>
-							<div class="horizontal-track">
-								<span th:style="'width:' + ${item.percentage} + '%'"></span>
-							</div>
+					<div class="sysdash-distribution" th:if="${dashboard.hasConsultasPorStatus()}">
+						<div class="sysdash-distribution-row" th:each="item : ${dashboard.consultasPorStatus}">
+							<div class="sysdash-distribution-label"><span><i aria-hidden="true"></i><span th:text="${item.label}">Status</span></span><strong th:text="${item.value}">0</strong></div>
+							<div class="sysdash-progress" aria-hidden="true"><span th:style="'width:' + ${item.percentage} + '%'" ></span></div>
+						</div>
+					</div>
+				</article>
+			</section>
+
+			<section class="sysdash-secondary-grid" aria-label="Distribuições da plataforma">
+				<article class="sysdash-panel">
+					<header class="sysdash-panel-header">
+						<div><p class="sysdash-panel-kicker">Base ativa</p><h2>Animais por espécie</h2></div>
+						<span class="sysdash-panel-meta" th:if="${dashboard.hasAnimaisPorEspecie()}" th:text="${#lists.size(dashboard.animaisPorEspecie) == 1 ? '1 espécie' : #lists.size(dashboard.animaisPorEspecie) + ' espécies'}">0 espécies</span>
+					</header>
+					<div class="sysdash-empty sysdash-empty-compact" th:unless="${dashboard.hasAnimaisPorEspecie()}">
+						<svg aria-hidden="true" viewBox="0 0 24 24"><circle cx="7" cy="8" r="2"/><circle cx="17" cy="8" r="2"/><path d="M12 10c-3 0-6 4-6 7a4 4 0 0 0 6 3 4 4 0 0 0 6-3c0-3-3-7-6-7Z"/></svg>
+						<strong>Nenhum animal ativo</strong><span>A distribuição será exibida após os cadastros.</span>
+					</div>
+					<div class="sysdash-distribution sysdash-scrollable" th:if="${dashboard.hasAnimaisPorEspecie()}" th:attr="tabindex=${#lists.size(dashboard.animaisPorEspecie) > 5 ? '0' : null}" aria-label="Distribuição de animais ativos por espécie">
+						<div class="sysdash-distribution-row" th:each="item : ${dashboard.animaisPorEspecie}">
+							<div class="sysdash-distribution-label"><span th:text="${item.label}">Espécie</span><strong th:text="${item.value}">0</strong></div>
+							<div class="sysdash-progress sysdash-progress-cyan" aria-hidden="true"><span th:style="'width:' + ${item.percentage} + '%'" ></span></div>
 						</div>
 					</div>
 				</article>
 
-				<article class="analytics-panel">
-					<header class="panel-header">
-						<h3>Usuários por perfil</h3>
-					</header>
-					<div class="empty-chart" th:unless="${dashboard.hasUsuariosPorPerfil()}">
-						Não há usuários cadastrados para exibir.
+				<article class="sysdash-panel">
+					<header class="sysdash-panel-header"><div><p class="sysdash-panel-kicker">Acesso à plataforma</p><h2>Usuários por perfil</h2></div></header>
+					<div class="sysdash-empty sysdash-empty-compact" th:unless="${dashboard.hasUsuariosPorPerfil()}">
+						<svg aria-hidden="true" viewBox="0 0 24 24"><circle cx="8" cy="8" r="3"/><circle cx="17" cy="9" r="2.5"/><path d="M2 20v-2a6 6 0 0 1 12 0v2m1-6a5 5 0 0 1 7 4.5V20"/></svg>
+						<strong>Nenhum usuário cadastrado</strong><span>A distribuição por perfil aparecerá aqui.</span>
 					</div>
-					<div class="bar-list" th:if="${dashboard.hasUsuariosPorPerfil()}">
-						<div class="bar-row" th:each="item : ${dashboard.usuariosPorPerfil}">
-							<div class="bar-row-label">
-								<span th:text="${item.label}">Perfil</span>
-								<strong th:text="${item.value}">0</strong>
-							</div>
-							<div class="horizontal-track">
-								<span th:style="'width:' + ${item.percentage} + '%'"></span>
-							</div>
+					<div class="sysdash-profile-grid" th:if="${dashboard.hasUsuariosPorPerfil()}">
+						<div class="sysdash-profile" th:each="item : ${dashboard.usuariosPorPerfil}">
+							<div class="sysdash-profile-heading"><span th:text="${item.label}">Perfil</span><strong th:text="${item.value}">0</strong></div>
+							<div class="sysdash-progress sysdash-progress-violet" aria-hidden="true"><span th:style="'width:' + ${item.percentage} + '%'" ></span></div>
 						</div>
 					</div>
 				</article>
+			</section>
 
-				<article class="analytics-panel">
-					<header class="panel-header">
-						<h3>Consultas por status</h3>
-					</header>
-					<div class="empty-chart" th:unless="${dashboard.hasConsultasPorStatus()}">
-						Não há consultas por status para exibir.
-					</div>
-					<div class="bar-list" th:if="${dashboard.hasConsultasPorStatus()}">
-						<div class="bar-row" th:each="item : ${dashboard.consultasPorStatus}">
-							<div class="bar-row-label">
-								<span th:text="${item.label}">Status</span>
-								<strong th:text="${item.value}">0</strong>
-							</div>
-							<div class="horizontal-track">
-								<span th:style="'width:' + ${item.percentage} + '%'"></span>
-							</div>
-						</div>
-					</div>
-				</article>
+			<section class="sysdash-shortcuts" aria-labelledby="quick-actions-title">
+				<header class="sysdash-section-heading">
+					<div><p class="sysdash-panel-kicker">Navegação administrativa</p><h2 id="quick-actions-title">Acessos rápidos</h2></div>
+					<p>Gerencie os principais cadastros da plataforma.</p>
+				</header>
+				<nav class="sysdash-shortcut-grid" aria-label="Acessos rápidos da administração">
+					<a class="sysdash-shortcut" th:href="@{/sysadmin/clinicas}"><span class="sysdash-shortcut-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 21V5a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v16M2 21h20M8 7h5m-5 4h5m6-2h5v12"/></svg></span><span><strong>Clínicas</strong><small>Gerenciar unidades</small></span><svg class="sysdash-shortcut-arrow" aria-hidden="true" viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"/></svg></a>
+					<a class="sysdash-shortcut" th:href="@{/sysadmin/veterinarios}"><span class="sysdash-shortcut-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M5 21v-2a7 7 0 0 1 14 0v2m-7-7v7m-3-3h6"/></svg></span><span><strong>Veterinários</strong><small>Gerenciar profissionais</small></span><svg class="sysdash-shortcut-arrow" aria-hidden="true" viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"/></svg></a>
+					<a class="sysdash-shortcut" th:href="@{/sysadmin/responsaveis}"><span class="sysdash-shortcut-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="4"/><path d="M2 21v-2a7 7 0 0 1 14 0v2m1-10a4 4 0 0 1 0 8"/></svg></span><span><strong>Responsáveis</strong><small>Gerenciar responsáveis</small></span><svg class="sysdash-shortcut-arrow" aria-hidden="true" viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"/></svg></a>
+					<a class="sysdash-shortcut" th:href="@{/admin/animais}"><span class="sysdash-shortcut-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="7" cy="8" r="2"/><circle cx="17" cy="8" r="2"/><circle cx="4" cy="13" r="2"/><circle cx="20" cy="13" r="2"/><path d="M12 10c-3 0-6 4-6 7a4 4 0 0 0 6 3 4 4 0 0 0 6-3c0-3-3-7-6-7Z"/></svg></span><span><strong>Animais</strong><small>Consultar cadastros</small></span><svg class="sysdash-shortcut-arrow" aria-hidden="true" viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"/></svg></a>
+					<a class="sysdash-shortcut" th:href="@{/sysadmin/usuarios}"><span class="sysdash-shortcut-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="8" cy="8" r="3"/><circle cx="17" cy="9" r="2.5"/><path d="M2 20v-2a6 6 0 0 1 12 0v2m1-6a5 5 0 0 1 7 4.5V20"/></svg></span><span><strong>Usuários</strong><small>Gerenciar acessos</small></span><svg class="sysdash-shortcut-arrow" aria-hidden="true" viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"/></svg></a>
+				</nav>
 			</section>
 		</main>
 	</div>

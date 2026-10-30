@@ -45,16 +45,42 @@ class SysAdminDashboardControllerTest {
 		mockMvc.perform(get("/sysadmin/dashboard"))
 				.andExpect(status().isOk())
 				.andExpect(model().attributeExists("dashboard"))
+				.andExpect(model().attribute("pageTitle", "Visão Geral"))
+				.andExpect(content().string(containsString("Panorama da Plataforma")))
 				.andExpect(content().string(containsString("Clínicas ativas")))
 				.andExpect(content().string(containsString("Veterinários ativos")))
+				.andExpect(content().string(containsString("Responsáveis ativos")))
+				.andExpect(content().string(containsString("Animais ativos")))
+				.andExpect(content().string(containsString("Consultas nos últimos 30 dias")))
+				.andExpect(content().string(containsString("Usuários ativos")))
 				.andExpect(content().string(containsString("Consultas nos últimos 6 meses")))
 				.andExpect(content().string(containsString("Animais por espécie")))
 				.andExpect(content().string(containsString("Usuários por perfil")))
 				.andExpect(content().string(containsString("Consultas por status")))
+				.andExpect(content().string(containsString("Acessos rápidos")))
+				.andExpect(content().string(containsString("nav-link  is-active")))
+				.andExpect(content().string(containsString("href=\"/sysadmin/clinicas\"")))
+				.andExpect(content().string(containsString("href=\"/sysadmin/veterinarios\"")))
+				.andExpect(content().string(containsString("href=\"/sysadmin/responsaveis\"")))
+				.andExpect(content().string(containsString("href=\"/admin/animais\"")))
+				.andExpect(content().string(containsString("href=\"/sysadmin/usuarios\"")))
 				.andExpect(content().string(containsString("/images/favicon.png")))
 				.andExpect(content().string(not(containsString("Gestão de Acessos"))))
 				.andExpect(content().string(not(containsString("Espaço reservado"))))
 				.andExpect(content().string(not(containsString("Base web para acompanhar"))));
+	}
+
+	@Test
+	@WithMockUser(roles = "SYSADMIN")
+	void dashboardRenderizaEstadosVaziosSemFabricarDados() throws Exception {
+		when(dashboardService.carregar()).thenReturn(SysAdminDashboardView.empty());
+
+		mockMvc.perform(get("/sysadmin/dashboard"))
+				.andExpect(status().isOk())
+				.andExpect(content().string(containsString("Nenhuma consulta no período")))
+				.andExpect(content().string(containsString("Nenhum status para exibir")))
+				.andExpect(content().string(containsString("Nenhum animal ativo")))
+				.andExpect(content().string(containsString("Nenhum usuário cadastrado")));
 	}
 
 	@Test
