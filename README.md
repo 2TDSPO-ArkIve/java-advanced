@@ -1,37 +1,61 @@
-# ArkIve — Backend Java
+# ArkIve
 
-**FIAP | Challenge ArkIve | Java Advanced e integração Oracle PL/SQL**
 
-O **ArkIve** é uma plataforma de apoio clínico veterinário. Este repositório contém o **backend Java com Spring Boot**, responsável pela API REST, interface web administrativa, autenticação, regras de negócio e persistência Oracle. A aplicação organiza dados de animais, responsáveis, clínicas, consultas, diagnósticos, prescrições, adesão ao tratamento e outros eventos da jornada de saúde do pet.
+Plataforma para organizar pacientes, consultas, prescrições e informações clínicas em uma jornada integrada de cuidado animal.
 
-O motor de inteligência artificial atua como ferramenta assistiva: produz hipóteses, indicação de severidade, confiança, fontes e insights para apoiar a análise. Ele não substitui o veterinário, não confirma autonomamente um diagnóstico e não prescreve medicamentos. A conclusão clínica e a decisão final continuam sob responsabilidade do profissional veterinário.
+**[Código-fonte](https://github.com/2TDSPO-ArkIve/java-advanced)** · **[Aplicação web (Azure)](https://webapp-arkive-rm561408.azurewebsites.net/)** · **[Demonstração do projeto](https://www.youtube.com/watch?v=8qWFTkmPwE0)**
 
-## Objetivo do projeto
+`Java 17` · `Spring Boot` · `Oracle` · `Thymeleaf` · `Azure DevOps`
 
-O ArkIve busca reduzir a fragmentação do histórico veterinário. A solução reúne informações clínicas, preventivas e terapêuticas em uma base longitudinal, aplica regras de acesso conforme o perfil do usuário e oferece apoio à tomada de decisão sem retirar a autonomia do veterinário.
+> **Sobre este repositório:** aqui estão o backend Java/Spring Boot, a API REST, a interface web administrativa em Thymeleaf e a integração com Oracle. O aplicativo React Native/Expo faz parte do ecossistema ArkIve, mas é mantido separadamente.
 
-## Escopo da entrega
+## Visão geral
 
-### Sprint 4 — Java Advanced
+O **ArkIve** foi desenvolvido para reduzir a fragmentação de informações na rotina veterinária. O histórico do paciente reúne informações clínicas, preventivas e terapêuticas, respeitando o vínculo e as permissões de cada usuário.
 
-A base do projeto atende aos requisitos de **Java Advanced — Sprint 4**, com ênfase em:
+O suporte por inteligência artificial é **assistivo e opcional**: pode sugerir hipóteses, severidade, confiança, fontes e insights para o profissional avaliar. Ele **não substitui o veterinário**, não confirma autonomamente diagnósticos e não prescreve medicamentos. A decisão clínica final é sempre do profissional responsável.
 
-- frontend web e camada de visualização com Thymeleaf;
-- versionamento do banco Oracle com Flyway;
-- autenticação e autorização com Spring Security;
-- quatro perfis com permissões efetivamente diferentes;
-- dois fluxos funcionais completos além de CRUD;
-- validação de formulários, DTOs e regras de negócio.
+### Navegar pela documentação
 
-| Requisito da Sprint | Evidência no projeto |
+- [Funcionalidades](#funcionalidades)
+- [Links do projeto](#links-do-projeto)
+- [Stack tecnológica](#stack-tecnológica)
+- [Arquitetura da aplicação](#arquitetura-da-aplicação)
+- [Arquitetura e CI/CD no Azure](#arquitetura-e-cicd-no-azure)
+- [Perfis e segurança](#perfis-de-usuário-e-spring-security)
+- [Interface web administrativa](#interface-web-administrativa)
+- [Fluxos clínicos e regras de negócio](#fluxos-clínicos-e-regras-de-negócio)
+- [Banco de dados e evolução do schema](#banco-de-dados-e-evolução-do-schema)
+- [Configuração e execução](#pré-requisitos-para-desenvolvimento)
+- [Qualidade e testes](#qualidade-e-testes)
+- [Estrutura do projeto](#estrutura-do-projeto)
+- [Integrantes](#integrantes)
+
+## Funcionalidades
+
+- **Histórico e identificação de pacientes:** cadastro de animais, ArkIve ID, vínculos com responsáveis e compartilhamento controlado de acesso.
+- **Gestão de consultas:** agendamento, acompanhamento dos estados clínicos, narrativa, conclusão profissional e cancelamento com preservação do histórico.
+- **Apoio clínico por IA:** análise solicitada pelo veterinário, com resultados provisórios separados de sua conclusão profissional.
+- **Prescrições e adesão:** registro de tratamentos, acompanhamento pelo responsável e trilha de eventos clínicos.
+- **Acesso e colaboração:** perfis `SYSADMIN`, `ADMIN_CLINICA`, `VETERINARIO` e `RESPONSAVEL`, solicitações de acesso e regras de privacidade.
+- **Relatos e notificações:** observações de responsáveis, relatos permanentes e avisos relacionados a consultas.
+- **Recursos complementares:** transcrição opcional com Azure Speech, geração de documentos PDF, indicadores Oracle e dashboards administrativos.
+
+O backend atende tanto à **interface web Thymeleaf** quanto aos **clientes que consomem a API REST**. As áreas de administração web estão disponíveis para os perfis autorizados; os fluxos clínicos dos demais perfis são consumidos por clientes da API.
+
+## Links do projeto
+
+| Recurso | Endereço |
 | --- | --- |
-| Frontend | Controllers MVC, templates Thymeleaf, dashboards, formulários e páginas de consulta de dados |
-| Flyway | Migrations Oracle `V1` a `V19` em `src/main/resources/db/migration` |
-| Spring Security | Usuários persistidos, BCrypt, form login, HTTP Basic, quatro perfis e proteção de rotas |
-| Fluxos além de CRUD | Consulta clínica assistida e prescrição com registro de adesão |
-| Validação | Bean Validation, `BindingResult`, regras nos services e constraints Oracle |
+| Repositório GitHub | [2TDSPO-ArkIve/java-advanced](https://github.com/2TDSPO-ArkIve/java-advanced) |
+| Aplicação web no Azure | [webapp-arkive-rm561408.azurewebsites.net](https://webapp-arkive-rm561408.azurewebsites.net/) |
+| Instância alternativa no Render | [arkive-b7v2.onrender.com](https://arkive-b7v2.onrender.com/) |
+| Projeto Azure DevOps | [Sprint 4 – Azure DevOps](https://dev.azure.com/rm561408/Sprint%204%20%E2%80%93%20Azure%20DevOps) |
+| Demonstração de CI/CD e CRUD | [Assistir no YouTube](https://www.youtube.com/watch?v=8qWFTkmPwE0) |
 
-## Tecnologias
+> **Disponibilidade:** os ambientes gratuitos de demonstração podem estar suspensos fora dos períodos de uso. Os endereços acima não indicam disponibilidade contínua.
+
+## Stack tecnológica
 
 | Tecnologia | Uso no projeto |
 | --- | --- |
@@ -54,11 +78,14 @@ A base do projeto atende aos requisitos de **Java Advanced — Sprint 4**, com �
 | Azure Speech SDK 1.51.0 | Transcrição opcional de áudio clínico |
 | FFmpeg | Conversão temporária de M4A, AAC e WebM para WAV na transcrição |
 | Docker | Build em múltiplos estágios e imagem Java 17 com dependências de áudio |
+| Azure Repos / Git | Versionamento e Pull Requests com validação de build |
+| Azure Pipelines | Compilação, testes, publicação do JAR e releases automáticas |
+| Azure App Service (Linux) | Execução da aplicação web Java na nuvem |
 | JUnit, MockMvc, Spring Security Test e H2 | Testes automatizados sem depender de uma instância Oracle |
 
 O suporte clínico usa ainda o `RestClient` do Spring para consultar o motor clínico externo configurado por `ARKIVE_CLINICAL_ENGINE_URL`.
 
-## Arquitetura
+## Arquitetura da aplicação
 
 O projeto separa apresentação, regras de negócio e persistência. Os mesmos services são usados pelos controllers REST e, quando aplicável, pelos controllers MVC.
 
@@ -93,6 +120,39 @@ Navegador / Mobile / Postman
 | `templates` / `static` | Páginas Thymeleaf, CSS, JavaScript e imagens |
 | `db/migration` | Evolução do schema controlada pelo Flyway |
 
+## Arquitetura e CI/CD no Azure
+
+A mesma arquitetura que atende às operações clínicas e administrativas também é utilizada na publicação automatizada do ArkIve. O código é versionado com Git, verificado por testes, empacotado em JAR e implantado no **Azure App Service (Linux)** pelo **Azure DevOps**. O aplicativo React Native/Expo é mantido e distribuído separadamente; essas pipelines publicam apenas esta aplicação Java.
+
+
+![Arquitetura e CI/CD do ArkIve](docs/images/CI-CD.png)
+
+### Passos
+
+1. O desenvolvedor altera o código no **IntelliJ IDEA** e envia commits para uma branch no **Azure Repos**.
+2. Uma **Pull Request** direcionada à `main` passa por validação automática de build e testes antes da integração.
+3. Após o merge na `main`, a pipeline Classic **`ArkIve - CI`** executa um novo build com **Java 17 e Maven**, incluindo os testes automatizados.
+4. A CI publica o arquivo **JAR** como artefato **`drop`**.
+5. O novo artefato da `main` aciona a pipeline Classic de Release **`ArkIve - CD`**, que realiza o deploy automático na etapa **Development** do Azure App Service.
+6. A aplicação Spring Boot é executada no Azure e utiliza **Oracle FIAP** para persistência de dados via JDBC.
+
+| Componente | Configuração utilizada |
+| --- | --- |
+| Repositório de integração | Azure Repos, `java-advanced` |
+| Pipeline CI | `ArkIve - CI` · build Maven · testes · artefato `drop` |
+| Pipeline CD | `ArkIve - CD` · Classic Release · estágio `Development` |
+| Hospedagem | Azure App Service Linux · Java 17 |
+| Recurso Web App | `webapp-arkive-rm561408` |
+| Resource Group | `rg-arkive-rm561408` |
+| Plano | `plan-arkive-rm561408` · F1 (Free) |
+| Banco de dados | Oracle FIAP, externo ao Azure App Service |
+
+As credenciais Oracle são fornecidas por variáveis de ambiente/App Settings, **sem valores sensíveis no Git**. Para respeitar o limite de sessões no Oracle acadêmico, o perfil `oracle` configura um pool HikariCP com máximo de duas conexões, mínimo ocioso zero e timeout ocioso de 30 segundos **por instância**. Essa configuração não limita outras aplicações que compartilhem o mesmo usuário de banco.
+
+A [demonstração da plataforma e de sua publicação (Sprint 4)](https://www.youtube.com/watch?v=8qWFTkmPwE0) mostra o redesenho do dashboard SysAdmin, a validação da Pull Request, as pipelines, a publicação do JAR, o deploy automático e um CRUD conferido diretamente no Oracle.
+
+> **Observação sobre repositórios:** GitHub e Azure Repos são remotos Git independentes neste projeto; um push para um deles não atualiza automaticamente o outro. O GitHub disponibiliza o código e esta documentação, enquanto a configuração de CI/CD utiliza o Azure Repos.
+
 ## Perfis de usuário e Spring Security
 
 | Perfil | Principais permissões |
@@ -112,9 +172,9 @@ Contas provisionadas automaticamente para clínica ou veterinário recebem uma c
 
 O cadastro público mantém rotas separadas e papéis atribuídos pelo servidor: `POST /api/auth/register` cria veterinários e `POST /api/auth/register/responsavel` cria responsáveis. O autocadastro de veterinário exige `senha` e `confirmacaoSenha`, aplica a política de 8–72 caracteres com maiúscula, minúscula e número, armazena BCrypt e cria a conta com `ST_TROCA_SENHA=N`. Isso é independente do cadastro administrativo de veterinários (`POST /sysadmin/veterinarios` ou `POST /api/veterinarios`), que continua provisionando a credencial temporária baseada no e-mail e `ST_TROCA_SENHA=S`. Nenhuma rota pública aceita papel, status ou `trocaSenha` definidos pelo cliente. No cadastro de responsável, `tipoDocumento` é obrigatório e aceita `CPF` ou `RG`. CPF é armazenado sem pontuação após validação dos dois dígitos verificadores; RG é normalizado para maiúsculas, sem pontos, hífens ou espaços, e recebe validação estrutural genérica de 5 a 14 caracteres alfanuméricos, pois não existe um algoritmo nacional único. O telefone é opcional, limitado a 20 caracteres, aparado e preservado em sua forma informada. Registros legados e administrativos podem manter `tipoDocumento=NULL`.
 
-## Frontend Web com Thymeleaf
+## Interface web administrativa
 
-O projeto não é apenas uma API REST. A aplicação possui controllers MVC e páginas Thymeleaf que renderizam dados do backend, enviam formulários para endpoints Spring MVC e exibem mensagens de sucesso ou validação.
+O ArkIve não é apenas uma API REST. A aplicação possui controllers MVC e páginas Thymeleaf que renderizam dados do backend, enviam formulários para endpoints Spring MVC e exibem mensagens de sucesso ou validação.
 
 | Área | Rotas e telas principais |
 | --- | --- |
@@ -137,7 +197,7 @@ Os formulários usam `th:object`, `th:field` e `th:errors`; erros de campos e de
 
 Atualmente, as áreas web completas são destinadas a `SYSADMIN` e `ADMIN_CLINICA`. `VETERINARIO` e `RESPONSAVEL` autenticam pelo mesmo mecanismo, mas são direcionados a `/acesso-web-restrito`; seus casos de uso operacionais são consumidos pela API/cliente. O README não atribui a esses dois perfis telas Thymeleaf clínicas que não existem no repositório.
 
-## Fluxos funcionais além de CRUD
+## Fluxos clínicos e regras de negócio
 
 ### Fluxo 1 — Consulta clínica com suporte ArkIve opcional
 
@@ -254,7 +314,7 @@ Um `RESPONSAVEL` ativo e atualmente vinculado pode criar um relato em `POST /api
 
 `POST /api/transcricoes` aceita `VETERINARIO` com `veterinarioId` válido e `RESPONSAVEL` com `responsavelId` válido. A transcrição continua stateless: retorna texto editável e não cria relato, observação, consulta ou narrativa automaticamente.
 
-## Validações
+## Validação de dados
 
 A aplicação valida dados em camadas complementares:
 
@@ -266,9 +326,9 @@ A aplicação valida dados em camadas complementares:
 
 Entradas inválidas da API recebem respostas pelo tratamento centralizado de exceções. Nos formulários web, os valores preenchidos e os erros compreensíveis são apresentados novamente na página.
 
-## Flyway e banco de dados
+## Banco de dados e evolução do schema
 
-O **Flyway controla o versionamento da estrutura relacional Oracle utilizada pelo backend**. As migrations ficam em `src/main/resources/db/migration` e são aplicadas em ordem durante a inicialização do perfil `oracle`. Os objetos PL/SQL de indicadores, criados diretamente no schema de validação, possuem uma etapa de provisionamento separada, detalhada acima.
+O **Flyway controla o versionamento da estrutura relacional Oracle utilizada pelo backend**. As migrations ficam em `src/main/resources/db/migration` e são aplicadas em ordem durante a inicialização do perfil `oracle`. Os objetos PL/SQL de indicadores possuem provisionamento separado das migrations, conforme a documentação de banco de dados do projeto.
 
 | Versão | Migration | Objetivo |
 | --- | --- | --- |
@@ -302,14 +362,14 @@ No perfil Oracle:
 
 As migrations não inserem usuários ou credenciais de demonstração. Elas também **não instalam automaticamente** `PKG_ARKIVE_INDICADORES` nem `TRG_ARKIVE_CONS_PESO`.
 
-## Pré-requisitos
+## Pré-requisitos para desenvolvimento
 
 ### Obrigatórios para a aplicação completa
 
 - JDK 17 disponível em `JAVA_HOME` ou no `PATH`;
 - acesso à internet no primeiro uso do Maven Wrapper e para baixar dependências;
 - uma instância Oracle e um usuário/schema da aplicação;
-- para os endpoints `/api/indicadores/**`, o package e o trigger instalados no Oracle conforme a seção de integração PL/SQL;
+- para os endpoints `/api/indicadores/**`, o package e o trigger instalados no Oracle conforme a documentação da integração PL/SQL;
 - acesso ao motor clínico externo para demonstrar a etapa de suporte por IA.
 
 O repositório não fixa uma versão específica do Oracle. A instância deve aceitar os recursos usados nas migrations, como colunas `GENERATED BY DEFAULT AS IDENTITY`, constraints com `IS JSON`, CLOBs, índices e chaves estrangeiras.
@@ -324,7 +384,7 @@ A narrativa da consulta pode ser enviada como texto sem Azure Speech. Assim, Azu
 
 ## Variáveis de ambiente
 
-Nenhum valor real de credencial deve ser versionado. O arquivo `.env.example` existente no repositório serve como referência inicial de nomes; caso esteja indisponível em uma cópia da entrega, consulte a tabela abaixo e defina as variáveis diretamente no ambiente.
+Nenhum valor real de credencial deve ser versionado. O arquivo `.env.example` existente no repositório serve como referência inicial de nomes; caso esteja indisponível em uma cópia do projeto, consulte a tabela abaixo e defina as variáveis diretamente no ambiente.
 
 | Variável | Finalidade | Obrigatória |
 | --- | --- | --- |
@@ -356,7 +416,7 @@ Nenhum valor real de credencial deve ser versionado. O arquivo `.env.example` ex
 
 O repositório não define um script de criação do usuário Oracle nem exige comandos DBA específicos. Não é necessário executar as migrations manualmente.
 
-## Primeiro acesso / criação do SYSADMIN
+## Primeiro acesso administrativo
 
 Em um banco limpo, as migrations criam o schema, mas não criam usuários da aplicação. O primeiro `SYSADMIN` pode ser provisionado pelo `InitialSysAdminBootstrap`.
 
@@ -457,21 +517,25 @@ Com a execução local na porta padrão:
 
 Após o login, `/` redireciona `SYSADMIN` para `/sysadmin/dashboard`, `ADMIN_CLINICA` para `/admin/dashboard` e os demais perfis para `/acesso-web-restrito`.
 
-Deploy atual no Render:
+Aplicação web no Azure (pode estar temporariamente parada):
+
+- [https://webapp-arkive-rm561408.azurewebsites.net/](https://webapp-arkive-rm561408.azurewebsites.net/)
+
+Hospedagem alternativa no Render (a disponibilidade depende do estado do serviço):
 
 - aplicação: [https://arkive-b7v2.onrender.com/](https://arkive-b7v2.onrender.com/)
 - login direto: [https://arkive-b7v2.onrender.com/login](https://arkive-b7v2.onrender.com/login)
 
-O Swagger é documentação complementar para desenvolvimento e demonstração da API; a interface principal para a avaliação web é o frontend Thymeleaf:
+O Swagger é documentação complementar para desenvolvimento e demonstração da API; a interface principal para uso administrativo web é o frontend Thymeleaf:
 
 - Swagger UI: `http://localhost:8080/swagger-ui/index.html`
 - OpenAPI JSON: `http://localhost:8080/v3/api-docs`
 
 O repositório não contém contas de demonstração ou senhas públicas. Use o bootstrap inicial ou contas provisionadas por um `SYSADMIN`.
 
-## Testes
+## Qualidade e testes
 
-A execução completa informada após a integração das procedures Oracle apresentou:
+Em uma execução anterior da suíte automatizada, após a integração das procedures Oracle, foi registrado:
 
 ```text
 Tests run: 847
@@ -481,7 +545,7 @@ Skipped: 0
 BUILD SUCCESS
 ```
 
-Esse total representa **execuções automatizadas de diferentes categorias**, não 847 testes unitários. Abrange testes unitários, de camada MVC e de integração simulada. O resultado acima foi registrado na implementação local; para uma nova entrega, reexecute a suíte e anexe o relatório Maven Surefire atualizado, em `target/surefire-reports`.
+Esse número é um registro histórico de **execuções automatizadas de diferentes categorias**, não um total atualizado da branch nem 847 testes estritamente unitários. Abrange testes unitários, de camada MVC e de integração simulada. O resultado acima foi registrado na implementação local; para validar outra revisão, reexecute a suíte e consulte o relatório Maven Surefire atualizado, em `target/surefire-reports`.
 
 Também foi validado o empacotamento em um JAR executável Spring Boot com:
 
