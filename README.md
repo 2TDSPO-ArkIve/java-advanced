@@ -53,9 +53,7 @@ O backend atende tanto à **interface web Thymeleaf** quanto aos **clientes que 
 | Projeto Azure DevOps | [Sprint 4 – Azure DevOps](https://dev.azure.com/rm561408/Sprint%204%20%E2%80%93%20Azure%20DevOps) |
 | Demonstração de CI/CD e CRUD | [Assistir no YouTube](https://www.youtube.com/watch?v=8qWFTkmPwE0) |
 
-> **Disponibilidade:** os ambientes gratuitos de demonstração podem estar suspensos fora dos períodos de uso. Os endereços acima não indicam disponibilidade contínua.
-
-## Stack tecnológica
+## Stack
 
 | Tecnologia | Uso no projeto |
 | --- | --- |
@@ -147,7 +145,6 @@ A mesma arquitetura que atende às operações clínicas e administrativas tamb�
 | Plano | `plan-arkive-rm561408` · F1 (Free) |
 | Banco de dados | Oracle FIAP, externo ao Azure App Service |
 
-As credenciais Oracle são fornecidas por variáveis de ambiente/App Settings, **sem valores sensíveis no Git**. Para respeitar o limite de sessões no Oracle acadêmico, o perfil `oracle` configura um pool HikariCP com máximo de duas conexões, mínimo ocioso zero e timeout ocioso de 30 segundos **por instância**. Essa configuração não limita outras aplicações que compartilhem o mesmo usuário de banco.
 
 A [demonstração da plataforma e de sua publicação (Sprint 4)](https://www.youtube.com/watch?v=8qWFTkmPwE0) mostra o redesenho do dashboard SysAdmin, a validação da Pull Request, as pipelines, a publicação do JAR, o deploy automático e um CRUD conferido diretamente no Oracle.
 
@@ -173,8 +170,6 @@ Contas provisionadas automaticamente para clínica ou veterinário recebem uma c
 O cadastro público mantém rotas separadas e papéis atribuídos pelo servidor: `POST /api/auth/register` cria veterinários e `POST /api/auth/register/responsavel` cria responsáveis. O autocadastro de veterinário exige `senha` e `confirmacaoSenha`, aplica a política de 8–72 caracteres com maiúscula, minúscula e número, armazena BCrypt e cria a conta com `ST_TROCA_SENHA=N`. Isso é independente do cadastro administrativo de veterinários (`POST /sysadmin/veterinarios` ou `POST /api/veterinarios`), que continua provisionando a credencial temporária baseada no e-mail e `ST_TROCA_SENHA=S`. Nenhuma rota pública aceita papel, status ou `trocaSenha` definidos pelo cliente. No cadastro de responsável, `tipoDocumento` é obrigatório e aceita `CPF` ou `RG`. CPF é armazenado sem pontuação após validação dos dois dígitos verificadores; RG é normalizado para maiúsculas, sem pontos, hífens ou espaços, e recebe validação estrutural genérica de 5 a 14 caracteres alfanuméricos, pois não existe um algoritmo nacional único. O telefone é opcional, limitado a 20 caracteres, aparado e preservado em sua forma informada. Registros legados e administrativos podem manter `tipoDocumento=NULL`.
 
 ## Interface web administrativa
-
-O ArkIve não é apenas uma API REST. A aplicação possui controllers MVC e páginas Thymeleaf que renderizam dados do backend, enviam formulários para endpoints Spring MVC e exibem mensagens de sucesso ou validação.
 
 | Área | Rotas e telas principais |
 | --- | --- |
@@ -235,7 +230,6 @@ POST  /api/consultas/{id}/cancelar
 
 `GET /api/consultas` aceita os filtros combináveis `consultaId` (igualdade exata), `pacienteNome` (trecho, sem diferenciar maiúsculas/minúsculas), `arkivePatientId` (igualdade exata sem diferenciar maiúsculas/minúsculas), `dataHoraInicio` e `dataHoraFim` (limites inclusivos em ISO-8601), além dos filtros existentes `animalId`, `veterinarioId`, `clinicaId`, `status` e `modalidade`. Os filtros são aplicados no banco antes da paginação e nunca ampliam o escopo autorizado do usuário.
 
-Esse fluxo não é CRUD simples porque contém uma máquina de estados, regras de transição, autorização pelo veterinário responsável, chamada externa, validação e persistência do resultado provisório, distinção entre hipótese da IA e conclusão profissional e registro de eventos da jornada.
 
 O `POST /api/consultas/{id}/suporte-clinico` é síncrono: a chamada ao motor ocorre fora da transação de banco, e somente depois de uma resposta válida uma transação curta persiste o diagnóstico e muda `EP` para `AP`. Se o cliente parar de aguardar, mas Java e o motor concluírem dentro do timeout do servidor, o resultado ainda é persistido. O cliente deve consultar `GET /api/consultas/{id}/suporte-clinico` antes de tentar gerar novamente; esse GET lê exclusivamente o resultado persistido e não chama o motor.
 
@@ -267,8 +261,6 @@ GET  /api/prescricoes
 POST /api/adesoes-prescricao
 GET  /api/adesoes-prescricao
 ```
-
-Esse fluxo não é CRUD simples porque depende do encerramento de outro processo, impõe autoria e vínculo, valida a janela terapêutica, completa dados pelo contexto autenticado, produz evento de jornada e preserva um histórico imutável.
 
 ### Fluxo 3 — Custos assistenciais do paciente
 
@@ -517,7 +509,7 @@ Com a execução local na porta padrão:
 
 Após o login, `/` redireciona `SYSADMIN` para `/sysadmin/dashboard`, `ADMIN_CLINICA` para `/admin/dashboard` e os demais perfis para `/acesso-web-restrito`.
 
-Aplicação web no Azure (pode estar temporariamente parada):
+Aplicação web no Azure:
 
 - [https://webapp-arkive-rm561408.azurewebsites.net/](https://webapp-arkive-rm561408.azurewebsites.net/)
 
